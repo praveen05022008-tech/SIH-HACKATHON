@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { SafetyEvent, AuditEvent } from '../types';
-import { RiskBadge } from '../components/UIElements';
-import { L1L6Hierarchy } from '../components/L1L6Hierarchy';
 import { 
   ArrowLeft, 
   RefreshCcw, 
@@ -16,7 +14,11 @@ import {
   AlertTriangle,
   Send,
   Camera,
-  MessageSquare
+  MessageSquare,
+  FileText,
+  AlertOctagon,
+  Settings,
+  ArrowRight
 } from 'lucide-react';
 
 interface DetailProps {
@@ -30,17 +32,17 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
   const [data, setData] = useState<{ event: SafetyEvent; audits: AuditEvent[]; interventions: any[] } | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Review validation states
+  // Validation States
+  const [validationType, setValidationType] = useState<'none' | 'correct' | 'investigate' | 'incorrect'>('none');
+  const [reasonForCorrection, setReasonForCorrection] = useState('');
+  const [investigationNotes, setInvestigationNotes] = useState('');
+  const [officerRemarks, setOfficerRemarks] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [calibratedSignal, setCalibratedSignal] = useState<string | null>(null);
-  const [validationType, setValidationType] = useState<'none' | 'correct' | 'incorrect' | 'investigate'>('none');
-  
-  // Override form states
-  const [sifChoice, setSifChoice] = useState<'SIF Potential' | 'Non-SIF'>('SIF Potential');
-  const [lsrChoice, setLsrChoice] = useState('Energy Isolation');
-  const [feedbackText, setFeedbackText] = useState('');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [validationSubmitted, setValidationSubmitted] = useState(false);
 
   // Corrective action dispatcher states
+  const [showActionForm, setShowActionForm] = useState(false);
   const [stopWork, setStopWork] = useState(false);
   const [assignedTeam, setAssignedTeam] = useState('Rig Safety Team');
   const [actionDescription, setActionDescription] = useState('');
@@ -48,17 +50,8 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
   const [dueDays, setDueDays] = useState(2);
   const [actionDispatched, setActionDispatched] = useState<any | null>(null);
 
-  const lsrOptions = [
-    'Energy Isolation',
-    'Line of Fire',
-    'Hot Work',
-    'Confined Space',
-    'Working at Height',
-    'Lifting Operations',
-    'Vehicle Safety',
-    'Electrical Safety',
-    'None'
-  ];
+  // Full report toggle
+  const [showFullReport, setShowFullReport] = useState(false);
 
   const fetchEventDetail = async () => {
     setLoading(true);
@@ -67,8 +60,6 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
       if (!res.ok) throw new Error();
       const payload = await res.json();
       setData(payload);
-      setSifChoice((payload.event.sif_risk_score ?? 5.0) >= 6.5 ? 'SIF Potential' : 'Non-SIF');
-      setLsrChoice(payload.event.life_saving_rule || 'Energy Isolation');
       
       if (payload.event.action_id) {
         setActionDispatched({
@@ -79,17 +70,14 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
         });
       }
     } catch (err) {
-      console.warn('Failed to fetch event detail, using mock audit history.');
-      // Mock data in case API is offline
+      console.warn('Failed to fetch event detail, using mock data.');
       setData({
         event: event,
         audits: [
-          { id: 1, event_id: event.id, action: 'AI Classified', details: `System automatically parsed safety report. predicted SIF probability: ${event.sif_probability}%, mapped to Life-Saving Rule: ${event.life_saving_rule}.`, user_email: 'system@gati.engine', timestamp: event.timestamp }
+          { id: 1, event_id: event.id, action: 'AI Classified', details: `System automatically parsed safety report. predicted SIF probability: ${event.sif_probability}%, mapped to Life-Saving Rule: ${event.life_saving_rule}.`, user_email: 'engine@sifshield.ai', timestamp: event.timestamp }
         ],
         interventions: []
       });
-      setSifChoice(event.sif_probability >= 50.0 ? 'SIF Potential' : 'Non-SIF');
-      setLsrChoice(event.life_saving_rule || 'Energy Isolation');
     } finally {
       setLoading(false);
     }
@@ -97,57 +85,62 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
 
   useEffect(() => {
     fetchEventDetail();
-    setCalibratedSignal(null);
     setValidationType('none');
+    setReasonForCorrection('');
+    setInvestigationNotes('');
+    setOfficerRemarks('');
+    setSuccessMessage(null);
+    setValidationSubmitted(false);
+    setShowActionForm(false);
     setActionDispatched(null);
   }, [event.id]);
 
-  const handleReviewAction = async (vType: 'correct' | 'investigate' | 'incorrect') => {
-    setValidationType(vType);
-    if (vType === 'correct') {
-      const currentSif = (event.sif_risk_score ?? 5.0) >= 6.5 ? 'SIF Potential' : 'Non-SIF';
-      await submitReviewAPI('correct', currentSif, event.life_saving_rule);
-    } else if (vType === 'investigate') {
-      await submitReviewAPI('investigate', 'SIF Potential', event.life_saving_rule);
+  const handleSubmitValidation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (validationType === 'none') {
+      alert("Please select a validation option before submitting.");
+      return;
     }
-  };
 
-  const submitReviewAPI = async (
-    vAction: 'correct' | 'investigate' | 'incorrect',
-    sif: 'SIF Potential' | 'Non-SIF',
-    rule: string
-  ) => {
     setSubmitting(true);
-    setCalibratedSignal(null);
+    let targetStatus = 'Validated';
+    let nextStepText = '';
+    let vAction: 'correct' | 'investigate' | 'incorrect' = 'correct';
+    
+    if (validationType === 'correct') {
+      targetStatus = 'AI Result Correct';
+      vAction = 'correct';
+    } else if (validationType === 'investigate') {
+      targetStatus = 'Investigation Required';
+      vAction = 'investigate';
+    } else if (validationType === 'incorrect') {
+      targetStatus = 'AI Result Corrected';
+      vAction = 'incorrect';
+    }
+
     try {
       const res = await fetch(`http://localhost:8000/api/events/${event.id}/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sif_potential: sif,
-          life_saving_rule: rule,
-          reviewer_name: reviewerName || 'Demo Reviewer',
+          sif_potential: validationType === 'incorrect' ? 'SIF Potential' : ((event.sif_risk_score ?? 5.0) >= 6.5 ? 'SIF Potential' : 'Non-SIF'),
+          life_saving_rule: event.life_saving_rule || 'Energy Isolation',
+          reviewer_name: reviewerName || 'Safety Officer Lead',
           verification_action: vAction,
-          feedback_to_worker: feedbackText || null
+          feedback_to_worker: officerRemarks || reasonForCorrection || investigationNotes || null
         })
       });
 
       if (!res.ok) throw new Error();
-      const payload = await res.json();
-      setCalibratedSignal(payload.signal || "Validation confirmed and GATI weights reinforced.");
-      onReviewSubmitted();
       
-      setTimeout(() => {
-        fetchEventDetail();
-      }, 1500);
-
-    } catch (err) {
-      console.warn('Fallback mock review validation');
-      setCalibratedSignal(`GATI calibrated successfully. Verification status: ${vAction}. Mapped SIF: ${sif} | LSR: ${rule}`);
+      setSuccessMessage("Validation submitted successfully.");
+      setValidationSubmitted(true);
       onReviewSubmitted();
-      setTimeout(() => {
-        onBack();
-      }, 1500);
+    } catch (err) {
+      console.warn("API Offline, simulating successful local validation.");
+      setSuccessMessage("Validation submitted successfully.");
+      setValidationSubmitted(true);
+      onReviewSubmitted();
     } finally {
       setSubmitting(false);
     }
@@ -196,34 +189,11 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
     }
   };
 
-  const getLsrDescription = (ruleName: string) => {
-    switch (ruleName) {
-      case 'Energy Isolation':
-        return 'Verify isolation and zero energy state before work begins.';
-      case 'Line of Fire':
-        return 'Keep yourself out of the path of potential energy release.';
-      case 'Hot Work':
-        return 'Control ignition sources and verify flammable gas concentrations.';
-      case 'Confined Space':
-        return 'Obtain authorization, test atmosphere, and verify rescue plan before entry.';
-      case 'Working at Height':
-        return 'Use fall protection equipment when working above 1.8 meters.';
-      case 'Lifting Operations':
-        return 'Define lift plan, inspect rigging, and do not walk under suspended loads.';
-      case 'Vehicle Safety':
-        return 'Follow speed limits, wear seatbelts, and maintain pedestrian clearance.';
-      case 'Electrical Safety':
-        return 'Verify dead state, use insulated tools, and restrict access.';
-      default:
-        return 'Standard operating procedures safety guideline.';
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] text-slate-500">
         <RefreshCcw className="h-8 w-8 animate-spin text-industrial-blue mb-3" />
-        <p className="text-sm font-semibold">Loading safety event details & audits...</p>
+        <p className="text-sm font-semibold">Loading safety observation report...</p>
       </div>
     );
   }
@@ -231,6 +201,12 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
   if (!data) return null;
 
   const currentEvent = data.event;
+  const score = currentEvent.sif_risk_score ?? (currentEvent.sif_probability / 10);
+  const promptType = currentEvent.description.toLowerCase().includes('leakage') || currentEvent.description.toLowerCase().includes('leak') 
+    ? 'Unsafe Condition' 
+    : currentEvent.description.toLowerCase().includes('violation') || currentEvent.description.toLowerCase().includes('without')
+      ? 'Unsafe Act'
+      : 'Near Miss';
 
   return (
     <div className="space-y-6">
@@ -242,10 +218,10 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
           className="flex items-center gap-1.5 text-xs text-industrial-blue hover:text-blue-800 font-bold"
         >
           <ArrowLeft className="h-4 w-4" />
-          <span>Back to safety inbox</span>
+          <span>Back to Safety Alerts</span>
         </button>
 
-        <div className="flex gap-2.5">
+        <div className="flex gap-2">
           <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
             {currentEvent.id}
           </span>
@@ -255,350 +231,369 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
         </div>
       </div>
 
-      {/* Main Grid */}
+      {/* Main Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left Column: Narrative, Details, 4-Bar Risk Progress, Transcripts */}
+        {/* Left Column: Report Details & AI Assessment */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Narrative Log */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-            <div className="mb-3 pb-2 border-b border-slate-100">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">1. Original Safety Report Narrative</h3>
-            </div>
-            <p className="text-xs text-slate-700 leading-relaxed italic bg-slate-50 p-4 border border-slate-200 rounded-xl">
-              "{currentEvent.description}"
-            </p>
-          </div>
-
-          {/* Media Attachments & Whisper Transcripts */}
-          {(currentEvent.photo_url || currentEvent.audio_transcript) && (
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-              <div className="mb-4 pb-2 border-b border-slate-100">
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Attached Media & Whisper Transcripts</h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {currentEvent.photo_url && (
-                  <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 flex flex-col items-center justify-center">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1">
-                      <Camera className="h-3 w-3" /> Photo Evidence Snapshot
-                    </span>
-                    <img 
-                      src={currentEvent.photo_url} 
-                      alt="Event snapshot" 
-                      className="h-32 object-cover rounded-lg border border-slate-300"
-                    />
-                  </div>
-                )}
-                {currentEvent.audio_transcript && (
-                  <div className="border border-slate-200 rounded-xl p-3 bg-slate-50">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-2 flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3" /> Voice Transcription (Whisper)
-                    </span>
-                    <p className="text-xs text-slate-600 italic bg-white p-3 border border-slate-200 rounded-lg leading-normal">
-                      "{currentEvent.audio_transcript}"
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* 4-Bar Risk Evaluation breakdown */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">2. 0-10 Multi-Factor Risk Evaluation</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div>
-                <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span>Hazard Severity</span>
-                  <span>{currentEvent.severity_score ?? 5.0} / 10</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-red-500 h-full rounded-full" style={{ width: `${(currentEvent.severity_score ?? 5.0) * 10}%` }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span>Exposure Level</span>
-                  <span>{currentEvent.exposure_score ?? 5.0} / 10</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-orange-500 h-full rounded-full" style={{ width: `${(currentEvent.exposure_score ?? 5.0) * 10}%` }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span>Safety Barrier Failure</span>
-                  <span>{currentEvent.barrier_score ?? 5.0} / 10</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-yellow-500 h-full rounded-full" style={{ width: `${(currentEvent.barrier_score ?? 5.0) * 10}%` }}></div>
-                </div>
-              </div>
-              <div>
-                <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span>Potential Consequence</span>
-                  <span>{currentEvent.consequence_score ?? 5.0} / 10</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-purple-500 h-full rounded-full" style={{ width: `${(currentEvent.consequence_score ?? 5.0) * 10}%` }}></div>
-                </div>
-              </div>
-            </div>
-            <div className="pt-2 border-t border-slate-100 flex justify-between items-center text-xs">
-              <span className="font-bold text-slate-800">Final Composite SIF Risk Score:</span>
-              <span className="text-xs font-extrabold text-red-700 bg-red-50 border border-red-200 px-2 py-0.5 rounded">
-                {currentEvent.sif_risk_score ?? (currentEvent.sif_probability / 10).toFixed(1)} / 10 ({currentEvent.risk_level ?? 'MEDIUM'})
-              </span>
-            </div>
-          </div>
-
-          {/* AI Extracted Parameters */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-            <div className="mb-4 pb-2 border-b border-slate-100">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">3. GATI Structured Extraction Parameters</h3>
+          {/* 1. REPORT DETAILS */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+            <div className="pb-2 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">1. Report Details</h3>
+              <button 
+                onClick={() => setShowFullReport(!showFullReport)}
+                className="text-[10px] text-industrial-blue hover:underline font-bold"
+              >
+                {showFullReport ? 'Hide Extra Details' : 'View Full Report'}
+              </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              
-              <div className="space-y-3.5">
-                <div className="flex justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-400 font-medium">Activity Category:</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-400 font-medium">Report ID:</span>
+                <span className="font-bold text-slate-800">{currentEvent.id}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-400 font-medium">Reported By:</span>
+                <span className="font-bold text-slate-800">Ramesh Kumar (Worker)</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-400 font-medium">Date & Time:</span>
+                <span className="font-bold text-slate-800">{new Date(currentEvent.timestamp).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-slate-50">
+                <span className="text-slate-400 font-medium">Location:</span>
+                <span className="font-bold text-slate-800">{currentEvent.site} • {currentEvent.location}</span>
+              </div>
+              <div className="flex justify-between py-1 col-span-1 sm:col-span-2">
+                <span className="text-slate-400 font-medium">Observation Type:</span>
+                <span className="font-bold text-slate-800">{promptType}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 pt-2">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hazard Description</span>
+              <p className="text-xs text-slate-700 leading-relaxed italic bg-slate-50 p-4 border border-slate-200 rounded-xl">
+                "{currentEvent.description}"
+              </p>
+            </div>
+
+            {/* Evidence Snaps */}
+            {currentEvent.photo_url && (
+              <div className="pt-2 border-t border-slate-100 space-y-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                  <Camera className="h-3.5 w-3.5" /> Uploaded Evidence Snaps
+                </span>
+                <div className="border border-slate-200 rounded-xl p-3 bg-slate-50 flex flex-col items-center">
+                  <img 
+                    src={currentEvent.photo_url} 
+                    alt="Observation snap" 
+                    className="h-40 object-cover rounded-lg border border-slate-300"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Full Report Details Toggle */}
+            {showFullReport && (
+              <div className="pt-4 border-t border-slate-100 text-xs grid grid-cols-2 gap-4 animate-fadeIn">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Equipment Involved</span>
+                  <span className="font-bold text-slate-800">{currentEvent.equipment_involved || 'General Machinery'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Activity Category</span>
                   <span className="font-bold text-slate-800">{currentEvent.activity}</span>
                 </div>
-                <div className="flex justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-400 font-medium">Refinery Unit/Location:</span>
-                  <span className="font-bold text-slate-800">{currentEvent.site} • {currentEvent.location}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-400 font-medium">Identified Hazard:</span>
-                  <span className="font-bold text-slate-800">{currentEvent.hazard}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-400 font-medium">Active Energy Source:</span>
-                  <span className="font-bold text-slate-800">{currentEvent.energy_source}</span>
-                </div>
-              </div>
-
-              <div className="space-y-3.5">
-                <div className="flex justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-400 font-medium">Critical Safeguard Barrier:</span>
-                  <span className="font-bold text-slate-800">{currentEvent.barrier}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-400 font-medium">Safe Barrier Failure Mode:</span>
-                  <span className="font-bold text-slate-800">{currentEvent.barrier_failure}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-400 font-medium">Worker Exposure Mode:</span>
-                  <span className="font-bold text-slate-800">{currentEvent.exposure}</span>
-                </div>
-                <div className="flex justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-400 font-medium">Predicted Consequence:</span>
-                  <span className="font-bold text-slate-800">{currentEvent.consequence}</span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* Verification Actions */}
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-            <div className="pb-2 border-b border-slate-200 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                <ClipboardCheck className="h-4.5 w-4.5 text-industrial-orange" />
-                <span>Verification Actions Center</span>
-              </span>
-              <span className="text-[10px] bg-indigo-50 text-industrial-purple px-2 py-0.5 rounded border border-indigo-100 font-bold uppercase tracking-wider">
-                GATI Learning Calibration
-              </span>
-            </div>
-
-            {calibratedSignal ? (
-              <div className="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl flex items-start gap-2 animate-fadeIn">
-                <Check className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
-                <div>
-                  <div className="font-bold uppercase text-[9px] tracking-wide text-emerald-700">Calibration Signal Ingested!</div>
-                  <p className="mt-0.5 leading-normal italic">"{calibratedSignal}"</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <p className="text-xs text-slate-500 leading-normal">
-                  Inspect the AI analysis outputs. Select verification status to lock model weights or trigger a recalibration override.
-                </p>
-
-                {validationType !== 'incorrect' ? (
-                  <div className="flex flex-wrap gap-2.5 text-xs">
-                    <button
-                      onClick={() => handleReviewAction('correct')}
-                      disabled={submitting}
-                      className="px-4 py-2 bg-emerald-50 hover:bg-emerald-100 text-industrial-green border border-emerald-200 rounded-xl font-bold flex items-center gap-1.5 transition"
-                    >
-                      <ShieldCheck className="h-4 w-4" />
-                      <span>✅ AI Result Correct</span>
-                    </button>
-                    <button
-                      onClick={() => handleReviewAction('investigate')}
-                      disabled={submitting}
-                      className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-industrial-orange border border-amber-200 rounded-xl font-bold flex items-center gap-1.5 transition"
-                    >
-                      <AlertTriangle className="h-4 w-4" />
-                      <span>⚠️ Need Investigation</span>
-                    </button>
-                    <button
-                      onClick={() => setValidationType('incorrect')}
-                      disabled={submitting}
-                      className="px-4 py-2 bg-red-50 hover:bg-red-100 text-industrial-red border border-red-200 rounded-xl font-bold flex items-center gap-1.5 transition"
-                    >
-                      <X className="h-4 w-4" />
-                      <span>❌ AI Result Incorrect</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="border border-red-200 bg-white rounded-xl p-4 space-y-4 animate-fadeIn">
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                      <span className="text-xs font-bold text-red-700">Calibrate Overrides</span>
-                      <button 
-                        onClick={() => setValidationType('none')}
-                        className="text-xs text-slate-400 hover:text-slate-600"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Override SIF Potential</label>
-                        <select
-                          value={sifChoice}
-                          onChange={(e) => setSifChoice(e.target.value as any)}
-                          className="block w-full py-1.5 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-800"
-                        >
-                          <option value="SIF Potential">SIF Potential</option>
-                          <option value="Non-SIF">Non-SIF</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Override Life-Saving Rule</label>
-                        <select
-                          value={lsrChoice}
-                          onChange={(e) => setLsrChoice(e.target.value)}
-                          className="block w-full py-1.5 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-800"
-                        >
-                          {lsrOptions.map(o => <option key={o} value={o}>{o}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5">Feedback/Notes for worker</label>
-                      <textarea
-                        value={feedbackText}
-                        onChange={(e) => setFeedbackText(e.target.value)}
-                        placeholder="Provide details on rule mapping override or correction reasoning..."
-                        rows={2}
-                        className="block w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
-                      />
-                    </div>
-
-                    <div className="flex justify-end">
-                      <button
-                        onClick={() => submitReviewAPI('incorrect', sifChoice, lsrChoice)}
-                        disabled={submitting}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5"
-                      >
-                        <Send className="h-4 w-4" />
-                        <span>Submit Override Calibration</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
 
-        </div>
+          {/* 2. AI ASSESSMENT */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+            <div className="pb-2 border-b border-slate-100 flex justify-between items-center">
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">2. AI Assessment</h3>
+              <span className="px-2 py-0.5 bg-purple-50 text-industrial-purple border border-purple-100 rounded text-[9px] font-bold uppercase tracking-wider">
+                GATI Classification
+              </span>
+            </div>
 
-        {/* Right Column: SIF meter, Hierarchy, Corrective Action Dispatch */}
-        <div className="space-y-6">
-          
-          {/* SIF Meter */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs text-center flex flex-col items-center">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">GATI SIF potential Probability</span>
-            
-            <div className="my-5 relative inline-flex items-center justify-center">
-              <svg className="w-24 h-24 transform -rotate-90">
-                <circle cx="48" cy="48" r="40" strokeWidth="6" stroke="#F1F5F9" fill="transparent" />
-                <circle 
-                  cx="48" 
-                  cy="48" 
-                  r="40" 
-                  strokeWidth="6" 
-                  stroke={currentEvent.sif_probability >= 50.0 ? '#C74440' : '#2E8B57'} 
-                  fill="transparent" 
-                  strokeDasharray="251.2"
-                  strokeDashoffset={251.2 - (251.2 * currentEvent.sif_probability) / 100}
-                />
-              </svg>
-              <div className="absolute flex flex-col items-center">
-                <span className="text-xl font-extrabold text-slate-900">{currentEvent.sif_probability}%</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-xs">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Risk Level</span>
+                <div className="text-sm font-extrabold text-red-600 mt-1 uppercase tracking-wide">
+                  {currentEvent.risk_level ?? (score >= 6.5 ? 'HIGH' : 'MEDIUM')}
+                </div>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Risk Score</span>
+                <div className="text-sm font-extrabold text-slate-850 mt-1">
+                  {Math.round(score * 10)}/100
+                </div>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">SIF Potential</span>
+                <div className="text-sm font-extrabold text-slate-850 mt-1">
+                  {currentEvent.sif_probability >= 50.0 ? 'YES' : 'NO'}
+                </div>
+              </div>
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
+                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Safety Rule</span>
+                <div className="text-xs font-extrabold text-slate-800 mt-1 truncate" title={currentEvent.life_saving_rule}>
+                  {currentEvent.life_saving_rule || 'Energy Isolation'}
+                </div>
               </div>
             </div>
 
-            <RiskBadge probability={currentEvent.sif_probability} />
-            <div className="text-[10px] text-slate-400 font-bold uppercase mt-2.5">system confidence: {currentEvent.confidence}%</div>
-            
-            <div className="mt-4 pt-3.5 border-t border-slate-100 w-full text-left text-xs leading-normal">
-              <div className="font-bold text-slate-800 flex items-center gap-1 mb-1">
-                <ShieldAlert className="h-3.5 w-3.5 text-industrial-orange" />
-                <span>AI Prediction Reasoning</span>
+            {/* 4-bar risk breakdowns */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-50 text-xs">
+              <div>
+                <div className="flex justify-between text-slate-700 font-bold mb-1">
+                  <span>Exposure Level</span>
+                  <span>{currentEvent.exposure_score ?? 5.0} / 10</span>
+                </div>
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-orange-500 h-full rounded-full" style={{ width: `${(currentEvent.exposure_score ?? 5.0) * 10}%` }}></div>
+                </div>
               </div>
-              <p className="italic bg-slate-50 p-2.5 border border-slate-200 rounded-lg text-slate-500 text-[10.5px]">
-                "{currentEvent.explanation || 'Predicted SIF potential matches key high-energy hazard indicators.'}"
+              <div>
+                <div className="flex justify-between text-slate-700 font-bold mb-1">
+                  <span>Severity Level</span>
+                  <span>{currentEvent.severity_score ?? 5.0} / 10</span>
+                </div>
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-red-500 h-full rounded-full" style={{ width: `${(currentEvent.severity_score ?? 5.0) * 10}%` }}></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-slate-700 font-bold mb-1">
+                  <span>Barrier Status</span>
+                  <span>{currentEvent.barrier_score ?? 5.0} / 10</span>
+                </div>
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-yellow-500 h-full rounded-full" style={{ width: `${(currentEvent.barrier_score ?? 5.0) * 10}%` }}></div>
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-slate-700 font-bold mb-1">
+                  <span>Consequence Level</span>
+                  <span>{currentEvent.consequence_score ?? 5.0} / 10</span>
+                </div>
+                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                  <div className="bg-purple-500 h-full rounded-full" style={{ width: `${(currentEvent.consequence_score ?? 5.0) * 10}%` }}></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-150/40 text-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">AI Recommendation</span>
+              <p className="bg-purple-50/40 border border-purple-150 p-2.5 rounded-lg text-[10.5px] text-slate-700 leading-normal font-semibold">
+                {currentEvent.recommended_action || 'Immediately isolate the affected area and inspect the source of leakage.'}
+              </p>
+            </div>
+
+            <div className="pt-2 text-xs">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Why AI flagged this?</span>
+              <p className="text-[10.5px] text-slate-500 italic leading-relaxed">
+                "{currentEvent.explanation || 'AI detected a high-risk hazard based on the reported leakage, worker exposure, severity, and failed safety barrier.'}"
               </p>
             </div>
           </div>
 
-          {/* Corrective Action Dispatch Center */}
+        </div>
+
+        {/* Right Column: Validation, Remarks, Submit, and Next Steps */}
+        <div className="space-y-6">
+          
+          {/* 3. SAFETY OFFICER VALIDATION */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
             <div className="pb-2 border-b border-slate-100">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Corrective Action Dispatch</h3>
+              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">3. Officer Validation</h3>
             </div>
 
-            {actionDispatched ? (
-              <div className="border border-emerald-200 bg-emerald-50/20 rounded-xl p-4 space-y-3 animate-fadeIn">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-extrabold text-emerald-800">Action: {actionDispatched.action_id}</span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-100 border border-emerald-200 text-[10px] font-bold text-emerald-800">
-                    {actionDispatched.status}
-                  </span>
-                </div>
-                <div className="text-xs text-slate-600 leading-normal">
-                  <div className="flex justify-between py-1 border-b border-slate-100/50">
-                    <span>Assigned Team:</span>
-                    <span className="font-bold text-slate-800">{actionDispatched.assigned_team}</span>
-                  </div>
-                  <div className="flex justify-between py-1">
-                    <span>Stop Work Order:</span>
-                    <span className={`font-bold ${actionDispatched.stop_work_issued ? 'text-red-600' : 'text-slate-500'}`}>
-                      {actionDispatched.stop_work_issued ? 'ACTIVE' : 'NO'}
-                    </span>
+            {successMessage ? (
+              <div className="p-3 bg-emerald-50 border border-emerald-250 text-emerald-800 text-xs rounded-xl flex items-start gap-2 animate-fadeIn">
+                <Check className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                <div>
+                  <div className="font-extrabold uppercase text-[9px] tracking-wide text-emerald-700">Success!</div>
+                  <p className="mt-0.5 leading-normal font-semibold">"{successMessage}"</p>
+                  <div className="mt-1.5 text-[9px] text-emerald-900 font-extrabold uppercase tracking-wide">
+                    Status: {
+                      validationType === 'correct' 
+                        ? 'Validated' 
+                        : validationType === 'investigate' 
+                          ? 'Investigation Required' 
+                          : 'AI Result Corrected'
+                    }
                   </div>
                 </div>
               </div>
             ) : (
+              <form onSubmit={handleSubmitValidation} className="space-y-4 text-xs">
+                
+                {/* 3 buttons layout */}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setValidationType('correct')}
+                    className={`p-3 rounded-xl border text-left flex items-start gap-3 transition ${
+                      validationType === 'correct'
+                        ? 'bg-emerald-50 border-emerald-400 text-emerald-950 font-bold'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-xs uppercase text-emerald-800">✓ Confirm AI Result</div>
+                      <span className="text-[10px] text-slate-500 font-medium block mt-0.5">AI assessment is correct.</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setValidationType('investigate')}
+                    className={`p-3 rounded-xl border text-left flex items-start gap-3 transition ${
+                      validationType === 'investigate'
+                        ? 'bg-amber-50 border-amber-400 text-amber-950 font-bold'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-xs uppercase text-amber-800">🔍 Mark for Investigation</div>
+                      <span className="text-[10px] text-slate-500 font-medium block mt-0.5">The case requires further investigation.</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setValidationType('incorrect')}
+                    className={`p-3 rounded-xl border text-left flex items-start gap-3 transition ${
+                      validationType === 'incorrect'
+                        ? 'bg-red-50 border-red-400 text-red-950 font-bold'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                    }`}
+                  >
+                    <X className="h-5 w-5 text-red-650 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-xs uppercase text-red-800">✕ Mark Incorrect</div>
+                      <span className="text-[10px] text-slate-500 font-medium block mt-0.5">The AI assessment is incorrect.</span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Conditional Textboxes */}
+                {validationType === 'incorrect' && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="block text-[10px] font-bold text-red-700 uppercase tracking-wider">Reason for Correction</label>
+                    <textarea
+                      value={reasonForCorrection}
+                      onChange={(e) => setReasonForCorrection(e.target.value)}
+                      placeholder="Explain why the AI assessment is incorrect..."
+                      rows={2.5}
+                      className="block w-full px-3 py-2 border border-slate-350 rounded-lg text-xs"
+                      required
+                    />
+                  </div>
+                )}
+
+                {validationType === 'investigate' && (
+                  <div className="space-y-1.5 animate-fadeIn">
+                    <label className="block text-[10px] font-bold text-amber-700 uppercase tracking-wider">Investigation Notes</label>
+                    <textarea
+                      value={investigationNotes}
+                      onChange={(e) => setInvestigationNotes(e.target.value)}
+                      placeholder="Detail initial investigation notes or questions..."
+                      rows={2.5}
+                      className="block w-full px-3 py-2 border border-slate-350 rounded-lg text-xs"
+                      required
+                    />
+                  </div>
+                )}
+
+                {/* 4. OFFICER REMARKS */}
+                <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Officer Remarks</label>
+                  <textarea
+                    value={officerRemarks}
+                    onChange={(e) => setOfficerRemarks(e.target.value)}
+                    placeholder="Add your observations or validation comments..."
+                    rows={2}
+                    className="block w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
+                  />
+                </div>
+
+                {/* 5. SUBMIT VALIDATION */}
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-2 bg-[#0B2A56] hover:bg-slate-900 text-white rounded-lg font-bold transition flex items-center justify-center gap-1.5 shadow-2xs"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  <span>Submit Validation</span>
+                </button>
+
+              </form>
+            )}
+          </div>
+
+          {/* 6. NEXT ACTION (Appears after validation submission) */}
+          {validationSubmitted && (
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4 animate-fadeIn">
+              <div className="pb-2 border-b border-slate-100">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">6. Next Recommended Action</span>
+              </div>
+              <div className="text-xs font-semibold text-slate-800 bg-slate-50 p-3.5 border border-slate-200 rounded-xl">
+                {validationType === 'correct' && (
+                  <span className="flex items-center gap-2">
+                    <ArrowRight className="h-4.5 w-4.5 text-industrial-blue" />
+                    <span>Proceed to Take Action</span>
+                  </span>
+                )}
+                {validationType === 'investigate' && (
+                  <span className="flex items-center gap-2">
+                    <ArrowRight className="h-4.5 w-4.5 text-amber-500" />
+                    <span>Investigation Case Created</span>
+                  </span>
+                )}
+                {validationType === 'incorrect' && (
+                  <span className="flex items-center gap-2">
+                    <ArrowRight className="h-4.5 w-4.5 text-red-500" />
+                    <span>Feedback sent to GATI Learning Loop</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Action dispatcher activator button */}
+              {(validationType === 'correct' || validationType === 'incorrect') && !showActionForm && !actionDispatched && (
+                <button
+                  onClick={() => setShowActionForm(true)}
+                  className="w-full py-2 bg-[#0B2A56] hover:bg-slate-900 text-white rounded-lg font-bold transition flex items-center justify-center gap-1.5"
+                >
+                  <span>Proceed to Take Action</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Corrective Action Form Dispatcher panel */}
+          {showActionForm && !actionDispatched && (
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4 animate-fadeIn">
+              <div className="pb-2 border-b border-slate-100">
+                <h3 className="text-xs font-bold text-slate-950 uppercase tracking-wider">Dispatch Corrective Actions</h3>
+              </div>
               <form onSubmit={handleActionDispatch} className="space-y-4 text-xs">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Assign Team</label>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Assign Team</label>
                   <select
                     value={assignedTeam}
                     onChange={(e) => setAssignedTeam(e.target.value)}
-                    className="block w-full py-1.5 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-800"
+                    className="block w-full py-1.5 px-3 border border-slate-300 rounded-lg bg-slate-50 text-slate-850"
                   >
                     <option value="Rig Safety Team">Rig Safety Team</option>
                     <option value="Maintenance Team">Maintenance Team</option>
                     <option value="Safety Engineering">Safety Engineering</option>
-                    <option value="Operations Shift Crew">Operations Shift Crew</option>
                   </select>
                 </div>
 
@@ -608,30 +603,30 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
                     type="checkbox"
                     checked={stopWork}
                     onChange={(e) => setStopWork(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 focus:ring-red-500 text-red-600"
+                    className="h-4 w-4 rounded border-slate-300 text-red-600"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Due Deadline (days)</label>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Due Deadline (days)</label>
                   <input
                     type="range"
                     min={1}
                     max={14}
                     value={dueDays}
                     onChange={(e) => setDueDays(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                    className="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer"
                   />
-                  <div className="text-right text-[10px] text-slate-400 font-bold mt-1">{dueDays} Days</div>
+                  <div className="text-right text-[9px] text-slate-400 font-bold mt-1">{dueDays} Days</div>
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Action Description</label>
+                  <label className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Action Description</label>
                   <textarea
                     value={actionDescription}
                     onChange={(e) => setActionDescription(e.target.value)}
                     placeholder="Provide description of corrective actions and deadlines..."
-                    rows={2}
+                    rows={2.5}
                     className="block w-full px-3 py-2 border border-slate-300 rounded-lg text-xs"
                     required
                   />
@@ -640,54 +635,38 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full py-2 bg-[#0B2A56] hover:bg-slate-900 text-white rounded-lg font-bold transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-bold transition flex items-center justify-center gap-1.5 shadow-2xs"
                 >
                   <Send className="h-3.5 w-3.5" />
-                  <span>Dispatch Corrective Action</span>
+                  <span>Dispatch Action</span>
                 </button>
               </form>
-            )}
-          </div>
-
-          {/* Operational Hierarchy (L1-L6) */}
-          <L1L6Hierarchy 
-            l1={currentEvent.l1_milestone}
-            l2={currentEvent.l2_unit}
-            l3={currentEvent.l3_discipline}
-            l4={currentEvent.l4_work_package}
-            l5={currentEvent.l5_activity}
-            l6={currentEvent.l6_job}
-          />
-
-          {/* Audit Timeline history */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-            <div className="mb-4 pb-2 border-b border-slate-100 flex items-center gap-1.5">
-              <History className="h-4 w-4 text-slate-400" />
-              <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Safety Event Audit History</h3>
             </div>
+          )}
 
-            <div className="space-y-4 relative pl-3">
-              {/* timeline line */}
-              <div className="absolute top-2 bottom-2 left-3 w-0.5 bg-slate-100 z-0"></div>
-
-              {data.audits.map((a, idx) => (
-                <div key={idx} className="relative z-10 flex gap-3 text-xs leading-snug">
-                  <div className="h-2 w-2 rounded-full bg-industrial-blue mt-1.5 shrink-0 relative -left-0.5"></div>
-                  <div>
-                    <div className="font-bold text-slate-800 flex items-center gap-1.5">
-                      <span>{a.action}</span>
-                      <span className="text-[9px] text-slate-400 font-normal">by {a.user_email}</span>
-                    </div>
-                    <p className="text-[10px] text-slate-500 mt-1 leading-normal">{a.details}</p>
-                    <span className="text-[9px] text-slate-400 font-medium block mt-1.5 flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      <span>{new Date(a.timestamp).toLocaleString()}</span>
-                    </span>
-                  </div>
+          {/* Action Dispatched Card indicator */}
+          {actionDispatched && (
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-3 animate-fadeIn">
+              <div className="pb-2 border-b border-slate-100 flex justify-between items-center">
+                <span className="text-xs font-extrabold text-emerald-800">Action: {actionDispatched.action_id}</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-100 border border-emerald-250 text-[10px] font-bold text-emerald-800">
+                  {actionDispatched.status}
+                </span>
+              </div>
+              <div className="text-xs text-slate-650 leading-normal space-y-1">
+                <div className="flex justify-between py-1 border-b border-slate-50">
+                  <span>Assigned Team:</span>
+                  <span className="font-bold text-slate-800">{actionDispatched.assigned_team}</span>
                 </div>
-              ))}
+                <div className="flex justify-between py-1">
+                  <span>Stop Work Order:</span>
+                  <span className={`font-bold ${actionDispatched.stop_work_issued ? 'text-red-650' : 'text-slate-500'}`}>
+                    {actionDispatched.stop_work_issued ? 'ACTIVE' : 'NO'}
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
 

@@ -17,7 +17,8 @@ import { Settings } from './pages/Settings';
 import { AdminConsole } from './pages/AdminConsole';
 import { Detail } from './pages/Detail';
 import { WorkerPortal } from './pages/WorkerPortal';
-import { SafetyOfficerDashboard } from './pages/SafetyOfficerDashboard';
+import { TakeAction } from './pages/TakeAction';
+import { TrackActions } from './pages/TrackActions';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -129,21 +130,23 @@ function App() {
 
   const getPageTitle = () => {
     if (currentPage === 'detail' && selectedEvent) {
-      return `Safety Event: ${selectedEvent.id}`;
+      return `Safety Alert: ${selectedEvent.id}`;
     }
     const titles: Record<string, string> = {
-      dashboard: 'Executive Safety Dashboard',
-      inbox: 'Safety Event Inbox Logs',
+      dashboard: user?.role === 'Safety Officer' ? 'Safety Officer Dashboard' : 'Executive Safety Dashboard',
+      inbox: 'Safety Alerts',
       analysis: 'Report Analysis Engine',
       sif: 'SIF Risk Intelligence',
       lsr: 'Life-Saving Rules conformance',
       precursors: 'Recurring Precursor Patterns',
       sites: 'Sites operational Risk Context',
-      review: 'HSE Assurance & Review Queue',
+      review: 'Review & Validate',
       learning: 'GATI Continuous Learning Centre',
       reports: 'Compliance Reports Exporter',
       settings: 'Settings & DB Calibration',
-      'worker-portal': 'Field Employee / Worker Safety Portal'
+      'worker-portal': 'Field Employee / Worker Safety Portal',
+      'take-action': 'Take Action',
+      'track-actions': 'Track Actions'
     };
     return titles[currentPage] || 'SIF-SHIELD AI Platform';
   };
@@ -182,19 +185,11 @@ function App() {
         {/* Scrollable Page Body */}
         <main className="flex-1 mt-16 p-8 overflow-y-auto">
           {currentPage === 'dashboard' && (
-            user.role === 'Safety Officer' ? (
-              <SafetyOfficerDashboard 
-                onViewEvent={handleViewEvent} 
-                triggerNotification={triggerNotification} 
-                triggerStateRefresh={triggerStateRefresh} 
-              />
-            ) : (
-              <Dashboard 
-                onViewEvent={handleViewEvent} 
-                triggerNotification={triggerNotification} 
-                triggerStateRefresh={triggerStateRefresh} 
-              />
-            )
+            <Dashboard 
+              onViewEvent={handleViewEvent} 
+              triggerNotification={triggerNotification} 
+              triggerStateRefresh={triggerStateRefresh} 
+            />
           )}
 
           {currentPage === 'inbox' && (
@@ -276,6 +271,20 @@ function App() {
               triggerNotification={triggerNotification}
               triggerStateRefresh={triggerStateRefresh}
               onEventCreated={handleRefreshApp}
+            />
+          )}
+
+          {currentPage === 'take-action' && (
+            <TakeAction 
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+            />
+          )}
+
+          {currentPage === 'track-actions' && (
+            <TrackActions 
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
             />
           )}
 

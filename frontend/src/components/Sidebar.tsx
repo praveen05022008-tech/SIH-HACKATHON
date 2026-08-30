@@ -14,7 +14,8 @@ import {
   BrainCircuit,
   Database,
   Activity,
-  FileText
+  FileText,
+  Zap
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -44,8 +45,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, s
       case 'Safety Officer':
         return [
           { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-          { id: 'inbox', label: 'Safety Events', icon: Inbox },
-          { id: 'review', label: 'Review Queue', icon: ClipboardCheck }
+          { id: 'inbox', label: 'Safety Alerts', icon: Inbox },
+          { id: 'review', label: 'Review & Validate', icon: ClipboardCheck },
+          { id: 'take-action', label: 'Take Action', icon: Zap },
+          { id: 'track-actions', label: 'Track Actions', icon: Activity }
         ];
       case 'Safety Manager':
         return [
