@@ -15,6 +15,7 @@ import { Learning } from './pages/Learning';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Detail } from './pages/Detail';
+import { WorkerPortal } from './pages/WorkerPortal';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -43,7 +44,65 @@ function App() {
 
   const handleLoginSuccess = (loggedInUser: User) => {
     setUser(loggedInUser);
+    
+    // Role based routing redirection
+    let defaultPage = 'dashboard';
+    if (loggedInUser.role === 'Field Worker') {
+      defaultPage = 'worker-portal';
+    } else if (loggedInUser.role === 'AI Pipeline Viewer') {
+      defaultPage = 'analysis';
+    } else if (loggedInUser.role === 'Safety Officer') {
+      defaultPage = 'inbox';
+    } else if (loggedInUser.role === 'Admin') {
+      defaultPage = 'settings';
+    }
+    
+    setCurrentPage(defaultPage);
     triggerNotification(`Authorized as: ${loggedInUser.name} (${loggedInUser.role})`);
+  };
+
+  const handleSwitchPersona = (email: string) => {
+    let name = 'Demo User';
+    let role = 'Safety Manager';
+    let defaultPage = 'dashboard';
+    
+    if (email === 'worker@refinery.safe') {
+      name = 'Field Employee / Worker';
+      role = 'Field Worker';
+      defaultPage = 'worker-portal';
+    } else if (email === 'pipeline@sifshield.ai') {
+      name = 'AI Ingestion Pipeline';
+      role = 'AI Pipeline Viewer';
+      defaultPage = 'analysis';
+    } else if (email === 'officer@refinery.safe') {
+      name = 'Safety Officer Lead';
+      role = 'Safety Officer';
+      defaultPage = 'inbox';
+    } else if (email === 'reviewer@refinery.safe') {
+      name = 'Demo Reviewer';
+      role = 'Safety Officer';
+      defaultPage = 'inbox';
+    } else if (email === 'manager@refinery.safe') {
+      name = 'HSE Manager / Lead';
+      role = 'Safety Manager';
+      defaultPage = 'dashboard';
+    } else if (email === 'admin@refinery.safe') {
+      name = 'System Administrator';
+      role = 'Admin';
+      defaultPage = 'settings';
+    }
+
+    const updatedUser = {
+      email,
+      name,
+      role,
+      token: `mock-jwt-token-for-${role.toLowerCase().replace(' ', '-')}`
+    };
+    
+    setUser(updatedUser);
+    setCurrentPage(defaultPage);
+    setSelectedEvent(null);
+    triggerNotification(`Switched persona to: ${name} (${role})`);
   };
 
   const handleLogout = () => {
@@ -81,9 +140,10 @@ function App() {
       review: 'HSE Assurance & Review Queue',
       learning: 'GATI Continuous Learning Centre',
       reports: 'Compliance Reports Exporter',
-      settings: 'Settings & DB Calibration'
+      settings: 'Settings & DB Calibration',
+      'worker-portal': 'Field Employee / Worker Safety Portal'
     };
-    return titles[currentPage] || 'MAYAN-SAFE Platform';
+    return titles[currentPage] || 'SIF-SHIELD AI Platform';
   };
 
   // If not logged in, force Login screen
@@ -101,6 +161,7 @@ function App() {
           setCurrentPage(page);
         }} 
         systemStatus={systemStatus} 
+        userRole={user.role}
       />
 
       {/* Main Container Layout */}
@@ -113,6 +174,7 @@ function App() {
           title={getPageTitle()}
           notifications={notifications}
           clearNotifications={() => setNotifications([])}
+          onSwitchPersona={handleSwitchPersona}
         />
 
         {/* Scrollable Page Body */}
@@ -186,6 +248,14 @@ function App() {
             <Settings 
               onResetDb={handleRefreshApp}
               triggerNotification={triggerNotification}
+            />
+          )}
+
+          {currentPage === 'worker-portal' && (
+            <WorkerPortal 
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+              onEventCreated={handleRefreshApp}
             />
           )}
 

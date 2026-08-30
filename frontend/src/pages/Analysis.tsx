@@ -203,7 +203,7 @@ export const Analysis: React.FC<AnalysisProps> = ({ onEventCreated, onViewEvent,
 
       </div>
 
-      {/* Mayan M1-M6 Pipeline visualization */}
+      {/* SIF-SHIELD AI M1-M6 Pipeline visualization */}
       {(processing || stage > 0) && (
         <MayanPipeline activeStage={stage} isProcessing={processing} />
       )}

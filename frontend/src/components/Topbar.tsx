@@ -8,19 +8,42 @@ interface TopbarProps {
   title: string;
   notifications: string[];
   clearNotifications: () => void;
+  onSwitchPersona?: (email: string) => void;
 }
 
-export const Topbar: React.FC<TopbarProps> = ({ user, onLogout, title, notifications, clearNotifications }) => {
+export const Topbar: React.FC<TopbarProps> = ({ 
+  user, 
+  onLogout, 
+  title, 
+  notifications, 
+  clearNotifications,
+  onSwitchPersona
+}) => {
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showPersonaDropdown, setShowPersonaDropdown] = useState(false);
+
+  const personas = [
+    { label: '👷‍♂️ Field Employee / Worker', email: 'worker@refinery.safe', role: 'Field Worker' },
+    { label: '🤖 AI Pipeline Viewer', email: 'pipeline@sifshield.ai', role: 'AI Pipeline Viewer' },
+    { label: '🛡️ Safety Officer', email: 'officer@refinery.safe', role: 'Safety Officer' },
+    { label: '📊 Safety Manager / HSE Lead', email: 'manager@refinery.safe', role: 'Safety Manager' },
+    { label: '⚙️ System Admin', email: 'admin@refinery.safe', role: 'Admin' }
+  ];
 
   const getRoleBadgeColor = (role?: string) => {
     switch (role) {
+      case 'Safety Manager':
       case 'HSE Manager':
         return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'HSE Analyst':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Field Worker':
+        return 'bg-amber-100 text-amber-800 border-amber-200';
+      case 'Safety Officer':
       case 'Reviewer':
         return 'bg-purple-100 text-purple-800 border-purple-200';
+      case 'AI Pipeline Viewer':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'Admin':
+        return 'bg-red-100 text-red-800 border-red-200';
       default:
         return 'bg-slate-100 text-slate-800 border-slate-200';
     }
@@ -29,17 +52,57 @@ export const Topbar: React.FC<TopbarProps> = ({ user, onLogout, title, notificat
   return (
     <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 fixed top-0 right-0 left-64 z-10 shadow-sm">
       {/* Title */}
-      <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+      <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
         {title}
       </h2>
 
       {/* Right widgets */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-4">
         
+        {/* Persona Switcher Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setShowPersonaDropdown(!showPersonaDropdown)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 font-bold hover:bg-slate-100 transition shadow-2xs"
+          >
+            <span>👤 Switch Persona</span>
+            <span className="text-[10px] text-slate-400">▼</span>
+          </button>
+
+          {showPersonaDropdown && (
+            <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-30 animate-fadeIn">
+              <div className="px-4 py-2 border-b border-slate-100 bg-slate-50/50">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Persona Navigator</span>
+              </div>
+              <div className="py-1">
+                {personas.map((p) => (
+                  <button
+                    key={p.email}
+                    onClick={() => {
+                      if (onSwitchPersona) {
+                        onSwitchPersona(p.email);
+                      }
+                      setShowPersonaDropdown(false);
+                    }}
+                    className={`w-full px-4 py-2 text-left text-xs font-semibold hover:bg-slate-50 flex items-center justify-between transition ${
+                      user?.email === p.email ? 'text-industrial-blue bg-blue-50/20 font-bold' : 'text-slate-700'
+                    }`}
+                  >
+                    <span>{p.label}</span>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded border font-bold ${getRoleBadgeColor(p.role)}`}>
+                      {p.role}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Active Engine Badge */}
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full text-xs text-slate-600 font-medium">
-          <Cpu className="h-3.5 w-3.5 text-industrial-blue" />
-          <span>GATI active</span>
+        <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full text-[10px] text-slate-600 font-bold">
+          <Cpu className="h-3.5 w-3.5 text-industrial-blue animate-pulse" />
+          <span>SIF-SHIELD AI active</span>
         </div>
 
         {/* Notifications Panel */}
@@ -57,7 +120,7 @@ export const Topbar: React.FC<TopbarProps> = ({ user, onLogout, title, notificat
           {showNotifications && (
             <div className="absolute right-0 mt-3 w-80 bg-white border border-slate-200 rounded-lg shadow-xl py-2 z-30">
               <div className="px-4 py-2 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Alerts Queue</span>
+                <span className="text-[10px] font-bold text-slate-800 uppercase tracking-wider">Alerts Queue</span>
                 {notifications.length > 0 && (
                   <button 
                     onClick={() => {
@@ -90,11 +153,11 @@ export const Topbar: React.FC<TopbarProps> = ({ user, onLogout, title, notificat
 
         {/* User Card */}
         {user && (
-          <div className="flex items-center gap-4 border-l border-slate-200 pl-6">
+          <div className="flex items-center gap-4 border-l border-slate-200 pl-4">
             <div className="text-right">
-              <div className="text-sm font-semibold text-slate-900">{user.name}</div>
+              <div className="text-xs font-bold text-slate-900">{user.name}</div>
               <div className="flex justify-end gap-1 mt-0.5">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getRoleBadgeColor(user.role)}`}>
+                <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded border ${getRoleBadgeColor(user.role)}`}>
                   {user.role}
                 </span>
               </div>
@@ -102,9 +165,9 @@ export const Topbar: React.FC<TopbarProps> = ({ user, onLogout, title, notificat
             <button
               onClick={onLogout}
               title="Logout"
-              className="p-2 hover:bg-red-50 text-slate-400 hover:text-industrial-red border border-slate-200 rounded-lg transition"
+              className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-industrial-red border border-slate-200 rounded-lg transition"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
         )}

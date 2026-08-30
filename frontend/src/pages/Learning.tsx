@@ -84,7 +84,7 @@ export const Learning: React.FC<LearningProps> = ({ triggerStateRefresh }) => {
           <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl">
             <span className="text-[8px] font-bold text-slate-400 uppercase block">Step 02</span>
             <span className="text-xs font-bold text-slate-800 mt-1 block">AI Prediction</span>
-            <span className="text-[9px] text-slate-400 mt-1 block">Mayan extraction</span>
+            <span className="text-[9px] text-slate-400 mt-1 block">AI extraction</span>
           </div>
 
           <div className="flex justify-center"><ArrowRight className="h-4 w-4 text-slate-300 md:rotate-0 rotate-90" /></div>

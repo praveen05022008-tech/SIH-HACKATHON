@@ -27,7 +27,7 @@ export const MayanPipeline: React.FC<MayanPipelineProps> = ({ activeStage, isPro
     <div className="w-full bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
       <div className="mb-4 flex justify-between items-center">
         <div>
-          <h3 className="text-sm font-bold text-slate-900 tracking-tight">MAYAN Intelligent Processing Pipeline</h3>
+          <h3 className="text-sm font-bold text-slate-900 tracking-tight">SIF-SHIELD AI Intelligent Processing Pipeline</h3>
           <p className="text-xs text-slate-500">Continuous report enrichment and safety classification lifecycle</p>
         </div>
         {isProcessing && (

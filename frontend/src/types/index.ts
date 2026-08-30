@@ -1,7 +1,7 @@
 export interface User {
   email: string;
   name: string;
-  role: 'HSE Manager' | 'HSE Analyst' | 'Reviewer' | 'Admin';
+  role: string;
   token?: string;
 }
 
@@ -36,6 +36,8 @@ export interface SafetyEvent {
   activity: string;
   description: string;
   hazard: string;
+  equipment_involved?: string | null;
+  people_involved?: number;
   energy_source: string;
   barrier: string;
   barrier_failure: string;
@@ -44,9 +46,29 @@ export interface SafetyEvent {
   sif_probability: number;
   confidence: number;
   life_saving_rule: string;
-  status: 'Needs Review' | 'Confirmed' | 'Corrected' | 'Non-SIF';
+  status: 'Needs Review' | 'Confirmed' | 'Corrected' | 'Non-SIF' | 'Action Dispatched' | 'Resolved';
   reviewer: string | null;
   evidence: string;
+  
+  // SIF-SHIELD 0-10 Composite Scoring Engine
+  severity_score?: number;
+  exposure_score?: number;
+  barrier_score?: number;
+  consequence_score?: number;
+  sif_risk_score?: number;
+  risk_level?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+
+  // Corrective Actions & Controls
+  stop_work_issued?: boolean;
+  assigned_team?: string | null;
+  action_id?: string | null;
+  action_status?: string | null;
+  resolution_notes?: string | null;
+  audio_transcript?: string | null;
+  photo_url?: string | null;
+  
+  explanation?: string | null;
+  recommended_action?: string | null;
   
   // Operational Hierarchy (L1-L6)
   l1_milestone: string;
@@ -66,7 +88,7 @@ export interface PrecursorPattern {
   life_saving_rule: string;
   trend: string;
   barrier_failure: string;
-  risk_level: 'HIGH' | 'MEDIUM' | 'LOW';
+  risk_level: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
 export interface Review {

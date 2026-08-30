@@ -13,9 +13,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const [loading, setLoading] = useState(false);
 
   const demoAccounts = [
-    { role: 'HSE Manager', email: 'manager@refinery.safe', name: 'Demo HSE Manager' },
-    { role: 'HSE Analyst', email: 'analyst@refinery.safe', name: 'Demo Analyst' },
-    { role: 'Reviewer', email: 'reviewer@refinery.safe', name: 'Demo Reviewer' }
+    { role: 'Field Worker', email: 'worker@refinery.safe', name: 'Field Employee / Worker' },
+    { role: 'AI Pipeline', email: 'pipeline@sifshield.ai', name: 'AI Pipeline Viewer' },
+    { role: 'Safety Officer', email: 'officer@refinery.safe', name: 'Safety Officer Lead' },
+    { role: 'Safety Manager', email: 'manager@refinery.safe', name: 'HSE Manager / Lead' },
+    { role: 'System Admin', email: 'admin@refinery.safe', name: 'System Administrator' }
   ];
 
   const handleDemoClick = (account: typeof demoAccounts[0]) => {
@@ -80,8 +82,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             <Activity className="h-7 w-7 text-industrial-orange" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold text-industrial-navy tracking-tight">MAYAN-SAFE</h1>
-            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mt-0.5">SIF Precursor Intelligence</p>
+            <h1 className="text-3xl font-extrabold text-industrial-navy tracking-tight">SIF-SHIELD AI</h1>
+            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mt-0.5">SIF Precursor Intelligence Engine</p>
           </div>
         </div>
       </div>
@@ -158,12 +160,12 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Demo Accounts Selector</span>
             </div>
             
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {demoAccounts.map((account) => (
                 <button
                   key={account.role}
                   onClick={() => handleDemoClick(account)}
-                  className="py-2 px-1 text-center bg-slate-50 hover:bg-industrial-blue/5 border border-slate-200 hover:border-industrial-blue rounded-xl text-[10px] font-bold text-slate-700 transition"
+                  className="py-2 px-2 text-left bg-slate-50 hover:bg-industrial-blue/5 border border-slate-200 hover:border-industrial-blue rounded-xl text-[10px] font-bold text-slate-700 transition"
                 >
                   <div>{account.role}</div>
                   <div className="text-[8px] text-slate-400 font-normal mt-0.5 truncate">{account.email}</div>
@@ -173,7 +175,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           </div>
 
           <div className="mt-6 text-center text-[10px] text-slate-400 font-medium uppercase tracking-widest">
-            Powered by GATI Intelligence Engine
+            Powered by GATI AI Calibration
           </div>
 
         </div>

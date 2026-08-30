@@ -10,7 +10,7 @@ class User(Base):
     email = Column(String(100), unique=True, index=True, nullable=False)
     password_hash = Column(String(200), nullable=False)
     name = Column(String(100), nullable=False)
-    role = Column(String(50), nullable=False)  # HSE Manager, HSE Analyst, Reviewer, Admin
+    role = Column(String(50), nullable=False)  # Field Worker, Safety Officer, Safety Manager, Admin, AI Pipeline Viewer
     is_active = Column(Boolean, default=True)
 
 class Site(Base):
@@ -20,6 +20,7 @@ class Site(Base):
     name = Column(String(100), nullable=False)
     code = Column(String(50), unique=True, nullable=False)
     location = Column(String(100))
+    site_type = Column(String(50), default="Drilling Rig") # Drilling Rig, Refinery, Offshore, Storage Terminal
     
     units = relationship("Unit", back_populates="site")
 
@@ -37,7 +38,14 @@ class SafetyReport(Base):
     __tablename__ = "safety_reports"
     
     id = Column(Integer, primary_key=True, index=True)
+    report_code = Column(String(50), unique=True, index=True, nullable=True) # e.g. #SIF26165-001
+    report_type = Column(String(50), default="Unsafe Condition") # Unsafe Act, Unsafe Condition, Near Miss
     raw_text = Column(Text, nullable=False)
+    audio_transcript = Column(Text, nullable=True)
+    photo_url = Column(String(255), nullable=True)
+    equipment_involved = Column(String(100), nullable=True)
+    people_involved = Column(Integer, default=1)
+    reporter_email = Column(String(100), default="worker@refinery.safe")
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     status = Column(String(50), default="Pending")  # Pending, Analyzed, Error
     
@@ -46,8 +54,10 @@ class SafetyReport(Base):
 class SafetyEvent(Base):
     __tablename__ = "safety_events"
     
-    id = Column(String(50), primary_key=True, index=True)  # e.g., EVT-10291
+    id = Column(String(50), primary_key=True, index=True)  # e.g., SIF-10001 or #SIF26165-001
     report_id = Column(Integer, ForeignKey("safety_reports.id"))
+    report_code = Column(String(50), nullable=True) # formatted e.g. #SIF26165-001
+    report_type = Column(String(50), default="Unsafe Condition") # Unsafe Act, Unsafe Condition, Near Miss
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     site = Column(String(100))
     unit = Column(String(100))
@@ -55,19 +65,46 @@ class SafetyEvent(Base):
     activity = Column(String(100))
     description = Column(Text)
     hazard = Column(String(200))
+    equipment_involved = Column(String(100), nullable=True)
+    people_involved = Column(Integer, default=1)
     energy_source = Column(String(100))
     barrier = Column(String(200))
     barrier_failure = Column(String(200))
     exposure = Column(String(200))
     consequence = Column(String(200))
-    sif_probability = Column(Float)  # Percentage, e.g., 94.0
-    confidence = Column(Float)        # Percentage, e.g., 94.0
-    life_saving_rule = Column(String(100))
-    status = Column(String(50), default="Needs Review")  # Needs Review, Confirmed, Corrected, Non-SIF
-    reviewer = Column(String(100))
-    evidence = Column(Text)
     
-    # Operational hierarchy (L1-L6) stored as a dictionary/JSON structure or string
+    # SIF Precursor Detection
+    is_sif_precursor = Column(String(10), default="NO") # YES, NO
+    
+    # 0-10 Multi-Factor Risk Scoring Engine
+    severity_score = Column(Float, default=5.0)       # 0 - 10
+    exposure_score = Column(Float, default=5.0)       # 0 - 10
+    barrier_score = Column(Float, default=5.0)        # 0 - 10
+    consequence_score = Column(Float, default=5.0)    # 0 - 10
+    sif_risk_score = Column(Float, default=5.0)       # 0 - 10 final composite score
+    risk_level = Column(String(20), default="MEDIUM") # CRITICAL, HIGH, MEDIUM, LOW
+    
+    # Legacy percentage fields for compatibility
+    sif_probability = Column(Float, default=50.0)  # Percentage e.g. 90.0%
+    confidence = Column(Float, default=85.0)        # Confidence e.g. 92.0%
+    
+    life_saving_rule = Column(String(100))
+    status = Column(String(50), default="Needs Review")  # Needs Review, Confirmed, Corrected, Non-SIF, Action Dispatched, Resolved
+    reviewer = Column(String(100), nullable=True)
+    evidence = Column(Text, nullable=True)
+    explanation = Column(Text, nullable=True)
+    recommended_action = Column(Text, nullable=True)
+    
+    # Officer Corrective Actions
+    stop_work_issued = Column(Boolean, default=False)
+    assigned_team = Column(String(100), nullable=True)
+    action_id = Column(String(50), nullable=True) # e.g. ACT-1001
+    action_status = Column(String(50), default="Pending") # Pending, In Progress, Completed, Verified
+    resolution_notes = Column(Text, nullable=True)
+    audio_transcript = Column(Text, nullable=True)
+    photo_url = Column(String(255), nullable=True)
+    
+    # Operational hierarchy (L1-L6)
     l1_milestone = Column(String(200))
     l2_unit = Column(String(200))
     l3_discipline = Column(String(200))
@@ -103,7 +140,7 @@ class PrecursorPattern(Base):
     life_saving_rule = Column(String(100))
     trend = Column(String(50))  # e.g., "+18%", "-5%", "Stable"
     barrier_failure = Column(String(200))
-    risk_level = Column(String(50), default="LOW")  # HIGH, MEDIUM, LOW
+    risk_level = Column(String(50), default="LOW")  # CRITICAL, HIGH, MEDIUM, LOW
 
 class Review(Base):
     __tablename__ = "reviews"
@@ -116,6 +153,7 @@ class Review(Base):
     original_rule = Column(String(100))
     corrected_sif = Column(String(50))
     corrected_rule = Column(String(100))
+    feedback_to_worker = Column(Text, nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     
     event = relationship("SafetyEvent", back_populates="reviews")
@@ -139,7 +177,7 @@ class AuditEvent(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     event_id = Column(String(50))
-    action = Column(String(100), nullable=False)
+    action = Column(String(100), nullable=False) # AI Classified, Officer Verified, Stop Work Issued, Action Dispatched, Resolved
     details = Column(Text)
     user_email = Column(String(100))
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
@@ -148,12 +186,16 @@ class Intervention(Base):
     __tablename__ = "interventions"
     
     id = Column(Integer, primary_key=True, index=True)
+    action_id = Column(String(50), unique=True, index=True, nullable=True) # ACT-1001
     event_id = Column(String(50), ForeignKey("safety_events.id"))
     description = Column(Text, nullable=False)
-    status = Column(String(50), default="Open")  # Open, Closed
-    assigned_to = Column(String(100))
+    status = Column(String(50), default="In Progress")  # In Progress, Completed, Verified, Closed
+    priority = Column(String(20), default="HIGH") # CRITICAL, HIGH, MEDIUM, LOW
+    assigned_to = Column(String(100)) # Maintenance Team, Rig Safety Team, etc.
     due_date = Column(DateTime)
-    action_taken = Column(Text)
+    action_taken = Column(Text, nullable=True)
+    stop_work_required = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
     
     event = relationship("SafetyEvent", back_populates="interventions")
+

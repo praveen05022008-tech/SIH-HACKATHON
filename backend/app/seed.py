@@ -142,40 +142,42 @@ def seed_database():
     Base.metadata.create_all(bind=engine)
     print("Cleaned existing tables and created fresh schemas.")
 
-    # 2. Seed Default Users
+    # 2. Seed Default Users (5 personas)
     demo_users = [
-        models.User(email="manager@refinery.safe", name="Demo HSE Manager", password_hash="password123", role="HSE Manager"),
-        models.User(email="analyst@refinery.safe", name="Demo Analyst", password_hash="password123", role="HSE Analyst"),
-        models.User(email="reviewer@refinery.safe", name="Demo Reviewer", password_hash="password123", role="Reviewer"),
-        models.User(email="admin@refinery.safe", name="System Admin", password_hash="password123", role="Admin")
+        models.User(email="worker@refinery.safe", name="Ramesh Kumar (Drilling Tech)", password_hash="password123", role="Field Worker"),
+        models.User(email="officer@refinery.safe", name="Capt. Arvind Sen (Safety Lead)", password_hash="password123", role="Safety Officer"),
+        models.User(email="reviewer@refinery.safe", name="Priya Sharma (HSE Inspector)", password_hash="password123", role="Safety Officer"),
+        models.User(email="manager@refinery.safe", name="Dr. Vikram Roy (Head of HSE)", password_hash="password123", role="Safety Manager"),
+        models.User(email="admin@refinery.safe", name="DevOps System Admin", password_hash="password123", role="Admin")
     ]
     for u in demo_users:
         db.add(u)
     db.commit()
-    print("Users seeded successfully.")
+    print("Users seeded successfully with 5 personas.")
 
     # 3. Seed Sites and Units
     sites_data = [
-        ("Refinery A", "REF-A", "Gujarat, India"),
-        ("Refinery B", "REF-B", "Mumbai, India"),
-        ("Refinery C", "REF-C", "Kochi, India"),
-        ("Refinery D", "REF-D", "Digboi, India"),
-        ("Refinery E", "REF-E", "Barauni, India")
+        ("Drilling Site A", "DRILL-A", "Assam Basin, India", "Drilling Rig"),
+        ("Drilling Site B", "DRILL-B", "Duliajan Block, India", "Drilling Rig"),
+        ("Drilling Site C", "DRILL-C", "Rajasthan Onshore, India", "Drilling Rig"),
+        ("Offshore Rig 04", "OFF-04", "KG Basin Offshore, India", "Offshore Platform"),
+        ("Digboi Refinery D", "REF-D", "Digboi, Assam", "Refinery Unit"),
+        ("Barauni Unit E", "REF-E", "Barauni, Bihar", "Refinery Unit")
     ]
     sites_map = {}
-    for name, code, loc in sites_data:
-        site_obj = models.Site(name=name, code=code, location=loc)
+    for name, code, loc, stype in sites_data:
+        site_obj = models.Site(name=name, code=code, location=loc, site_type=stype)
         db.add(site_obj)
         db.flush()
         sites_map[name] = site_obj.id
 
     units_data = [
+        ("Rig Floor 01", "Derrick and Rotary Table Zone"),
+        ("Mud Pump Area", "High-Pressure Mud Circulation Unit"),
+        ("Substructure & BOP", "Blowout Preventer Stack & Choke Manifold"),
         ("CDU", "Crude Distillation Unit"),
         ("FCCU", "Fluid Catalytic Cracking Unit"),
-        ("DHU", "Diesel Hydrotreating Unit"),
-        ("VDU", "Vacuum Distillation Unit"),
-        ("Tank Farm", "Storage Tank Terminal Area"),
-        ("Utility Block", "Power and Steam Utilities")
+        ("Tank Farm", "Crude Storage Terminal")
     ]
     for name, desc in units_data:
         for s_name, s_id in sites_map.items():
@@ -186,14 +188,14 @@ def seed_database():
 
     # 4. Seed Life Saving Rules
     lsrs = [
-        ("Energy Isolation", "Verify isolation and zero energy state before work begins.", "High", "Isolation verification not performed", "Refinery A", "Maintenance / Valve Work"),
-        ("Line of Fire", "Keep yourself and others out of the path of potential energy release.", "High", "Lifting exclusion zone not barricaded", "Refinery B", "Lifting Operations"),
-        ("Hot Work", "Control ignition sources and verify flammable gas concentrations.", "Medium", "Gas clearance test omitted before entry", "Refinery C", "Hot Work / Welding"),
-        ("Confined Space", "Obtain authorization, test atmosphere, and verify rescue plan before entry.", "High", "Gas clearance test omitted before entry", "Refinery D", "Vessel Inspection / Entry"),
-        ("Working at Height", "Use fall protection equipment when working above 1.8 meters.", "High", "Fall protection harness not anchored", "Refinery A", "Working at Height"),
-        ("Lifting Operations", "Define lift plan, inspect rigging, and do not walk under suspended loads.", "Medium", "Lifting exclusion zone not barricaded", "Refinery D", "Lifting Operations"),
-        ("Vehicle Safety", "Follow speed limits, wear seatbelts, and maintain pedestrian clearance.", "Low", "Adherence to procedures", "Refinery B", "Routine Maintenance"),
-        ("Electrical Safety", "Verify dead state, use insulated tools, and restrict access to qualified persons.", "Medium", "Isolation verification not performed", "Refinery A", "Routine Maintenance")
+        ("Energy Isolation", "Verify isolation and zero energy state before work begins.", "High", "Zero-energy state verification bypassed", "Drilling Site A", "Energy Isolation / Valve Service"),
+        ("Line of Fire", "Keep yourself and others out of the path of potential energy release.", "High", "Lifting exclusion zone breached", "Drilling Site B", "Heavy Lifting Operations"),
+        ("Hot Work", "Control ignition sources and verify flammable gas concentrations.", "Medium", "Hot work executed without continuous gas check", "Drilling Site C", "Hot Work / Pipe Welding"),
+        ("Confined Space", "Obtain authorization, test atmosphere, and verify rescue plan before entry.", "High", "Atmospheric test omitted before entry", "Offshore Rig 04", "Confined Space / Vessel Entry"),
+        ("Working at Height", "Use fall protection equipment when working above 1.8 meters.", "High", "Harness lanyard not anchored", "Drilling Site A", "Working at Height / Mast Inspection"),
+        ("Lifting Operations", "Define lift plan, inspect rigging, and do not walk under suspended loads.", "Medium", "Suspended load exclusion zone breached", "Drilling Site B", "Heavy Lifting Operations"),
+        ("Vehicle Safety", "Follow speed limits, wear seatbelts, and maintain pedestrian clearance.", "Low", "Failure to follow established safety protocol", "Digboi Refinery D", "Routine Operations / Maintenance"),
+        ("Electrical Safety", "Verify dead state, use insulated tools, and restrict access to qualified persons.", "Medium", "Cabinet opened without testing circuit for dead state", "Drilling Site A", "Routine Operations / Maintenance")
     ]
     for name, desc, density, barrier, site, activity in lsrs:
         rule = models.LifeSavingRule(
@@ -211,34 +213,45 @@ def seed_database():
     print("Life-Saving Rules seeded.")
 
     # 5. Ingest and Process raw safety reports (totaling 100+ reports)
-    # Combine SIF-Potential reports and Non-SIF reports
     all_raw_reports = []
     
     # Process SIF reports
     for idx, (text, site, unit) in enumerate(RAW_REPORTS_DATA):
         days_offset = random.randint(1, 45)
         timestamp = datetime.datetime.utcnow() - datetime.timedelta(days=days_offset, hours=random.randint(1, 23))
-        all_raw_reports.append((text, site, unit, timestamp, True))
+        # Map some sites to Drilling sites
+        mapped_site = "Drilling Site A" if "Refinery A" in site else ("Drilling Site B" if "Refinery B" in site else ("Drilling Site C" if "Refinery C" in site else ("Offshore Rig 04" if "Refinery D" in site else "Digboi Refinery D")))
+        all_raw_reports.append((text, mapped_site, unit, timestamp, True))
         
     # Process Non-SIF reports
     for idx, (text, site, unit) in enumerate(NON_SIF_REPORTS):
         days_offset = random.randint(1, 45)
         timestamp = datetime.datetime.utcnow() - datetime.timedelta(days=days_offset, hours=random.randint(1, 23))
-        all_raw_reports.append((text, site, unit, timestamp, False))
+        mapped_site = "Drilling Site A" if "Refinery A" in site else ("Drilling Site B" if "Refinery B" in site else ("Drilling Site C" if "Refinery C" in site else ("Offshore Rig 04" if "Refinery D" in site else "Digboi Refinery D")))
+        all_raw_reports.append((text, mapped_site, unit, timestamp, False))
         
-    # Shuffle reports to make timeline realistic
     all_raw_reports.sort(key=lambda x: x[3])
     
-    evt_counter = 10001
-    sif_count = 0
-    high_priority_count = 0
+    evt_counter = 1
+    action_counter = 1
     
     print(f"Analyzing and ingestion of {len(all_raw_reports)} reports...")
     
+    report_types_pool = ["Unsafe Act", "Unsafe Condition", "Near Miss"]
+    
     for text, site_name, unit_name, ts, is_sif_seed in all_raw_reports:
-        # Create raw safety report
+        rep_code = f"#SIF26165-{evt_counter:03d}"
+        rep_type = random.choice(report_types_pool) if not is_sif_seed else ("Near Miss" if "nearly" in text.lower() or "stopped" in text.lower() else ("Unsafe Act" if "worker" in text.lower() or "technician" in text.lower() else "Unsafe Condition"))
+        
         report = models.SafetyReport(
+            report_code=rep_code,
+            report_type=rep_type,
             raw_text=text,
+            audio_transcript=f"[Voice Transcript] {text}" if evt_counter % 3 == 0 else None,
+            photo_url="/static/sample_hazard.jpg" if evt_counter % 2 == 0 else None,
+            equipment_involved="High-Pressure Drilling Mud System" if "pump" in text.lower() else "Rig Equipment",
+            people_involved=random.randint(1, 3),
+            reporter_email="worker@refinery.safe",
             timestamp=ts,
             status="Analyzed"
         )
@@ -246,36 +259,60 @@ def seed_database():
         db.flush()
         
         # Analyze using AI service
-        analysis = ai_service.analyzeSafetyReport(text)
+        analysis = ai_service.analyzeSafetyReport(text, db, {"site": site_name, "unit": unit_name})
         
-        # Override site and unit to keep seeded correlation
         analysis["site"] = site_name
         analysis["unit"] = unit_name
-        analysis["location"] = f"{unit_name} - Area {random.choice(['1', '2', '3', '4'])}"
+        analysis["location"] = f"{unit_name} - Section {random.choice(['01', '02', '03', '04'])}"
         
-        # Force non-sif properties if it was a non-sif seed report
         if not is_sif_seed:
-            analysis["sif_probability"] = round(random.uniform(5.0, 15.0), 1)
-            analysis["confidence"] = round(random.uniform(60.0, 80.0), 1)
+            analysis["sif_risk_score"] = round(random.uniform(1.5, 3.8), 1)
+            analysis["risk_level"] = "LOW"
+            analysis["is_sif_precursor"] = "NO"
+            analysis["severity_score"] = round(random.uniform(1.0, 3.5), 1)
+            analysis["exposure_score"] = round(random.uniform(1.0, 3.0), 1)
+            analysis["barrier_score"] = round(random.uniform(1.0, 3.0), 1)
+            analysis["consequence_score"] = round(random.uniform(1.0, 3.0), 1)
+            analysis["sif_probability"] = round(random.uniform(8.0, 20.0), 1)
+            analysis["confidence"] = round(random.uniform(70.0, 85.0), 1)
             analysis["life_saving_rule"] = "None"
         
-        # Determine status
-        status = "Needs Review"
-        if analysis["sif_probability"] >= 70.0:
-            status = "Needs Review"  # Will highlight in Review Queue
-            sif_count += 1
-            if analysis["confidence"] >= 85.0:
-                high_priority_count += 1
-        else:
-            status = "Confirmed" if random.random() > 0.4 else "Needs Review"
-            
-        evt_id = f"EVT-{evt_counter}"
-        evt_counter += 1
+        evt_id = f"EVT-{10000 + evt_counter}"
         
-        # Create SafetyEvent
+        status = "Needs Review"
+        if analysis["risk_level"] in ["CRITICAL", "HIGH"]:
+            status = "Needs Review" if random.random() > 0.4 else "Action Dispatched"
+        else:
+            status = "Confirmed" if random.random() > 0.3 else "Needs Review"
+            
+        action_id = None
+        stop_work = False
+        assigned_team = None
+        
+        if analysis["sif_risk_score"] >= 6.5 or status == "Action Dispatched":
+            action_id = f"ACT-{1000 + action_counter}"
+            action_counter += 1
+            stop_work = True if analysis["risk_level"] == "CRITICAL" else False
+            assigned_team = "Rig Safety Team" if "Drill" in site_name else "Maintenance Team"
+            
+            intervention = models.Intervention(
+                action_id=action_id,
+                event_id=evt_id,
+                description=f"Immediate corrective intervention: {analysis['recommended_action']}",
+                status="Completed" if random.random() > 0.6 else "In Progress",
+                priority=analysis["risk_level"],
+                assigned_to=assigned_team,
+                due_date=ts + datetime.timedelta(days=3),
+                stop_work_required=stop_work,
+                created_at=ts
+            )
+            db.add(intervention)
+            
         event = models.SafetyEvent(
             id=evt_id,
             report_id=report.id,
+            report_code=rep_code,
+            report_type=rep_type,
             timestamp=ts,
             site=analysis["site"],
             unit=analysis["unit"],
@@ -283,17 +320,35 @@ def seed_database():
             activity=analysis["activity"],
             description=text,
             hazard=analysis["hazard"],
+            equipment_involved=analysis["equipment_involved"],
+            people_involved=report.people_involved,
             energy_source=analysis["energy_source"],
             barrier=analysis["barrier"],
             barrier_failure=analysis["barrier_failure"],
             exposure=analysis["exposure"],
             consequence=analysis["consequence"],
+            is_sif_precursor=analysis["is_sif_precursor"],
+            severity_score=analysis["severity_score"],
+            exposure_score=analysis["exposure_score"],
+            barrier_score=analysis["barrier_score"],
+            consequence_score=analysis["consequence_score"],
+            sif_risk_score=analysis["sif_risk_score"],
+            risk_level=analysis["risk_level"],
             sif_probability=analysis["sif_probability"],
             confidence=analysis["confidence"],
             life_saving_rule=analysis["life_saving_rule"],
             status=status,
-            reviewer=None,
+            reviewer="Capt. Arvind Sen" if status in ["Confirmed", "Action Dispatched"] else None,
             evidence=text,
+            explanation=analysis["explanation"],
+            recommended_action=analysis["recommended_action"],
+            stop_work_issued=stop_work,
+            assigned_team=assigned_team,
+            action_id=action_id,
+            action_status="In Progress" if action_id else "Pending",
+            resolution_notes="Officer verified high-energy barrier bypass and issued immediate control measures." if action_id else None,
+            audio_transcript=report.audio_transcript,
+            photo_url=report.photo_url,
             l1_milestone=analysis["l1_milestone"],
             l2_unit=analysis["l2_unit"],
             l3_discipline=analysis["l3_discipline"],
@@ -303,63 +358,48 @@ def seed_database():
         )
         db.add(event)
         
-        # Create audit trail event
         audit = models.AuditEvent(
             event_id=evt_id,
-            action="AI Classified",
-            details=f"System automatically parsed safety report. predicted SIF probability: {analysis['sif_probability']}%, mapped to Life-Saving Rule: {analysis['life_saving_rule']}.",
-            user_email="system@gati.engine",
+            action="AI Scanned & Classified",
+            details=f"SIF-SHIELD AI evaluated report {rep_code}. Risk: {analysis['sif_risk_score']}/10 ({analysis['risk_level']}). Rule: {analysis['life_saving_rule']}.",
+            user_email="engine@sifshield.ai",
             timestamp=ts
         )
         db.add(audit)
         
-        # Create interventions for high SIF events
-        if analysis["sif_probability"] >= 80.0:
-            intervention = models.Intervention(
-                event_id=evt_id,
-                description=f"HSE Intervention: {analysis['recommended_action']}",
-                status="Open" if random.random() > 0.5 else "Closed",
-                assigned_to=random.choice(["HSE Manager", "Safety Inspector", "Operations Lead"]),
-                due_date=ts + datetime.timedelta(days=7),
-                created_at=ts
-            )
-            db.add(intervention)
-            
-        # Update Life-Saving Rule stats
         if analysis["life_saving_rule"] != "None":
             rule_obj = db.query(models.LifeSavingRule).filter(models.LifeSavingRule.name == analysis["life_saving_rule"]).first()
             if rule_obj:
                 rule_obj.total_reports += 1
-                if analysis["sif_probability"] >= 50.0:
+                if analysis["is_sif_precursor"] == "YES":
                     rule_obj.sif_potential_reports += 1
                     
+        evt_counter += 1
+                    
     db.commit()
-    print(f"Seeded {evt_counter - 10001} Safety Events successfully.")
+    print(f"Seeded {evt_counter - 1} Safety Events successfully.")
 
-    # 6. Run Precursor Engine to aggregate pattern cards
+    # 6. Precursor patterns
     print("Detecting initial precursor patterns...")
     precursor_engine.detect_precursors(db)
     
-    # 7. Seed sample historical corrections and GATI learning logs (8+ corrections)
+    # 7. Seed sample historical corrections & GATI learning logs
     print("Seeding sample review history and GATI learning signals...")
-    historical_events = db.query(models.SafetyEvent).filter(models.SafetyEvent.sif_probability > 40.0).limit(8).all()
-    reviewers = db.query(models.User).filter(models.User.role == "Reviewer").all()
-    reviewer_user = reviewers[0] if reviewers else None
+    historical_events = db.query(models.SafetyEvent).filter(models.SafetyEvent.sif_risk_score > 5.0).limit(8).all()
+    reviewer_user = db.query(models.User).filter(models.User.email == "officer@refinery.safe").first()
     
     for idx, event in enumerate(historical_events):
         if not reviewer_user:
             break
             
-        original_sif = "Non-SIF" if event.sif_probability < 50.0 else "SIF Potential"
+        original_sif = "Non-SIF" if event.sif_risk_score < 6.5 else "SIF Potential"
         original_rule = event.life_saving_rule
         
-        # Simulate correction
         corrected_sif = "SIF Potential" if original_sif == "Non-SIF" else "Non-SIF"
         corrected_rule = original_rule
         if idx % 2 == 0:
             corrected_rule = "Energy Isolation" if original_rule != "Energy Isolation" else "Line of Fire"
             
-        # Write review log
         review = models.Review(
             event_id=event.id,
             reviewer_id=reviewer_user.id,
@@ -368,12 +408,12 @@ def seed_database():
             original_rule=original_rule,
             corrected_sif=corrected_sif,
             corrected_rule=corrected_rule,
+            feedback_to_worker="Safety Officer reviewed the hazard and confirmed energy isolation requirements.",
             timestamp=event.timestamp + datetime.timedelta(hours=4)
         )
         db.add(review)
         db.flush()
         
-        # Write learning event log
         learning_signal = f"SIF Correction: calibrated {event.activity} weights to {corrected_sif}"
         if original_rule != corrected_rule:
             learning_signal += f" | Rule Correction: mapped keywords to {corrected_rule}"
@@ -388,18 +428,18 @@ def seed_database():
         )
         db.add(learning)
         
-        # Write audit trail
         audit_corr = models.AuditEvent(
             event_id=event.id,
-            action="Reviewer Corrected",
-            details=f"HSE Reviewer modified event. SIF changed from {original_sif} to {corrected_sif}. LSR changed from {original_rule} to {corrected_rule}. Learning signal dispatched to GATI.",
+            action="Officer Corrected",
+            details=f"Safety Officer modified event. SIF: {original_sif} -> {corrected_sif}. LSR: {original_rule} -> {corrected_rule}. Calibrated neural weights.",
             user_email=reviewer_user.email,
             timestamp=review.timestamp
         )
         db.add(audit_corr)
         
-        # Update event state to match correction
-        event.sif_probability = 90.0 if corrected_sif == "SIF Potential" else 15.0
+        event.sif_risk_score = 9.2 if corrected_sif == "SIF Potential" else 2.5
+        event.risk_level = "HIGH" if corrected_sif == "SIF Potential" else "LOW"
+        event.is_sif_precursor = "YES" if corrected_sif == "SIF Potential" else "NO"
         event.life_saving_rule = corrected_rule
         event.status = "Corrected"
         event.reviewer = reviewer_user.name
@@ -410,3 +450,4 @@ def seed_database():
 
 if __name__ == "__main__":
     seed_database()
+
