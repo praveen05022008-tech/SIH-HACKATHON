@@ -16,6 +16,7 @@ import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
 import { Detail } from './pages/Detail';
 import { WorkerPortal } from './pages/WorkerPortal';
+import { SafetyOfficerDashboard } from './pages/SafetyOfficerDashboard';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -52,7 +53,7 @@ function App() {
     } else if (loggedInUser.role === 'AI Pipeline Viewer') {
       defaultPage = 'analysis';
     } else if (loggedInUser.role === 'Safety Officer') {
-      defaultPage = 'inbox';
+      defaultPage = 'dashboard';
     } else if (loggedInUser.role === 'Admin') {
       defaultPage = 'settings';
     }
@@ -77,11 +78,11 @@ function App() {
     } else if (email === 'officer@refinery.safe') {
       name = 'Safety Officer Lead';
       role = 'Safety Officer';
-      defaultPage = 'inbox';
+      defaultPage = 'dashboard';
     } else if (email === 'reviewer@refinery.safe') {
       name = 'Demo Reviewer';
       role = 'Safety Officer';
-      defaultPage = 'inbox';
+      defaultPage = 'dashboard';
     } else if (email === 'manager@refinery.safe') {
       name = 'HSE Manager / Lead';
       role = 'Safety Manager';
@@ -180,11 +181,19 @@ function App() {
         {/* Scrollable Page Body */}
         <main className="flex-1 mt-16 p-8 overflow-y-auto">
           {currentPage === 'dashboard' && (
-            <Dashboard 
-              onViewEvent={handleViewEvent} 
-              triggerNotification={triggerNotification} 
-              triggerStateRefresh={triggerStateRefresh} 
-            />
+            user.role === 'Safety Officer' ? (
+              <SafetyOfficerDashboard 
+                onViewEvent={handleViewEvent} 
+                triggerNotification={triggerNotification} 
+                triggerStateRefresh={triggerStateRefresh} 
+              />
+            ) : (
+              <Dashboard 
+                onViewEvent={handleViewEvent} 
+                triggerNotification={triggerNotification} 
+                triggerStateRefresh={triggerStateRefresh} 
+              />
+            )
           )}
 
           {currentPage === 'inbox' && (
