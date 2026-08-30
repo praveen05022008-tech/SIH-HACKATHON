@@ -14,6 +14,7 @@ import { Review } from './pages/Review';
 import { Learning } from './pages/Learning';
 import { Reports } from './pages/Reports';
 import { Settings } from './pages/Settings';
+import { AdminConsole } from './pages/AdminConsole';
 import { Detail } from './pages/Detail';
 import { WorkerPortal } from './pages/WorkerPortal';
 
@@ -245,10 +246,20 @@ function App() {
           )}
 
           {currentPage === 'settings' && (
-            <Settings 
-              onResetDb={handleRefreshApp}
-              triggerNotification={triggerNotification}
-            />
+            <>
+              <AdminConsole
+                onResetDb={handleRefreshApp}
+                triggerNotification={triggerNotification}
+                onNavigateTo={(page) => {
+                  setSelectedEvent(null);
+                  setCurrentPage(page);
+                }}
+              />
+              <Settings
+                onResetDb={handleRefreshApp}
+                triggerNotification={triggerNotification}
+              />
+            </>
           )}
 
           {currentPage === 'worker-portal' && (
