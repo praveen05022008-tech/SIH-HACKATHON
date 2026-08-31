@@ -189,6 +189,7 @@ function App() {
               onViewEvent={handleViewEvent} 
               triggerNotification={triggerNotification} 
               triggerStateRefresh={triggerStateRefresh} 
+              onNavigateTo={setCurrentPage}
             />
           )}
 

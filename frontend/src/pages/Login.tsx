@@ -1,23 +1,36 @@
 import React, { useState } from 'react';
 import { User } from '../types';
-import { Activity, ShieldAlert, KeyRound, Mail, Sparkles } from 'lucide-react';
+import { 
+  ShieldAlert, 
+  Mail, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  Users, 
+  HardHat, 
+  Cpu, 
+  Shield, 
+  User as UserIcon, 
+  Settings 
+} from 'lucide-react';
 
 interface LoginProps {
   onLoginSuccess: (user: User) => void;
 }
 
 export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('hello@gmail.com');
+  const [password, setPassword] = useState('••••••••••••••');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const demoAccounts = [
-    { role: 'Field Worker', email: 'worker@refinery.safe', name: 'Field Employee / Worker' },
-    { role: 'AI Pipeline', email: 'pipeline@sifshield.ai', name: 'AI Pipeline Viewer' },
-    { role: 'Safety Officer', email: 'officer@refinery.safe', name: 'Safety Officer Lead' },
-    { role: 'Safety Manager', email: 'manager@refinery.safe', name: 'HSE Manager / Lead' },
-    { role: 'System Admin', email: 'admin@refinery.safe', name: 'System Administrator' }
+    { role: 'Field Worker', email: 'field.worker@sifdemo.com', name: 'Field Worker Demo', icon: HardHat },
+    { role: 'AI Pipeline', email: 'ai.pipeline@sifdemo.com', name: 'AI Ingestion Pipeline', icon: Cpu },
+    { role: 'Safety Officer', email: 'officer@sifdemo.com', name: 'Capt. Arvind Sen', icon: Shield },
+    { role: 'Safety Manager', email: 'manager@sifdemo.com', name: 'Dr. Vikram Roy', icon: UserIcon },
+    { role: 'System Admin', email: 'admin@sifdemo.com', name: 'System Administrator', icon: Settings }
   ];
 
   const handleDemoClick = (account: typeof demoAccounts[0]) => {
@@ -36,11 +49,15 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     setLoading(true);
     setError('');
 
+    // Handle dummy default values from first load
+    const payloadEmail = email;
+    const payloadPassword = password === '••••••••••••••' ? 'password123' : password;
+
     try {
       const response = await fetch('http://localhost:8000/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: payloadEmail, password: payloadPassword }),
       });
 
       if (!response.ok) {
@@ -56,15 +73,14 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         token: data.token
       });
     } catch (err: any) {
-      // Fallback in case backend is offline
       console.warn('Backend connection failed, using local mock auth:', err.message);
-      const matchedDemo = demoAccounts.find(d => d.email === email);
-      if (matchedDemo && password === 'password123') {
+      const matchedDemo = demoAccounts.find(d => d.email === payloadEmail);
+      if (matchedDemo && (payloadPassword === 'password123' || payloadPassword === '••••••••••••••')) {
         onLoginSuccess({
           email: matchedDemo.email,
           name: matchedDemo.name,
           role: matchedDemo.role as any,
-          token: `mock-jwt-token-${matchedDemo.role.toLowerCase().replace(' ', '')}`
+          token: `mock-jwt-token-for-${matchedDemo.role.toLowerCase().replace(' ', '')}`
         });
       } else {
         setError('Invalid credentials. (Demo password is: password123)');
@@ -75,111 +91,137 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans antialiased text-slate-800">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="flex justify-center items-center gap-3">
-          <div className="h-12 w-12 rounded-xl bg-industrial-navy flex items-center justify-center shadow-md">
-            <Activity className="h-7 w-7 text-industrial-orange" />
+    <div className="min-h-screen bg-slate-50 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans antialiased text-slate-800">
+      
+      <div className="bg-white border border-slate-200 shadow-2xl rounded-3xl p-8 sm:p-10 max-w-md w-full mx-auto space-y-6">
+        
+        {/* Logo Header */}
+        <div className="flex flex-col items-center text-center space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+              <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <path d="M8 12h3l1-3 2 6 1-3h2" />
+              </svg>
+            </div>
+            <div className="text-left">
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 leading-none">SIF-SHIELD AI</h1>
+              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest block mt-1.5">
+                SIF Precursor Intelligence Engine
+              </span>
+            </div>
           </div>
-          <div>
-            <h1 className="text-3xl font-extrabold text-industrial-navy tracking-tight">SIF-SHIELD AI</h1>
-            <p className="text-[10px] uppercase font-bold text-slate-400 tracking-widest mt-0.5">SIF Precursor Intelligence Engine</p>
+          
+          <div className="pt-4">
+            <h2 className="text-lg font-extrabold text-slate-900">Refinery Safety Authentication</h2>
+            <p className="text-xs text-slate-450 mt-1">Access safety dashboard and precursor warnings</p>
           </div>
         </div>
-      </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 border border-slate-200 shadow-xl rounded-2xl sm:px-10">
-          
-          <div className="mb-6 text-center">
-            <h2 className="text-lg font-bold text-slate-950">Refinery Safety Authentication</h2>
-            <p className="text-xs text-slate-400 mt-1">Access safety dashboards and precursor warnings</p>
+        {error && (
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-lg flex items-center gap-2 animate-fadeIn">
+            <ShieldAlert className="h-4 w-4 shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {/* Credentials Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+              Work Email
+            </label>
+            <div className="relative rounded-lg shadow-2xs">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Mail className="h-4 w-4" />
+              </div>
+              <input
+                type="text"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="hello@gmail.com"
+                className="block w-full pl-10 pr-4 py-2 border border-slate-250 rounded-xl focus:ring-1 focus:ring-blue-600 focus:outline-none text-xs bg-slate-50/50 text-slate-800 placeholder-slate-400"
+                required
+              />
+            </div>
           </div>
 
-          {error && (
-            <div className="mb-4 p-3.5 bg-red-50 border border-red-200 text-industrial-red text-xs font-semibold rounded-lg flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4 shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <form className="space-y-5" onSubmit={handleSubmit}>
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Work Email
-              </label>
-              <div className="relative rounded-md shadow-2xs">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <Mail className="h-4 w-4" />
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@refinery.safe"
-                  className="block w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-industrial-blue focus:border-industrial-blue text-sm placeholder-slate-400 bg-slate-50/50"
-                  required
-                />
+          <div>
+            <label className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+              Secure Password
+            </label>
+            <div className="relative rounded-lg shadow-2xs">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Lock className="h-4 w-4" />
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
-                Secure Password
-              </label>
-              <div className="relative rounded-md shadow-2xs">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                  <KeyRound className="h-4 w-4" />
-                </div>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="block w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-industrial-blue focus:border-industrial-blue text-sm placeholder-slate-400 bg-slate-50/50"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="block w-full pl-10 pr-10 py-2 border border-slate-250 rounded-xl focus:ring-1 focus:ring-blue-600 focus:outline-none text-xs bg-slate-50/50 text-slate-800"
+                required
+              />
               <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-bold text-white bg-industrial-navy hover:bg-[#071D3A] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-industrial-blue transition-colors disabled:opacity-50"
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-650"
               >
-                {loading ? 'Authenticating...' : 'Sign In'}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-          </form>
+          </div>
 
-          {/* Quick Demo Login Selector */}
-          <div className="mt-8 border-t border-slate-200 pt-6">
-            <div className="flex items-center gap-1.5 justify-center mb-3">
-              <Sparkles className="h-3.5 w-3.5 text-industrial-purple" />
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Demo Accounts Selector</span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2">
-              {demoAccounts.map((account) => (
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition flex justify-center items-center text-xs shadow-xs"
+          >
+            {loading ? 'Authenticating...' : 'Sign In'}
+          </button>
+        </form>
+
+        <div className="relative flex py-2 items-center text-slate-300">
+          <div className="flex-grow border-t border-slate-200"></div>
+          <span className="flex-shrink mx-4 text-[9px] font-bold uppercase tracking-wider text-slate-400">or</span>
+          <div className="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        {/* 5. Demo Accounts Selector */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-1.5 justify-center text-blue-600">
+            <Users className="h-4 w-4" />
+            <span className="text-[10px] font-extrabold uppercase tracking-wider">Demo Accounts Selector</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {demoAccounts.map((account) => {
+              const AccIcon = account.icon;
+              return (
                 <button
+                  type="button"
                   key={account.role}
                   onClick={() => handleDemoClick(account)}
-                  className="py-2 px-2 text-left bg-slate-50 hover:bg-industrial-blue/5 border border-slate-200 hover:border-industrial-blue rounded-xl text-[10px] font-bold text-slate-700 transition"
+                  className="p-3 text-left bg-white hover:bg-blue-50/20 border border-slate-200 hover:border-blue-300 rounded-xl flex items-center gap-3 transition shadow-3xs"
                 >
-                  <div>{account.role}</div>
-                  <div className="text-[8px] text-slate-400 font-normal mt-0.5 truncate">{account.email}</div>
+                  <div className="h-8 w-8 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                    <AccIcon className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-extrabold text-[10px] text-slate-800">{account.role}</div>
+                    <div className="text-[9px] text-slate-400 truncate mt-0.5">{account.email}</div>
+                  </div>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
-
-          <div className="mt-6 text-center text-[10px] text-slate-400 font-medium uppercase tracking-widest">
-            Powered by GATI AI Calibration
-          </div>
-
         </div>
+
+        <div className="text-center text-[8px] text-slate-400 font-extrabold uppercase tracking-widest pt-2 border-t border-slate-100/50">
+          Powered by GATI AI Calibration
+        </div>
+
       </div>
+
     </div>
   );
 };

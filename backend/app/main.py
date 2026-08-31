@@ -52,7 +52,12 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
             "officer@refinery.safe": ("Safety Officer Lead", "Safety Officer"),
             "reviewer@refinery.safe": ("Demo Reviewer", "Safety Officer"),
             "manager@refinery.safe": ("HSE Manager / Lead", "Safety Manager"),
-            "admin@refinery.safe": ("System Administrator", "Admin")
+            "admin@refinery.safe": ("System Administrator", "Admin"),
+            "field.worker@sifdemo.com": ("Field Worker Demo", "Field Worker"),
+            "ai.pipeline@sifdemo.com": ("AI Ingestion Pipeline", "AI Pipeline Viewer"),
+            "officer@sifdemo.com": ("Capt. Arvind Sen", "Safety Officer"),
+            "manager@sifdemo.com": ("Dr. Vikram Roy", "Safety Manager"),
+            "admin@sifdemo.com": ("System Administrator", "Admin")
         }
         if payload.email in fallback_roles:
             name, role = fallback_roles[payload.email]

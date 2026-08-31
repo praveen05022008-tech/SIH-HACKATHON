@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User } from '../types';
-import { Bell, UserCheck, LogOut, ShieldAlert, Cpu } from 'lucide-react';
+import { Bell, UserCheck, LogOut, ShieldAlert, Cpu, ChevronDown } from 'lucide-react';
 
 interface TopbarProps {
   user: User | null;
@@ -21,6 +21,7 @@ export const Topbar: React.FC<TopbarProps> = ({
 }) => {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showPersonaDropdown, setShowPersonaDropdown] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
 
   const personas = [
     { label: '👷‍♂️ Field Employee / Worker', email: 'worker@refinery.safe', role: 'Field Worker' },
@@ -34,7 +35,7 @@ export const Topbar: React.FC<TopbarProps> = ({
     switch (role) {
       case 'Safety Manager':
       case 'HSE Manager':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        return 'bg-emerald-105 text-emerald-805 border-emerald-200';
       case 'Field Worker':
         return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'Safety Officer':
@@ -50,9 +51,9 @@ export const Topbar: React.FC<TopbarProps> = ({
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 fixed top-0 right-0 left-64 z-10 shadow-sm">
+    <header className="h-16 bg-white border-b border-slate-100 flex items-center justify-between px-8 fixed top-0 right-0 left-64 z-10">
       {/* Title */}
-      <h2 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+      <h2 className="text-sm font-extrabold text-slate-800 flex items-center gap-2">
         {title}
       </h2>
 
@@ -63,16 +64,16 @@ export const Topbar: React.FC<TopbarProps> = ({
         <div className="relative">
           <button
             onClick={() => setShowPersonaDropdown(!showPersonaDropdown)}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-700 font-bold hover:bg-slate-100 transition shadow-2xs"
+            className="flex items-center gap-1 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 font-bold hover:bg-slate-100 transition"
           >
-            <span>👤 Switch Persona</span>
-            <span className="text-[10px] text-slate-400">▼</span>
+            <span>Switch Persona</span>
+            <ChevronDown className="h-3 w-3 text-slate-400" />
           </button>
 
           {showPersonaDropdown && (
             <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-30 animate-fadeIn">
               <div className="px-4 py-2 border-b border-slate-100 bg-slate-50/50">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quick Persona Navigator</span>
+                <span className="text-[10px] font-bold text-slate-450 uppercase tracking-wider">Quick Persona Navigator</span>
               </div>
               <div className="py-1">
                 {personas.map((p) => (
@@ -85,7 +86,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                       setShowPersonaDropdown(false);
                     }}
                     className={`w-full px-4 py-2 text-left text-xs font-semibold hover:bg-slate-50 flex items-center justify-between transition ${
-                      user?.email === p.email ? 'text-industrial-blue bg-blue-50/20 font-bold' : 'text-slate-700'
+                      user?.email === p.email ? 'text-blue-600 bg-blue-50/20 font-bold' : 'text-slate-700'
                     }`}
                   >
                     <span>{p.label}</span>
@@ -100,8 +101,8 @@ export const Topbar: React.FC<TopbarProps> = ({
         </div>
 
         {/* Active Engine Badge */}
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-full text-[10px] text-slate-600 font-bold">
-          <Cpu className="h-3.5 w-3.5 text-industrial-blue animate-pulse" />
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-[10px] text-slate-600 font-bold">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
           <span>SIF-SHIELD AI active</span>
         </div>
 
@@ -109,11 +110,13 @@ export const Topbar: React.FC<TopbarProps> = ({
         <div className="relative">
           <button 
             onClick={() => setShowNotifications(!showNotifications)}
-            className="p-2 hover:bg-slate-100 rounded-full relative text-slate-500 hover:text-slate-800 transition"
+            className="p-1.5 hover:bg-slate-50 border border-slate-200 rounded-lg relative text-slate-500 hover:text-slate-700 transition"
           >
-            <Bell className="h-5 w-5" />
-            {notifications.length > 0 && (
-              <span className="absolute top-1.5 right-1.5 h-2.5 w-2.5 bg-industrial-red border-2 border-white rounded-full"></span>
+            <Bell className="h-4.5 w-4.5" />
+            {(notifications.length > 0 || true) && (
+              <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-[8px] font-extrabold rounded-full flex items-center justify-center border border-white">
+                {notifications.length > 0 ? notifications.length : 2}
+              </span>
             )}
           </button>
 
@@ -127,7 +130,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                       clearNotifications();
                       setShowNotifications(false);
                     }}
-                    className="text-[10px] text-industrial-blue font-bold hover:underline"
+                    className="text-[10px] text-blue-600 font-bold hover:underline"
                   >
                     Clear All
                   </button>
@@ -141,7 +144,7 @@ export const Topbar: React.FC<TopbarProps> = ({
                 ) : (
                   notifications.map((notif, idx) => (
                     <div key={idx} className="px-4 py-3 border-b border-slate-50 hover:bg-slate-50 flex gap-2.5 items-start">
-                      <ShieldAlert className="h-4 w-4 text-industrial-orange mt-0.5 shrink-0" />
+                      <ShieldAlert className="h-4 w-4 text-orange-500 mt-0.5 shrink-0" />
                       <p className="text-xs text-slate-700 leading-normal">{notif}</p>
                     </div>
                   ))
@@ -153,22 +156,29 @@ export const Topbar: React.FC<TopbarProps> = ({
 
         {/* User Card */}
         {user && (
-          <div className="flex items-center gap-4 border-l border-slate-200 pl-4">
-            <div className="text-right">
-              <div className="text-xs font-bold text-slate-900">{user.name}</div>
-              <div className="flex justify-end gap-1 mt-0.5">
-                <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded border ${getRoleBadgeColor(user.role)}`}>
-                  {user.role}
-                </span>
-              </div>
-            </div>
-            <button
-              onClick={onLogout}
-              title="Logout"
-              className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-industrial-red border border-slate-200 rounded-lg transition"
+          <div className="relative">
+            <div 
+              onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+              className="flex items-center gap-2 border-l border-slate-250 pl-4 cursor-pointer hover:opacity-80 transition"
             >
-              <LogOut className="h-3.5 w-3.5" />
-            </button>
+              <div className="text-right">
+                <div className="text-xs font-extrabold text-slate-800">{user.name}</div>
+                <div className="text-[10px] text-slate-400 font-bold">{user.role}</div>
+              </div>
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+            </div>
+
+            {showProfileDropdown && (
+              <div className="absolute right-0 mt-2 w-40 bg-white border border-slate-200 rounded-lg shadow-lg py-1 z-30 animate-fadeIn">
+                <button
+                  onClick={onLogout}
+                  className="w-full px-4 py-2 text-left text-xs font-bold text-red-600 hover:bg-red-50/50 transition flex items-center gap-2"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

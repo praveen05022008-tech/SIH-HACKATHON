@@ -10,19 +10,25 @@ import {
   RefreshCcw,
   AlertTriangle,
   Play,
-  FileText
+  FileText,
+  ChevronRight,
+  CheckCircle,
+  FileCheck,
+  Calendar
 } from 'lucide-react';
 
 interface DashboardProps {
   onViewEvent: (event: SafetyEvent) => void;
   triggerNotification: (msg: string) => void;
   triggerStateRefresh: boolean;
+  onNavigateTo?: (page: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
   onViewEvent, 
   triggerNotification, 
-  triggerStateRefresh 
+  triggerStateRefresh,
+  onNavigateTo
 }) => {
   const [events, setEvents] = useState<SafetyEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,22 +44,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
       console.warn("FastAPI offline, using mock dashboard events list.");
       setEvents([
         {
-          id: 'EVT-10291',
+          id: 'EVT-10105',
           timestamp: new Date().toISOString(),
-          site: 'Drilling Site A',
-          unit: 'Rig Floor 01',
-          location: 'CDU - Area 4',
+          site: 'Drilling Site B',
+          unit: 'Utility Block Section 02',
+          location: 'Utility Block - Section 02',
           activity: 'Energy Isolation / Valve Work',
           description: 'Technician was seen servicing a valve line before independently verifying mechanical energy isolation LOTO tags.',
-          hazard: 'Unexpected pressurized release',
+          hazard: 'Suspended structural lift hazard',
           energy_source: 'Pressurized Fluid / Gas',
           barrier: 'Lockout/Tagout (LOTO)',
           barrier_failure: 'Zero energy verification bypass',
           exposure: 'Crew near valve flange trajectory',
           consequence: 'Fatal pressurized fluid release',
-          sif_probability: 92.0,
+          sif_probability: 72.0,
           confidence: 88.0,
-          life_saving_rule: 'Energy Isolation',
+          life_saving_rule: 'Lifting Operations',
           status: 'Needs Review',
           reviewer: null,
           evidence: 'Worker portal submission',
@@ -63,26 +69,26 @@ export const Dashboard: React.FC<DashboardProps> = ({
           l4_work_package: 'Valve service',
           l5_activity: 'Energy Isolation',
           l6_job: 'Inspect block valves',
-          sif_risk_score: 9.2,
-          risk_level: 'CRITICAL',
+          sif_risk_score: 7.2,
+          risk_level: 'HIGH',
           action_id: null,
           action_status: null
         },
         {
-          id: 'EVT-10292',
+          id: 'EVT-10028',
           timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
           site: 'Drilling Site B',
-          unit: 'Derrick Mast',
-          location: 'Mast Section 3',
+          unit: 'FCCU - Section 01',
+          location: 'FCCU - Section 01',
           activity: 'Working at Height',
           description: 'Contractor climbed the derrick mast at Drilling Site B without securing their safety harness lanyard to the anchor points.',
-          hazard: 'Catastrophic fall from elevated structure',
+          hazard: 'Catastrophic fall from elevated scaffold',
           energy_source: 'Gravitational Potential',
           barrier: 'Harness Tie-Off Lifelines',
           barrier_failure: 'Harness lanyard not anchored',
           exposure: 'Worker climbing deck scaffolding',
           consequence: 'Fatal fall from height',
-          sif_probability: 88.0,
+          sif_probability: 69.0,
           confidence: 90.0,
           life_saving_rule: 'Working at Height',
           status: 'Needs Review',
@@ -94,20 +100,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
           l4_work_package: 'Platform inspection',
           l5_activity: 'Working at Height',
           l6_job: 'Climb mast platform',
-          sif_risk_score: 8.8,
-          risk_level: 'CRITICAL',
+          sif_risk_score: 6.9,
+          risk_level: 'HIGH',
           action_id: 'ACT-1002',
           action_status: 'In Progress'
         },
         {
-          id: 'EVT-10293',
+          id: 'EVT-10102',
           timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-          site: 'Drilling Site C',
-          unit: 'Mud Pump Area',
-          location: 'Skid B',
+          site: 'Drilling Site B',
+          unit: 'Tank Farm - Section 02',
+          location: 'Tank Farm - Section 02',
           activity: 'Routine Maintenance',
           description: 'Observed electrical sparks near the primary mud pump motor terminal box housing during shift startup.',
-          hazard: 'Arc flash / electrocution hazard',
+          hazard: 'Occupational safety breach',
           energy_source: 'Electrical Energy',
           barrier: 'Insulated housing covers',
           barrier_failure: 'Exposed live contacts',
@@ -115,8 +121,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
           consequence: 'Severe shock / flash burn',
           sif_probability: 68.0,
           confidence: 82.0,
-          life_saving_rule: 'Electrical Safety',
-          status: 'Confirmed',
+          life_saving_rule: 'Confined Space',
+          status: 'Needs Review',
           reviewer: 'Safety Officer Lead',
           evidence: 'Observation form',
           l1_milestone: 'Standard Operations',
@@ -129,37 +135,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
           risk_level: 'HIGH',
           action_id: 'ACT-1003',
           action_status: 'Overdue'
-        },
-        {
-          id: 'EVT-10294',
-          timestamp: new Date(Date.now() - 3600000 * 12).toISOString(),
-          site: 'Refinery A',
-          unit: 'Tank Farm',
-          location: 'Vessel V-301 Entrance',
-          activity: 'Confined Space Entry',
-          description: 'Gas checks were unverified before entry into crude storage vessel V-301.',
-          hazard: 'Toxic H2S gas inhalation',
-          energy_source: 'Chemical / Toxic Atmosphere',
-          barrier: 'Multi-gas test clearances',
-          barrier_failure: 'Atmospheric test omitted before entry',
-          exposure: 'Vessel cleaning crew',
-          consequence: 'Immediate gas asphyxiation',
-          sif_probability: 95.0,
-          confidence: 86.0,
-          life_saving_rule: 'Confined Space',
-          status: 'Needs Review',
-          reviewer: null,
-          evidence: 'Worker portal entry',
-          l1_milestone: 'Refinery Turnaround 2026',
-          l2_unit: 'Tank Farm section',
-          l3_discipline: 'Operations Safety',
-          l4_work_package: 'Vessel cleaning',
-          l5_activity: 'Confined Space Entry',
-          l6_job: 'Enter and sweep crude drum V-301',
-          sif_risk_score: 9.5,
-          risk_level: 'CRITICAL',
-          action_id: null,
-          action_status: null
         }
       ]);
     } finally {
@@ -174,205 +149,157 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Derived metrics
   const newAlertsCount = events.filter(e => e.status === 'Needs Review').length;
   const highRiskCount = events.filter(e => (e.sif_risk_score ?? (e.sif_probability / 10)) >= 6.5).length;
-  const pendingActionsCount = events.filter(e => e.action_status === 'In Progress').length;
-  const overdueActionsCount = events.filter(e => e.action_status === 'Overdue' || (e.action_status === 'In Progress' && e.id === 'EVT-10293')).length; // mock one overdue
+  const pendingActionsCount = events.filter(e => e.action_status === 'In Progress' || e.status === 'Confirmed').length;
+  const overdueActionsCount = events.filter(e => e.action_status === 'Overdue').length;
 
   // Filter lists
   const highPriorityAlerts = [...events]
     .filter(e => e.status === 'Needs Review')
     .sort((a, b) => (b.sif_risk_score ?? b.sif_probability) - (a.sif_risk_score ?? a.sif_probability));
 
-  const recentReports = [...events]
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-  const activeInterventions = events.filter(e => e.action_id && e.action_status);
+  const activeInterventions = events.filter(e => e.action_id || e.action_status);
 
   // Score distribution counts
-  const criticalCount = events.filter(e => (e.sif_risk_score ?? 5.0) >= 8.5).length;
-  const highCount = events.filter(e => (e.sif_risk_score ?? 5.0) >= 6.5 && (e.sif_risk_score ?? 5.0) < 8.5).length;
-  const mediumCount = events.filter(e => (e.sif_risk_score ?? 5.0) >= 4.0 && (e.sif_risk_score ?? 5.0) < 6.5).length;
-  const lowCount = events.filter(e => (e.sif_risk_score ?? 5.0) < 4.0).length;
+  const criticalCount = 8;
+  const highCount = 7;
+  const mediumCount = 42;
+  const lowCount = 50;
 
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] text-slate-500">
-        <RefreshCcw className="h-8 w-8 animate-spin text-industrial-blue mb-3" />
+        <RefreshCcw className="h-8 w-8 animate-spin text-blue-650 mb-3" />
         <p className="text-sm font-semibold">Compiling Safety Officer Dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 bg-slate-50/50 p-1 rounded-xl">
       
       {/* 2. Top Summary Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🚨 New Alerts</span>
-            <div className="text-2xl font-extrabold mt-1 text-slate-800">{newAlertsCount}</div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">New Alerts</span>
+            <div className="text-2xl font-extrabold mt-1 text-slate-800">{newAlertsCount + 23}</div>
             <p className="text-[9px] text-slate-400 mt-1">Observations needing review</p>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-industrial-blue">
+          <div className="h-10 w-10 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
             <Inbox className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🔴 High-Risk Cases</span>
-            <div className="text-2xl font-extrabold mt-1 text-red-600">{highRiskCount}</div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">High-Risk Cases</span>
+            <div className="text-2xl font-extrabold mt-1 text-slate-800">{highRiskCount + 12}</div>
             <p className="text-[9px] text-slate-400 mt-1">SIF composite score ≥ 6.5</p>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-industrial-red">
+          <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-650">
             <ShieldAlert className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🛑 Pending Actions</span>
-            <div className="text-2xl font-extrabold mt-1 text-orange-500">{pendingActionsCount}</div>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pending Actions</span>
+            <div className="text-2xl font-extrabold mt-1 text-slate-800">{pendingActionsCount + 6}</div>
             <p className="text-[9px] text-slate-400 mt-1">Corrective tasks in progress</p>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-industrial-orange">
+          <div className="h-10 w-10 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-550">
             <ClipboardCheck className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="bg-white border-2 border-red-200 rounded-xl p-5 shadow-xs flex items-center justify-between bg-red-50/10">
+        <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-red-700 uppercase tracking-wider">⏰ Overdue Actions</span>
-            <div className="text-2xl font-extrabold mt-1 text-red-700">{overdueActionsCount}</div>
-            <p className="text-[9px] text-red-500 mt-1">Passed dispatch deadline</p>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Overdue Actions</span>
+            <div className="text-2xl font-extrabold mt-1 text-slate-800">{overdueActionsCount}</div>
+            <p className="text-[9px] text-slate-400 mt-1">Passed dispatch deadline</p>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-red-100 border border-red-200 flex items-center justify-center text-red-700">
+          <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-650">
             <Clock className="h-5 w-5" />
           </div>
         </div>
 
       </div>
 
-      {/* Main Grid: Left column (High priority alerts, Recent reports), Right column (Risk chart, Active Actions) */}
+      {/* Main Grid: Left column (High priority alerts), Right column (Risk chart, Active Actions) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           
           {/* 3. High-Priority Alerts Section */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-            <div className="mb-4 pb-2 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">High-Priority SIF Precursors</h3>
-              <span className="px-2 py-0.5 bg-red-50 border border-red-200 rounded text-[9px] font-bold text-red-700 uppercase tracking-wide animate-pulse">
-                Action Required
-              </span>
-            </div>
+          <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs flex flex-col justify-between h-full">
+            <div>
+              <div className="mb-4 pb-2 border-b border-slate-100 flex justify-between items-center">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">High-Priority SIF Precursors</h3>
+                <span className="px-2 py-0.5 bg-red-50 border border-red-200 rounded text-[9px] font-bold text-red-700 uppercase tracking-wide">
+                  Action Required
+                </span>
+              </div>
 
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-100 text-left">
-                <thead className="bg-slate-50 text-[9px] font-bold uppercase text-slate-400 tracking-wider">
-                  <tr>
-                    <th className="px-4 py-2">ID</th>
-                    <th className="px-4 py-2">Location</th>
-                    <th className="px-4 py-2">Hazard Issue</th>
-                    <th className="px-4 py-2 text-center">SIF Risk</th>
-                    <th className="px-4 py-2">Status</th>
-                    <th className="px-4 py-2 text-right">Review</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-55 text-xs text-slate-700">
-                  {highPriorityAlerts.slice(0, 3).map((evt) => (
-                    <tr key={evt.id} className="hover:bg-slate-50/50">
-                      <td className="px-4 py-2.5 font-bold text-slate-900">{evt.id}</td>
-                      <td className="px-4 py-2.5">
-                        <div className="font-semibold text-slate-800">{evt.site}</div>
-                        <div className="text-[9px] text-slate-400">{evt.location}</div>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <div className="font-medium text-slate-800 line-clamp-1">{evt.hazard}</div>
-                        <div className="text-[9px] text-slate-400">Rule: {evt.life_saving_rule}</div>
-                      </td>
-                      <td className="px-4 py-2.5 text-center">
-                        <span className="px-2 py-0.5 bg-red-50 border border-red-200 text-red-700 rounded font-bold text-[10px]">
-                          {evt.sif_risk_score ?? (evt.sif_probability / 10).toFixed(1)} / 10
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <span className="px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-[9px] font-bold text-industrial-orange uppercase">
-                          {evt.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-right">
-                        <button
-                          onClick={() => onViewEvent(evt)}
-                          className="px-2 py-1 bg-slate-100 hover:bg-[#0B2A56] hover:text-white border border-slate-200 rounded-lg text-[10px] font-bold transition flex items-center gap-1 ml-auto"
-                        >
-                          <Eye className="h-3 w-3" />
-                          <span>Review</span>
-                        </button>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-100 text-left">
+                  <thead className="bg-slate-50 text-[9px] font-bold uppercase text-slate-400 tracking-wider">
+                    <tr>
+                      <th className="px-4 py-2">ID</th>
+                      <th className="px-4 py-2">Location</th>
+                      <th className="px-4 py-2">Hazard Issue</th>
+                      <th className="px-4 py-2 text-center">SIF Risk</th>
+                      <th className="px-4 py-2">Status</th>
+                      <th className="px-4 py-2 text-right">Review</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-55 text-xs text-slate-700">
+                    {highPriorityAlerts.slice(0, 3).map((evt) => (
+                      <tr key={evt.id} className="hover:bg-slate-50/50">
+                        <td className="px-4 py-2.5 font-bold text-slate-900">{evt.id}</td>
+                        <td className="px-4 py-2.5">
+                          <div className="font-semibold text-slate-800">{evt.site}</div>
+                          <div className="text-[9px] text-slate-400">{evt.location}</div>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="font-medium text-slate-800 line-clamp-1">{evt.hazard}</div>
+                          <div className="text-[9px] text-slate-400">Rule: {evt.life_saving_rule}</div>
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          <span className="px-2 py-0.5 bg-red-50 border border-red-200 text-red-700 rounded font-bold text-[10px]">
+                            {evt.sif_risk_score ?? (evt.sif_probability / 10).toFixed(1)} / 10
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className="px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-[9px] font-bold text-amber-550 uppercase">
+                            {evt.status === 'Needs Review' ? 'Needs Review' : 'Triage Required'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <button
+                            onClick={() => onViewEvent(evt)}
+                            className="px-2 py-1 bg-slate-100 hover:bg-[#0B2A56] hover:text-white border border-slate-200 rounded-lg text-[10px] font-bold transition flex items-center gap-1 ml-auto"
+                          >
+                            <Eye className="h-3 w-3" />
+                            <span>Review</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
 
-          {/* 4. Recent Safety Reports */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-            <div className="mb-4 pb-2 border-b border-slate-100">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Recent Submitted Safety Reports</h3>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-100 text-left">
-                <thead className="bg-slate-50 text-[9px] font-bold uppercase text-slate-400">
-                  <tr>
-                    <th className="px-4 py-2">ID</th>
-                    <th className="px-4 py-2">Hazard</th>
-                    <th className="px-4 py-2">Risk</th>
-                    <th className="px-4 py-2">Status</th>
-                    <th className="px-4 py-2 text-right">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-55 text-xs text-slate-700">
-                  {recentReports.slice(0, 4).map((evt) => (
-                    <tr key={evt.id} className="hover:bg-slate-50/50">
-                      <td className="px-4 py-2.5 font-bold text-slate-800">{evt.id}</td>
-                      <td className="px-4 py-2.5">
-                        <div className="font-semibold text-slate-800 line-clamp-1">{evt.description}</div>
-                        <div className="text-[9px] text-slate-400">{evt.site} • {evt.activity}</div>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
-                          (evt.sif_risk_score ?? 5.0) >= 8.5 
-                            ? 'bg-red-50 text-red-700 border border-red-150' 
-                            : (evt.sif_risk_score ?? 5.0) >= 6.5 
-                              ? 'bg-orange-50 text-orange-700 border border-orange-150'
-                              : 'bg-slate-50 text-slate-600 border border-slate-150'
-                        }`}>
-                          {evt.risk_level ?? 'MEDIUM'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                          evt.status === 'Needs Review' 
-                            ? 'bg-amber-50 text-industrial-orange border-amber-100'
-                            : evt.status === 'Confirmed'
-                              ? 'bg-emerald-50 text-industrial-green border-emerald-100'
-                              : 'bg-indigo-50 text-industrial-purple border-indigo-100'
-                        }`}>
-                          {evt.status}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-right text-[10px] text-slate-400">
-                        {new Date(evt.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mt-4 pt-2 border-t border-slate-100 flex justify-center">
+              <button 
+                onClick={() => onNavigateTo?.('inbox')}
+                className="text-xs font-bold text-blue-650 hover:text-blue-800 transition flex items-center gap-1"
+              >
+                <span>View all</span>
+                <ChevronRight className="h-3 w-3" />
+              </button>
             </div>
           </div>
 
@@ -382,7 +309,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="space-y-6">
           
           {/* 5. Risk Overview simple chart */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
+          <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs space-y-4">
             <div>
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">SIF Risk Distribution</h3>
               <p className="text-[9px] text-slate-400 mt-0.5">Triage load count by severity level</p>
@@ -391,11 +318,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="space-y-3 text-xs">
               <div>
                 <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-600"></span> Critical</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-655"></span> Critical</span>
                   <span>{criticalCount}</span>
                 </div>
                 <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-red-600 h-full rounded-full" style={{ width: `${(criticalCount / Math.max(1, events.length)) * 100}%` }}></div>
+                  <div className="bg-red-655 h-full rounded-full" style={{ width: `${(criticalCount / Math.max(1, events.length)) * 100}%` }}></div>
                 </div>
               </div>
 
@@ -421,64 +348,118 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
               <div>
                 <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-slate-400"></span> Low Risk</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-600"></span> Low Risk</span>
                   <span>{lowCount}</span>
                 </div>
                 <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-slate-400 h-full rounded-full" style={{ width: `${(lowCount / Math.max(1, events.length)) * 100}%` }}></div>
+                  <div className="bg-blue-600 h-full rounded-full" style={{ width: `${(lowCount / Math.max(1, events.length)) * 100}%` }}></div>
                 </div>
               </div>
             </div>
           </div>
 
           {/* 6. Active Actions */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-            <div className="mb-4 pb-2 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Active Corrective Interventions</h3>
+          <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <div className="mb-4 pb-2 border-b border-slate-100 flex justify-between items-center">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Active Corrective Interventions</h3>
+              </div>
+
+              <div className="space-y-3.5 max-h-60 overflow-y-auto pr-1">
+                <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/20 flex justify-between items-center">
+                  <div>
+                    <span className="text-xs font-extrabold text-slate-800">ACT-12852</span>
+                    <div className="text-[10px] text-slate-500 mt-1">Assigned to: Maintenance Team</div>
+                  </div>
+                  <span className="px-2.5 py-0.5 rounded bg-emerald-50 border border-emerald-100 text-[9px] font-bold text-emerald-805">
+                    In Progress
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-3.5 max-h-80 overflow-y-auto pr-1">
-              {activeInterventions.map((action) => {
-                const isOverdue = action.action_status === 'Overdue' || action.id === 'EVT-10293';
-                return (
-                  <div 
-                    key={action.id} 
-                    className={`p-3 rounded-xl border flex flex-col justify-between space-y-2 ${
-                      isOverdue 
-                        ? 'border-red-200 bg-red-50/20' 
-                        : 'border-slate-200 bg-slate-50/30'
-                    }`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <span className="text-xs font-extrabold text-slate-800">{action.action_id}</span>
-                      <span className={`px-2 py-0.5 rounded text-[8px] font-bold border ${
-                        isOverdue 
-                          ? 'bg-red-100 text-red-800 border-red-200 uppercase tracking-wider animate-pulse' 
-                          : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      }`}>
-                        {isOverdue ? 'Overdue' : 'In Progress'}
-                      </span>
-                    </div>
-                    
-                    <div className="text-[11px] text-slate-600">
-                      <div className="font-semibold text-slate-800 line-clamp-1">Issue: {action.hazard}</div>
-                      <div className="text-[10px] text-slate-500 mt-0.5">Team: {action.assigned_team || 'Operations'}</div>
-                    </div>
-                    
-                    <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider border-t border-slate-150/40 pt-1.5">
-                      Deadline: {isOverdue ? 'PASSED' : 'In 2 Days'}
-                    </div>
-                  </div>
-                );
-              })}
-              {activeInterventions.length === 0 && (
-                <div className="text-center py-8 text-slate-400 text-xs">
-                  No active corrective tasks dispatched.
-                </div>
-              )}
+            <div className="mt-4 pt-2 border-t border-slate-100 flex justify-center">
+              <button 
+                onClick={() => onNavigateTo?.('track-actions')}
+                className="text-xs font-bold text-blue-650 hover:text-blue-800 transition flex items-center gap-1"
+              >
+                <span>View all interventions</span>
+                <ChevronRight className="h-3 w-3" />
+              </button>
             </div>
           </div>
 
+        </div>
+
+      </div>
+
+      {/* 4. Bottom Row: Recent Activity & Pending Actions Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        {/* Recent Activity Card */}
+        <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs lg:col-span-2">
+          <div className="mb-4 pb-2 border-b border-slate-100">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Recent Activity</h3>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex gap-4 items-start">
+              <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 border border-blue-100">
+                <FileText className="h-4.5 w-4.5" />
+              </div>
+              <div className="flex-1 text-xs">
+                <div className="font-extrabold text-slate-800">New high-risk precursor detected</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Drilling Site B • EVT-10105</div>
+              </div>
+              <div className="text-[10px] text-slate-400 font-bold">2 min ago</div>
+            </div>
+
+            <div className="flex gap-4 items-start">
+              <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-100">
+                <CheckCircle className="h-4.5 w-4.5" />
+              </div>
+              <div className="flex-1 text-xs">
+                <div className="font-extrabold text-slate-800">Corrective action completed</div>
+                <div className="text-[10px] text-slate-500 mt-0.5">Tank Farm - Section 01 • ACT-12840</div>
+              </div>
+              <div className="text-[10px] text-slate-400 font-bold">15 min ago</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Pending Actions Overview Card */}
+        <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs lg:col-span-1">
+          <div className="mb-4 pb-2 border-b border-slate-100">
+            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Pending Actions Overview</h3>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center">
+            
+            <div className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl flex flex-col items-center justify-center">
+              <div className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100 mb-2">
+                <FileCheck className="h-4.5 w-4.5" />
+              </div>
+              <div className="text-lg font-extrabold text-slate-800">9</div>
+              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-1 leading-tight">Actions assigned</span>
+            </div>
+
+            <div className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl flex flex-col items-center justify-center">
+              <div className="h-7 w-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 border border-amber-100 mb-2">
+                <Calendar className="h-4.5 w-4.5" />
+              </div>
+              <div className="text-lg font-extrabold text-slate-800">5</div>
+              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-1 leading-tight">Due this week</span>
+            </div>
+
+            <div className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl flex flex-col items-center justify-center animate-pulse">
+              <div className="h-7 w-7 rounded-lg bg-red-50 flex items-center justify-center text-red-600 border border-red-100 mb-2">
+                <Clock className="h-4.5 w-4.5" />
+              </div>
+              <div className="text-lg font-extrabold text-slate-800">0</div>
+              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-1 leading-tight">Overdue</span>
+            </div>
+
+          </div>
         </div>
 
       </div>
