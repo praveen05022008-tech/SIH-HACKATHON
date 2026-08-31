@@ -24,6 +24,9 @@ class UserLogin(BaseModel):
 class SafetyReportCreate(BaseModel):
     raw_text: str
     report_type: Optional[str] = "Unsafe Condition"  # Unsafe Act, Unsafe Condition, Near Miss
+    hazard_category: Optional[str] = None
+    shift_timing: Optional[str] = None
+    location_detail: Optional[str] = None
     site: Optional[str] = "Drilling Site A"
     unit: Optional[str] = "Rig Floor 01"
     location: Optional[str] = "Substructure / BOP Area"
@@ -55,6 +58,10 @@ class SafetyEventResponse(BaseModel):
     report_id: Optional[int] = None
     report_code: Optional[str] = None
     report_type: Optional[str] = "Unsafe Condition"
+    reporter_email: Optional[str] = None
+    hazard_category: Optional[str] = None
+    shift_timing: Optional[str] = None
+    location_detail: Optional[str] = None
     timestamp: datetime.datetime
     site: Optional[str] = None
     unit: Optional[str] = None
@@ -80,8 +87,8 @@ class SafetyEventResponse(BaseModel):
     is_sif_precursor: Optional[str] = "NO"
     
     # Legacy compatibility
-    sif_probability: float
-    confidence: float
+    sif_probability: Optional[float] = 50.0
+    confidence: Optional[float] = 85.0
     life_saving_rule: Optional[str] = None
     status: str
     reviewer: Optional[str] = None

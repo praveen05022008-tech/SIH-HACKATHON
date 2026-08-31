@@ -5,7 +5,6 @@ import { Topbar } from './components/Topbar';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Inbox } from './pages/Inbox';
-import { Analysis } from './pages/Analysis';
 import { SifIntelligence } from './pages/SifIntelligence';
 import { LifeSavingRules } from './pages/LifeSavingRules';
 import { Precursors } from './pages/Precursors';
@@ -22,6 +21,24 @@ function App() {
   const [currentPage, setCurrentPage] = useState<string>('dashboard');
   const [selectedEvent, setSelectedEvent] = useState<SafetyEvent | null>(null);
   
+  // Theme state (dark / light)
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('raksha_theme') as 'dark' | 'light') || 'dark';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('raksha_theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
   // Notification system
   const [notifications, setNotifications] = useState<string[]>([
     "Review required: EVT-10291 (High SIF Potential isolated breaker bypass)",
@@ -49,8 +66,6 @@ function App() {
     let defaultPage = 'dashboard';
     if (loggedInUser.role === 'Field Worker') {
       defaultPage = 'worker-portal';
-    } else if (loggedInUser.role === 'AI Pipeline Viewer') {
-      defaultPage = 'analysis';
     } else if (loggedInUser.role === 'Safety Officer') {
       defaultPage = 'inbox';
     } else if (loggedInUser.role === 'Admin') {
@@ -70,10 +85,6 @@ function App() {
       name = 'Field Employee / Worker';
       role = 'Field Worker';
       defaultPage = 'worker-portal';
-    } else if (email === 'pipeline@sifshield.ai') {
-      name = 'AI Ingestion Pipeline';
-      role = 'AI Pipeline Viewer';
-      defaultPage = 'analysis';
     } else if (email === 'officer@refinery.safe') {
       name = 'Safety Officer Lead';
       role = 'Safety Officer';
@@ -127,24 +138,44 @@ function App() {
 
   const getPageTitle = () => {
     if (currentPage === 'detail' && selectedEvent) {
-      return `Safety Event: ${selectedEvent.id}`;
+      return `Safety Event Detail: ${selectedEvent.id}`;
     }
+    if (user?.role === 'Field Worker' || currentPage === 'worker-portal') {
+      return 'Field Worker Safety Portal';
+    }
+    if (user?.role === 'Safety Officer' && currentPage === 'inbox') {
+      return 'Safety Officer Intelligence Console';
+    }
+    if (user?.role === 'Safety Manager' && currentPage === 'dashboard') {
+      return 'Safety Manager Compliance Suite';
+    }
+    if (user?.role === 'Admin' && currentPage === 'settings') {
+      return 'System Administration Console';
+    }
+
     const titles: Record<string, string> = {
       dashboard: 'Executive Safety Dashboard',
       inbox: 'Safety Event Inbox Logs',
-      analysis: 'Report Analysis Engine',
       sif: 'SIF Risk Intelligence',
-      lsr: 'Life-Saving Rules conformance',
+      lsr: 'Life-Saving Rules Conformance',
       precursors: 'Recurring Precursor Patterns',
-      sites: 'Sites operational Risk Context',
+      sites: 'Sites Operational Risk Context',
       review: 'HSE Assurance & Review Queue',
       learning: 'GATI Continuous Learning Centre',
       reports: 'Compliance Reports Exporter',
       settings: 'Settings & DB Calibration',
-      'worker-portal': 'Field Employee / Worker Safety Portal'
+      'worker-portal': 'Field Worker Safety Portal'
     };
-    return titles[currentPage] || 'SIF-SHIELD AI Platform';
+    return titles[currentPage] || 'RAKSHA AI Platform';
   };
+
+  // Field Worker route guard enforcement
+  useEffect(() => {
+    if (user && user.role === 'Field Worker' && currentPage !== 'worker-portal') {
+      setCurrentPage('worker-portal');
+      setSelectedEvent(null);
+    }
+  }, [user, currentPage]);
 
   // If not logged in, force Login screen
   if (!user) {
@@ -157,6 +188,7 @@ function App() {
       <Sidebar 
         currentPage={currentPage === 'detail' ? 'inbox' : currentPage} 
         setCurrentPage={(page) => {
+          if (user.role === 'Field Worker') return;
           setSelectedEvent(null);
           setCurrentPage(page);
         }} 
@@ -179,7 +211,7 @@ function App() {
 
         {/* Scrollable Page Body */}
         <main className="flex-1 mt-16 p-8 overflow-y-auto">
-          {currentPage === 'dashboard' && (
+          {currentPage === 'dashboard' && user.role !== 'Field Worker' && (
             <Dashboard 
               onViewEvent={handleViewEvent} 
               triggerNotification={triggerNotification} 
@@ -187,46 +219,38 @@ function App() {
             />
           )}
 
-          {currentPage === 'inbox' && (
+          {currentPage === 'inbox' && user.role !== 'Field Worker' && (
             <Inbox 
               onViewEvent={handleViewEvent} 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'analysis' && (
-            <Analysis 
-              onEventCreated={handleRefreshApp}
-              onViewEvent={handleViewEvent}
-              triggerNotification={triggerNotification}
-            />
-          )}
-
-          {currentPage === 'sif' && (
+          {currentPage === 'sif' && user.role !== 'Field Worker' && (
             <SifIntelligence 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'lsr' && (
+          {currentPage === 'lsr' && user.role !== 'Field Worker' && (
             <LifeSavingRules 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'precursors' && (
+          {currentPage === 'precursors' && user.role !== 'Field Worker' && (
             <Precursors 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'sites' && (
+          {currentPage === 'sites' && user.role !== 'Field Worker' && (
             <Sites 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'review' && (
+          {currentPage === 'review' && user.role !== 'Field Worker' && (
             <Review 
               reviewerName={user.name} 
               onReviewSubmitted={handleRefreshApp}
@@ -234,17 +258,17 @@ function App() {
             />
           )}
 
-          {currentPage === 'learning' && (
+          {currentPage === 'learning' && user.role !== 'Field Worker' && (
             <Learning 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'reports' && (
+          {currentPage === 'reports' && user.role !== 'Field Worker' && (
             <Reports />
           )}
 
-          {currentPage === 'settings' && (
+          {currentPage === 'settings' && user.role !== 'Field Worker' && (
             <Settings 
               onResetDb={handleRefreshApp}
               triggerNotification={triggerNotification}
@@ -253,13 +277,14 @@ function App() {
 
           {currentPage === 'worker-portal' && (
             <WorkerPortal 
+              user={user}
               triggerNotification={triggerNotification}
               triggerStateRefresh={triggerStateRefresh}
               onEventCreated={handleRefreshApp}
             />
           )}
 
-          {currentPage === 'detail' && selectedEvent && (
+          {currentPage === 'detail' && selectedEvent && user.role !== 'Field Worker' && (
             <Detail 
               event={selectedEvent} 
               onBack={handleBackToInbox} 

@@ -1,8 +1,19 @@
 import random
 import datetime
+import sys
+import os
 from sqlalchemy.orm import Session
-from backend.app.database import SessionLocal, Base, engine
-from backend.app import models, ai_service, precursor_engine
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+try:
+    from app.database import SessionLocal, Base, engine
+    from app import models, ai_service, precursor_engine
+except ImportError:
+    from backend.app.database import SessionLocal, Base, engine
+    from backend.app import models, ai_service, precursor_engine
 
 # Raw synthetic reports dataset (100+ reports)
 RAW_REPORTS_DATA = [
@@ -361,8 +372,8 @@ def seed_database():
         audit = models.AuditEvent(
             event_id=evt_id,
             action="AI Scanned & Classified",
-            details=f"SIF-SHIELD AI evaluated report {rep_code}. Risk: {analysis['sif_risk_score']}/10 ({analysis['risk_level']}). Rule: {analysis['life_saving_rule']}.",
-            user_email="engine@sifshield.ai",
+            details=f"RAKSHA AI evaluated report {rep_code}. Risk: {analysis['sif_risk_score']}/10 ({analysis['risk_level']}). Rule: {analysis['life_saving_rule']}.",
+            user_email="engine@raksha.ai",
             timestamp=ts
         )
         db.add(audit)

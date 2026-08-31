@@ -67,11 +67,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onViewEvent, triggerNotifi
           { site: 'Offshore Rig 04', reports: 10, sif_percentage: 30.0, high_potential_count: 3, trend: 'Increase' }
         ],
         life_saving_rules: [
-          { name: 'Energy Isolation', reports_count: 38, SifCount: 12, precursor_density: 'High', common_barrier_failure: 'Isolation verification omitted', top_site: 'Drilling Site A' },
-          { name: 'Working at Height', reports_count: 24, SifCount: 9, precursor_density: 'High', common_barrier_failure: 'Harness lanyard not anchored', top_site: 'Drilling Site B' },
-          { name: 'Confined Space', reports_count: 18, SifCount: 6, precursor_density: 'High', common_barrier_failure: 'Atmospheric gas test omitted', top_site: 'Drilling Site C' },
-          { name: 'Lifting Operations', reports_count: 15, SifCount: 4, precursor_density: 'Medium', common_barrier_failure: 'Exclusion zone breached', top_site: 'Offshore Rig 04' }
-        ] as any,
+          { name: 'Energy Isolation', reports_count: 38, sif_count: 12, precursor_density: 'High', common_barrier_failure: 'Isolation verification omitted', top_site: 'Drilling Site A' },
+          { name: 'Working at Height', reports_count: 24, sif_count: 9, precursor_density: 'High', common_barrier_failure: 'Harness lanyard not anchored', top_site: 'Drilling Site B' },
+          { name: 'Confined Space', reports_count: 18, sif_count: 6, precursor_density: 'High', common_barrier_failure: 'Atmospheric gas test omitted', top_site: 'Drilling Site C' },
+          { name: 'Lifting Operations', reports_count: 15, sif_count: 4, precursor_density: 'Medium', common_barrier_failure: 'Exclusion zone breached', top_site: 'Offshore Rig 04' }
+        ],
         recent_events: [
           {
             id: 'EVT-10291',
@@ -128,7 +128,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onViewEvent, triggerNotifi
       if (!res.ok) throw new Error();
       const payload = await res.json();
       triggerNotification(`Successfully generated report: ${selectedReportType}`);
-      alert(`Report generated!\n\nFormat: ${payload.metadata.format}\nCompliance: ${payload.metadata.standard}\nGenerated successfully by SIF-SHIELD AI Reporting pipeline.`);
+      alert(`Report generated!\n\nFormat: ${payload.metadata.format}\nCompliance: ${payload.metadata.standard}\nGenerated successfully by RAKSHA AI Reporting pipeline.`);
     } catch (err) {
       console.warn("Local report export simulation");
       triggerNotification(`Generated local PDF: ${selectedReportType}`);
@@ -152,17 +152,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ onViewEvent, triggerNotifi
   return (
     <div className="space-y-6">
       
-      {/* Welcome Header */}
-      <div className="flex justify-between items-center bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
-        <div>
-          <h1 className="text-xl font-extrabold text-industrial-navy">Good morning, HSE Lead</h1>
-          <p className="text-xs text-slate-500 mt-1">
-            Real-time safety trends, risk matrices, heatmaps, and recurring precursor anomalies for OIL operations.
+      {/* Welcome Header with Industrial Background Photo */}
+      <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md bg-slate-900 text-white p-6 flex justify-between items-center">
+        <img 
+          src="/refinery_hero.jpg" 
+          alt="Refinery Operations" 
+          className="absolute inset-0 w-full h-full object-cover opacity-30"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-blue-950/40"></div>
+
+        <div className="relative z-10">
+          <h1 className="text-2xl font-black text-white tracking-tight">Executive Safety Intelligence Console</h1>
+          <p className="text-xs text-slate-300 mt-1 font-medium max-w-xl">
+            Real-time safety trends, risk matrices, heatmaps, and recurring precursor anomalies for refinery & drilling operations.
           </p>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-400 font-bold">
-          <Calendar className="h-3.5 w-3.5" />
-          <span>TODAY: {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' })}</span>
+        <div className="relative z-10 flex items-center gap-2 px-3.5 py-1.5 bg-slate-900/80 backdrop-blur border border-slate-700 rounded-xl text-xs text-slate-200 font-semibold shadow-2xs">
+          <Calendar className="h-4 w-4 text-blue-400" />
+          <span>TODAY: {new Date().toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}</span>
         </div>
       </div>
 
@@ -350,7 +357,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onViewEvent, triggerNotifi
           <div className="mb-4 pb-2 border-b border-slate-100 flex justify-between items-center">
             <div>
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Recent High-Potential SIF Alerts</h3>
-              <p className="text-[10px] text-slate-400 mt-0.5">Latest safety observations processed by the SIF-SHIELD AI scoring pipeline</p>
+              <p className="text-[10px] text-slate-400 mt-0.5">Latest safety observations processed by the RAKSHA AI scoring pipeline</p>
             </div>
           </div>
 
@@ -416,7 +423,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onViewEvent, triggerNotifi
                 className="block w-full py-1.5 px-3 border border-slate-300 rounded-xl bg-slate-50 text-slate-800 font-semibold"
               >
                 <option value="SIF Executive Precursor Compliance Report">SIF Executive Compliance (PDF)</option>
-                <option value="Daily SIF-SHIELD Operational Risk Log">Daily Operational Risk Log (CSV)</option>
+                <option value="Daily RAKSHA AI Operational Risk Log">Daily Operational Risk Log (CSV)</option>
                 <option value="Weekly IOGP Life-Saving Rules Audit Summary">Weekly Life-Saving Rules Audit Summary</option>
                 <option value="Monthly SIF-Prevention and GATI Calibration metrics">Monthly SIF-Prevention Metrics</option>
               </select>
