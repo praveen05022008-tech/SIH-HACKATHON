@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { SafetyEvent } from '../types';
-import { RiskBadge, TrendIndicator } from '../components/UIElements';
 import { 
   Inbox, 
   ShieldAlert, 
@@ -8,8 +7,6 @@ import {
   Clock, 
   Eye, 
   RefreshCcw,
-  AlertTriangle,
-  Play,
   FileText,
   ChevronRight,
   CheckCircle,
@@ -157,8 +154,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     .filter(e => e.status === 'Needs Review')
     .sort((a, b) => (b.sif_risk_score ?? b.sif_probability) - (a.sif_risk_score ?? a.sif_probability));
 
-  const activeInterventions = events.filter(e => e.action_id || e.action_status);
-
   // Score distribution counts
   const criticalCount = 8;
   const highCount = 7;
@@ -168,8 +163,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] text-slate-500">
-        <RefreshCcw className="h-8 w-8 animate-spin text-blue-650 mb-3" />
-        <p className="text-sm font-semibold">Compiling Safety Officer Dashboard...</p>
+        <RefreshCcw className="h-8 w-8 animate-spin text-blue-600 mb-3" />
+        <p className="text-sm font-semibold">Compiling Safety Dashboard...</p>
       </div>
     );
   }
@@ -177,10 +172,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="space-y-6 bg-slate-50/50 p-1 rounded-xl">
       
-      {/* 2. Top Summary Cards Grid */}
+      {/* Top Summary Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
-        <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex items-center justify-between">
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">New Alerts</span>
             <div className="text-2xl font-extrabold mt-1 text-slate-800">{newAlertsCount + 23}</div>
@@ -191,35 +186,35 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </div>
         </div>
 
-        <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex items-center justify-between">
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">High-Risk Cases</span>
             <div className="text-2xl font-extrabold mt-1 text-slate-800">{highRiskCount + 12}</div>
             <p className="text-[9px] text-slate-400 mt-1">SIF composite score ≥ 6.5</p>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-650">
+          <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-600">
             <ShieldAlert className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex items-center justify-between">
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pending Actions</span>
             <div className="text-2xl font-extrabold mt-1 text-slate-800">{pendingActionsCount + 6}</div>
             <p className="text-[9px] text-slate-400 mt-1">Corrective tasks in progress</p>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-550">
+          <div className="h-10 w-10 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500">
             <ClipboardCheck className="h-5 w-5" />
           </div>
         </div>
 
-        <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex items-center justify-between">
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Overdue Actions</span>
             <div className="text-2xl font-extrabold mt-1 text-slate-800">{overdueActionsCount}</div>
             <p className="text-[9px] text-slate-400 mt-1">Passed dispatch deadline</p>
           </div>
-          <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-650">
+          <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-600">
             <Clock className="h-5 w-5" />
           </div>
         </div>
@@ -232,8 +227,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* 3. High-Priority Alerts Section */}
-          <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs flex flex-col justify-between h-full">
+          {/* High-Priority Alerts Section */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between h-full">
             <div>
               <div className="mb-4 pb-2 border-b border-slate-100 flex justify-between items-center">
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">High-Priority SIF Precursors</h3>
@@ -254,7 +249,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <th className="px-4 py-2 text-right">Review</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-55 text-xs text-slate-700">
+                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
                     {highPriorityAlerts.slice(0, 3).map((evt) => (
                       <tr key={evt.id} className="hover:bg-slate-50/50">
                         <td className="px-4 py-2.5 font-bold text-slate-900">{evt.id}</td>
@@ -272,7 +267,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           </span>
                         </td>
                         <td className="px-4 py-2.5">
-                          <span className="px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-[9px] font-bold text-amber-550 uppercase">
+                          <span className="px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-[9px] font-bold text-amber-600 uppercase">
                             {evt.status === 'Needs Review' ? 'Needs Review' : 'Triage Required'}
                           </span>
                         </td>
@@ -295,7 +290,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="mt-4 pt-2 border-t border-slate-100 flex justify-center">
               <button 
                 onClick={() => onNavigateTo?.('inbox')}
-                className="text-xs font-bold text-blue-650 hover:text-blue-800 transition flex items-center gap-1"
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 transition flex items-center gap-1"
               >
                 <span>View all</span>
                 <ChevronRight className="h-3 w-3" />
@@ -308,8 +303,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Right Column */}
         <div className="space-y-6">
           
-          {/* 5. Risk Overview simple chart */}
-          <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs space-y-4">
+          {/* Risk Overview Chart */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
             <div>
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">SIF Risk Distribution</h3>
               <p className="text-[9px] text-slate-400 mt-0.5">Triage load count by severity level</p>
@@ -318,11 +313,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="space-y-3 text-xs">
               <div>
                 <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-655"></span> Critical</span>
+                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-600"></span> Critical</span>
                   <span>{criticalCount}</span>
                 </div>
                 <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-red-655 h-full rounded-full" style={{ width: `${(criticalCount / Math.max(1, events.length)) * 100}%` }}></div>
+                  <div className="bg-red-600 h-full rounded-full" style={{ width: `${(criticalCount / Math.max(1, events.length)) * 100}%` }}></div>
                 </div>
               </div>
 
@@ -358,8 +353,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
           </div>
 
-          {/* 6. Active Actions */}
-          <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs flex flex-col justify-between">
+          {/* Active Actions */}
+          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
             <div>
               <div className="mb-4 pb-2 border-b border-slate-100 flex justify-between items-center">
                 <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Active Corrective Interventions</h3>
@@ -371,7 +366,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <span className="text-xs font-extrabold text-slate-800">ACT-12852</span>
                     <div className="text-[10px] text-slate-500 mt-1">Assigned to: Maintenance Team</div>
                   </div>
-                  <span className="px-2.5 py-0.5 rounded bg-emerald-50 border border-emerald-100 text-[9px] font-bold text-emerald-805">
+                  <span className="px-2.5 py-0.5 rounded bg-emerald-50 border border-emerald-100 text-[9px] font-bold text-emerald-800">
                     In Progress
                   </span>
                 </div>
@@ -381,7 +376,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="mt-4 pt-2 border-t border-slate-100 flex justify-center">
               <button 
                 onClick={() => onNavigateTo?.('track-actions')}
-                className="text-xs font-bold text-blue-650 hover:text-blue-800 transition flex items-center gap-1"
+                className="text-xs font-bold text-blue-600 hover:text-blue-800 transition flex items-center gap-1"
               >
                 <span>View all interventions</span>
                 <ChevronRight className="h-3 w-3" />
@@ -393,11 +388,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       </div>
 
-      {/* 4. Bottom Row: Recent Activity & Pending Actions Overview */}
+      {/* Bottom Row: Recent Activity & Pending Actions Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Recent Activity Card */}
-        <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs lg:col-span-2">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs lg:col-span-2">
           <div className="mb-4 pb-2 border-b border-slate-100">
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Recent Activity</h3>
           </div>
@@ -428,14 +423,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         {/* Pending Actions Overview Card */}
-        <div className="bg-white border border-slate-150 rounded-xl p-5 shadow-xs lg:col-span-1">
+        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs lg:col-span-1">
           <div className="mb-4 pb-2 border-b border-slate-100">
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Pending Actions Overview</h3>
           </div>
 
           <div className="grid grid-cols-3 gap-2 text-center">
             
-            <div className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl flex flex-col items-center justify-center">
+            <div className="bg-slate-50/50 border border-slate-200 p-3.5 rounded-xl flex flex-col items-center justify-center">
               <div className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100 mb-2">
                 <FileCheck className="h-4.5 w-4.5" />
               </div>
@@ -443,7 +438,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-1 leading-tight">Actions assigned</span>
             </div>
 
-            <div className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl flex flex-col items-center justify-center">
+            <div className="bg-slate-50/50 border border-slate-200 p-3.5 rounded-xl flex flex-col items-center justify-center">
               <div className="h-7 w-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 border border-amber-100 mb-2">
                 <Calendar className="h-4.5 w-4.5" />
               </div>
@@ -451,7 +446,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-1 leading-tight">Due this week</span>
             </div>
 
-            <div className="bg-slate-50/50 border border-slate-150 p-3.5 rounded-xl flex flex-col items-center justify-center animate-pulse">
+            <div className="bg-slate-50/50 border border-slate-200 p-3.5 rounded-xl flex flex-col items-center justify-center animate-pulse">
               <div className="h-7 w-7 rounded-lg bg-red-50 flex items-center justify-center text-red-600 border border-red-100 mb-2">
                 <Clock className="h-4.5 w-4.5" />
               </div>

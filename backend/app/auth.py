@@ -1,5 +1,15 @@
+import sys
+import os
 from sqlalchemy.orm import Session
-from backend.app import models
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+try:
+    from app import models
+except ImportError:
+    from backend.app import models
 
 def authenticate_user(db: Session, email: str, password: str):
     """

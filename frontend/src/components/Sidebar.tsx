@@ -13,9 +13,9 @@ import {
   Cpu,
   BrainCircuit,
   Database,
-  Activity,
   FileText,
-  Zap
+  Zap,
+  Activity
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -35,12 +35,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, s
       case 'Field Worker':
         return [
           { id: 'worker-portal', label: 'Worker Portal', icon: FileText }
-        ];
-      case 'AI Pipeline Viewer':
-        return [
-          { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-          { id: 'analysis', label: 'AI Ingestion Pipeline', icon: Cpu },
-          { id: 'learning', label: 'GATI Learning Centre', icon: GraduationCap }
         ];
       case 'Safety Officer':
         return [
@@ -81,10 +75,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, s
   const menuItems = getMenuItems();
 
   return (
-    <aside className="w-64 bg-white text-slate-800 flex flex-col h-screen fixed left-0 top-0 border-r border-slate-200 shadow-2xs z-20">
+    <aside className="w-64 bg-white text-slate-800 flex flex-col h-screen fixed left-0 top-0 border-r border-slate-200 shadow-2xs z-20 font-sans">
       {/* Brand Header */}
       <div className="p-6 border-b border-slate-100 flex items-center gap-3">
-        <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-650 border border-blue-100">
+        <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100">
           <ShieldAlert className="h-5 w-5 text-blue-600" />
         </div>
         <div>
@@ -98,7 +92,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, s
       </div>
 
       {/* Navigation Links */}
-      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentPage === item.id;
@@ -112,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, s
                   : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
               }`}
             >
-              <Icon className={`h-4.5 w-4.5 ${isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
+              <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-400'}`} />
               <span>{item.label}</span>
             </button>
           );
@@ -121,8 +115,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, s
 
       {/* System Status Panel */}
       <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3 px-2">
-          System Status
+        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3 px-2 flex items-center justify-between">
+          <span>System Telemetry</span>
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
         </div>
         <div className="space-y-2 px-2 text-[11px]">
           <div className="flex items-center justify-between text-slate-600">
