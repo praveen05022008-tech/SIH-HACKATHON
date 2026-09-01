@@ -301,12 +301,95 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted,
                 </div>
 
                 {/* Narrative text */}
-                <div className="mb-5">
+                <div className="mb-4">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Original Narrative Log</span>
                   <p className="text-xs text-slate-700 bg-slate-50 border border-slate-200 p-3.5 rounded-xl leading-normal italic">
                     "{selectedEvent.description}"
                   </p>
                 </div>
+
+                {/* AI Risk Predictor Inline Panel */}
+                <div className="mb-4 p-4 bg-[#F7F9FC] border border-[#E6ECEB] rounded-2xl space-y-3 text-xs">
+                  <div className="text-[10px] font-extrabold uppercase tracking-wider text-[#008779] flex items-center gap-1.5">
+                    <BrainCircuit className="h-3.5 w-3.5" />
+                    <span>AI Risk Predictor — Issue & Barrier Analysis</span>
+                  </div>
+
+                  {/* 4 score highlights */}
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div className={`py-2.5 rounded-xl border text-[10px] font-black ${
+                      selectedEvent.sif_risk_score >= 8.5 ? 'bg-rose-50 border-rose-200 text-rose-700'
+                      : selectedEvent.sif_risk_score >= 6.5 ? 'bg-amber-50 border-amber-200 text-amber-700'
+                      : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                    }`}>
+                      <div className="opacity-60 text-[9px] mb-0.5">RISK</div>
+                      {selectedEvent.risk_level ?? (selectedEvent.sif_risk_score >= 6.5 ? 'HIGH' : 'MED')}
+                    </div>
+                    <div className="py-2.5 rounded-xl border border-slate-200 bg-white text-[10px] font-black text-slate-900">
+                      <div className="opacity-60 text-[9px] mb-0.5 text-slate-400">SCORE</div>
+                      <span className="font-mono">{selectedEvent.sif_risk_score ?? '—'}<span className="text-[8px] text-slate-400">/10</span></span>
+                    </div>
+                    <div className={`py-2.5 rounded-xl border text-[10px] font-black ${
+                      selectedEvent.sif_probability >= 50 ? 'bg-rose-50 border-rose-200 text-rose-700' : 'bg-slate-50 border-slate-200 text-slate-700'
+                    }`}>
+                      <div className="opacity-60 text-[9px] mb-0.5">SIF</div>
+                      {selectedEvent.sif_probability >= 50 ? 'YES' : 'NO'}
+                    </div>
+                    <div className="py-2.5 rounded-xl border border-[#008779]/20 bg-[#E8F6F4]/50 text-[10px] font-black text-[#008779]">
+                      <div className="opacity-60 text-[9px] mb-0.5">CONF</div>
+                      {selectedEvent.confidence ?? 88}%
+                    </div>
+                  </div>
+
+                  {/* Issue analysis row */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div>
+                      <div className="text-[9px] font-extrabold text-slate-400 uppercase mb-0.5">AI Identified Hazard</div>
+                      <div className="font-bold text-slate-900 text-[11px] leading-snug">{selectedEvent.hazard || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] font-extrabold text-slate-400 uppercase mb-0.5">Failed Barrier</div>
+                      <div className="text-rose-700 font-semibold text-[11px] leading-snug">⚠️ {selectedEvent.barrier_failure || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] font-extrabold text-slate-400 uppercase mb-0.5">Crew Exposure</div>
+                      <div className="font-semibold text-slate-800 text-[11px] leading-snug">👥 {selectedEvent.exposure || '—'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] font-extrabold text-slate-400 uppercase mb-0.5">Energy Source</div>
+                      <div className="font-semibold text-slate-800 text-[11px] leading-snug">⚡ {selectedEvent.energy_source || '—'}</div>
+                    </div>
+                  </div>
+
+                  {/* Multi-factor scoring bars */}
+                  <div className="pt-1 space-y-1.5">
+                    {[
+                      { label: 'Severity (35%)', val: selectedEvent.severity_score ?? 5, color: 'bg-rose-500' },
+                      { label: 'Exposure (25%)', val: selectedEvent.exposure_score ?? 5, color: 'bg-amber-500' },
+                      { label: 'Barrier Failure (25%)', val: selectedEvent.barrier_score ?? 5, color: 'bg-purple-500' },
+                      { label: 'Consequence (15%)', val: selectedEvent.consequence_score ?? 5, color: 'bg-blue-600' },
+                    ].map(({ label, val, color }) => (
+                      <div key={label}>
+                        <div className="flex justify-between text-[10px] font-bold text-slate-600 mb-0.5">
+                          <span>{label}</span>
+                          <span className="font-mono">{val}/10</span>
+                        </div>
+                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                          <div className={`${color} h-full rounded-full transition-all`} style={{ width: `${val * 10}%` }}></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* CAPA */}
+                  {selectedEvent.recommended_action && (
+                    <div className="pt-1 p-2.5 bg-white border border-[#008779]/20 rounded-xl text-[10.5px] text-slate-700 font-semibold leading-relaxed">
+                      <span className="text-[9px] font-extrabold text-[#008779] uppercase block mb-0.5">AI CAPA:</span>
+                      {selectedEvent.recommended_action}
+                    </div>
+                  )}
+                </div>
+
 
                 {/* Visual Learning Loop Calibration */}
                 {gatiCalibrating ? (

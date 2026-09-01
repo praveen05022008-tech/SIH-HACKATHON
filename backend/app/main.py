@@ -1198,5 +1198,55 @@ def ai_safety_copilot_chat(payload: schemas.AIChatPayload, db: Session = Depends
     )
     return res
 
+# POST /api/events/{event_id}/ai-analyze
+@app.post("/api/events/{event_id}/ai-analyze")
+def ai_analyze_event_endpoint(event_id: str, db: Session = Depends(get_db)):
+    """
+    Runs full 6-stage AI precursor analysis & 0-10 risk scoring on an existing safety event,
+    updates the record in the database, and returns the granular diagnostic breakdown.
+    """
+    try:
+        result = ai_service.reanalyze_event_with_ai(event_id, db)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI Analysis Failed: {str(e)}")
+
+# POST /api/ai/batch-scan
+@app.post("/api/ai/batch-scan")
+def ai_batch_scan_endpoint(limit: int = 25, db: Session = Depends(get_db)):
+    """
+    Runs automated AI precursor intelligence scan across all pending / unreviewed events.
+    """
+    events = db.query(models.SafetyEvent).filter(
+        models.SafetyEvent.status.in_(["Needs Review", "Pending"])
+    ).limit(limit).all()
+    
+    updated_count = 0
+    scanned_results = []
+    
+    for evt in events:
+        try:
+            res = ai_service.reanalyze_event_with_ai(evt.id, db)
+            scanned_results.append({
+                "id": evt.id,
+                "score": res["analysis"].get("sif_risk_score"),
+                "level": res["analysis"].get("risk_level"),
+                "sif": res["analysis"].get("is_sif_precursor"),
+                "rule": res["analysis"].get("life_saving_rule")
+            })
+            updated_count += 1
+        except Exception as e:
+            print(f"Error analyzing {evt.id}: {e}")
+            
+    return {
+        "success": True,
+        "scanned_count": updated_count,
+        "results": scanned_results,
+        "message": f"Successfully evaluated {updated_count} safety events using AI Precursor Engine."
+    }
+
+
 
 

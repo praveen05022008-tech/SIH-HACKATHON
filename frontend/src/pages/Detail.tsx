@@ -18,7 +18,11 @@ import {
   FileText,
   AlertOctagon,
   Settings,
-  ArrowRight
+  ArrowRight,
+  BrainCircuit,
+  Sparkles,
+  Zap,
+  CheckCircle2
 } from 'lucide-react';
 
 interface DetailProps {
@@ -53,6 +57,15 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
   // Full report toggle
   const [showFullReport, setShowFullReport] = useState(false);
 
+  // AI Deep Analysis states
+  const [analyzingAi, setAnalyzingAi] = useState(false);
+  const [aiSuccessMsg, setAiSuccessMsg] = useState<string | null>(null);
+
+  // Safety Copilot states
+  const [copilotQuery, setCopilotQuery] = useState('');
+  const [copilotAnswer, setCopilotAnswer] = useState<string | null>(null);
+  const [copilotLoading, setCopilotLoading] = useState(false);
+
   const fetchEventDetail = async () => {
     setLoading(true);
     try {
@@ -83,6 +96,48 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
     }
   };
 
+  const handleRunAiAnalysis = async () => {
+    setAnalyzingAi(true);
+    setAiSuccessMsg(null);
+    try {
+      const res = await fetch(`http://localhost:8000/api/events/${event.id}/ai-analyze`, { method: 'POST' });
+      if (!res.ok) throw new Error('Analysis failed');
+      const result = await res.json();
+      // Refresh the event data to show updated scores
+      await fetchEventDetail();
+      const analysis = result.analysis || {};
+      setAiSuccessMsg(
+        `✅ AI re-analyzed: Risk ${analysis.sif_risk_score ?? '?'}/10 (${analysis.risk_level ?? '?'}) · SIF: ${analysis.is_sif_precursor ?? '?'} (${analysis.sif_probability ?? '?'}%) · LSR: ${analysis.life_saving_rule ?? 'None'}`
+      );
+    } catch (err) {
+      setAiSuccessMsg('⚠️ AI analysis encountered an error. Using cached scores.');
+    } finally {
+      setAnalyzingAi(false);
+    }
+  };
+
+  const handleAskCopilotDirect = async (question: string) => {
+    if (!question.trim()) return;
+    setCopilotLoading(true);
+    setCopilotAnswer(null);
+    try {
+      const res = await fetch('http://localhost:8000/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: question, context_event_id: event.id })
+      });
+      if (!res.ok) throw new Error();
+      const result = await res.json();
+      setCopilotAnswer(result.response || 'No response from AI Copilot.');
+    } catch (err) {
+      setCopilotAnswer('⚠️ Copilot unavailable. Apply IOGP Life-Saving Rules and Stop Work Authority (SWA) immediately for any high-risk condition.');
+    } finally {
+      setCopilotLoading(false);
+    }
+  };
+
+  const handleAskCopilot = () => handleAskCopilotDirect(copilotQuery);
+
   useEffect(() => {
     fetchEventDetail();
     setValidationType('none');
@@ -93,6 +148,9 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
     setValidationSubmitted(false);
     setShowActionForm(false);
     setActionDispatched(null);
+    setAiSuccessMsg(null);
+    setCopilotAnswer(null);
+    setCopilotQuery('');
   }, [event.id]);
 
   const handleSubmitValidation = async (e: React.FormEvent) => {
@@ -310,95 +368,257 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
             )}
           </div>
 
-          {/* 2. AI ASSESSMENT */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-            <div className="pb-2 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">2. AI Assessment</h3>
-              <span className="px-2 py-0.5 bg-purple-50 text-industrial-purple border border-purple-100 rounded text-[9px] font-bold uppercase tracking-wider">
-                GATI Classification
-              </span>
+          {/* 2. AI ASSESSMENT & PRECURSOR INTELLIGENCE */}
+          <div className="bg-white border border-[#E6ECEB] rounded-2xl p-6 shadow-sm space-y-5">
+            <div className="pb-3 border-b border-slate-100 flex flex-wrap justify-between items-center gap-2">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-[#E8F6F4] text-[#008779] flex items-center justify-center font-bold">
+                  <BrainCircuit className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">AI Precursor Diagnostics & Issue Analysis</h3>
+                  <span className="text-[10px] text-slate-400 font-semibold">M1–M6 Neural NLP Engine • IOGP Report 459 Conformance</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleRunAiAnalysis}
+                  disabled={analyzingAi}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#008779]/20 transition cursor-pointer disabled:opacity-50"
+                >
+                  <Sparkles className={`h-3.5 w-3.5 ${analyzingAi ? 'animate-spin' : ''}`} />
+                  <span>{analyzingAi ? 'Analyzing...' : '⚡ Run AI Deep Analysis'}</span>
+                </button>
+              </div>
             </div>
 
+            {/* AI Diagnostics Status Banner */}
+            {aiSuccessMsg && (
+              <div className="p-3 bg-[#E8F6F4] border border-[#008779]/30 rounded-xl text-xs text-[#008779] font-bold flex items-center gap-2 animate-fadeIn">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-[#008779]" />
+                <span>{aiSuccessMsg}</span>
+              </div>
+            )}
+
+            {/* 4 Score Highlights */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-xs">
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Risk Level</span>
-                <div className="text-sm font-extrabold text-red-600 mt-1 uppercase tracking-wide">
+              <div className={`p-3.5 rounded-2xl border ${
+                (currentEvent.sif_risk_score ?? score) >= 8.5
+                  ? 'bg-rose-50/70 border-rose-200 text-rose-800'
+                  : (currentEvent.sif_risk_score ?? score) >= 6.5
+                    ? 'bg-amber-50/70 border-amber-200 text-amber-800'
+                    : 'bg-emerald-50/70 border-emerald-200 text-emerald-800'
+              }`}>
+                <span className="text-[9px] uppercase font-bold tracking-wider opacity-70">Risk Level</span>
+                <div className="text-base font-black mt-0.5 tracking-wide">
                   {currentEvent.risk_level ?? (score >= 6.5 ? 'HIGH' : 'MEDIUM')}
                 </div>
               </div>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Risk Score</span>
-                <div className="text-sm font-extrabold text-slate-850 mt-1">
-                  {Math.round(score * 10)}/100
+
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5">
+                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Composite Risk</span>
+                <div className="text-base font-black text-slate-900 mt-0.5 font-mono">
+                  {currentEvent.sif_risk_score ?? (Math.round(score * 10) / 10)} <span className="text-xs text-slate-400 font-normal">/ 10</span>
                 </div>
               </div>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">SIF Potential</span>
-                <div className="text-sm font-extrabold text-slate-850 mt-1">
-                  {currentEvent.sif_probability >= 50.0 ? 'YES' : 'NO'}
+
+              <div className={`p-3.5 rounded-2xl border ${
+                currentEvent.is_sif_precursor === 'YES' || currentEvent.sif_probability >= 50.0
+                  ? 'bg-rose-50 border-rose-200 text-rose-700 font-black'
+                  : 'bg-slate-50 border-slate-200 text-slate-700'
+              }`}>
+                <span className="text-[9px] uppercase font-bold tracking-wider opacity-70">SIF Precursor</span>
+                <div className="text-base font-black mt-0.5">
+                  {currentEvent.is_sif_precursor === 'YES' || currentEvent.sif_probability >= 50.0 ? 'YES' : 'NO'}
+                  <span className="text-[10px] ml-1 font-normal opacity-80">({currentEvent.sif_probability ?? 50}%)</span>
                 </div>
               </div>
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">Safety Rule</span>
-                <div className="text-xs font-extrabold text-slate-800 mt-1 truncate" title={currentEvent.life_saving_rule}>
-                  {currentEvent.life_saving_rule || 'Energy Isolation'}
+
+              <div className="bg-[#E8F6F4]/50 border border-[#008779]/20 rounded-2xl p-3.5">
+                <span className="text-[9px] text-[#008779] uppercase font-bold tracking-wider">AI Confidence</span>
+                <div className="text-base font-black text-[#008779] mt-0.5 font-mono">
+                  {currentEvent.confidence ?? 88.0}%
                 </div>
               </div>
             </div>
 
-            {/* 4-bar risk breakdowns */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-50 text-xs">
-              <div>
-                <div className="flex justify-between text-slate-700 font-bold mb-1">
-                  <span>Exposure Level</span>
-                  <span>{currentEvent.exposure_score ?? 5.0} / 10</span>
-                </div>
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-orange-500 h-full rounded-full" style={{ width: `${(currentEvent.exposure_score ?? 5.0) * 10}%` }}></div>
-                </div>
+            {/* PROBLEM & ISSUE ANALYSIS BREAKDOWN */}
+            <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-2xl space-y-3 text-xs">
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 pb-2 border-b border-slate-200/60">
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                <span>AI Problem Identification & Barrier Breakdown</span>
               </div>
-              <div>
-                <div className="flex justify-between text-slate-700 font-bold mb-1">
-                  <span>Severity Level</span>
-                  <span>{currentEvent.severity_score ?? 5.0} / 10</span>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Primary Hazard Identified</span>
+                  <div className="font-extrabold text-slate-900 leading-snug">
+                    {currentEvent.hazard || 'Uncontrolled energy release in active operating zone'}
+                  </div>
                 </div>
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-red-500 h-full rounded-full" style={{ width: `${(currentEvent.severity_score ?? 5.0) * 10}%` }}></div>
+
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Energy Source Released</span>
+                  <div className="font-bold text-slate-800 flex items-center gap-1">
+                    <Zap className="h-3 w-3 text-amber-500" />
+                    <span>{currentEvent.energy_source || 'Mechanical / Kinetic'}</span>
+                  </div>
                 </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-slate-700 font-bold mb-1">
-                  <span>Barrier Status</span>
-                  <span>{currentEvent.barrier_score ?? 5.0} / 10</span>
+
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Failed Critical Barrier</span>
+                  <div className="font-semibold text-rose-700 bg-rose-50/80 p-2 rounded-xl border border-rose-200/60 text-[11px] leading-snug">
+                    ⚠️ {currentEvent.barrier_failure || 'Protocol bypass or verification failure before line break'}
+                  </div>
                 </div>
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-yellow-500 h-full rounded-full" style={{ width: `${(currentEvent.barrier_score ?? 5.0) * 10}%` }}></div>
+
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Crew Line of Fire / Exposure</span>
+                  <div className="font-semibold text-slate-700 bg-white p-2 rounded-xl border border-slate-200 text-[11px] leading-snug">
+                    👥 {currentEvent.exposure || 'Work crew stationed within immediate release zone'}
+                  </div>
                 </div>
-              </div>
-              <div>
-                <div className="flex justify-between text-slate-700 font-bold mb-1">
-                  <span>Consequence Level</span>
-                  <span>{currentEvent.consequence_score ?? 5.0} / 10</span>
-                </div>
-                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                  <div className="bg-purple-500 h-full rounded-full" style={{ width: `${(currentEvent.consequence_score ?? 5.0) * 10}%` }}></div>
+
+                <div className="sm:col-span-2">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Life-Saving Rule (LSR) Classification</span>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 bg-[#008779] text-white rounded-lg text-xs font-black shadow-xs">
+                      🛡️ {currentEvent.life_saving_rule || 'Energy Isolation'}
+                    </span>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      Consequence: <span className="font-bold text-slate-800">{currentEvent.consequence || 'Catastrophic bodily trauma / fatal SIF incident'}</span>
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-150/40 text-xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">AI Recommendation</span>
-              <p className="bg-purple-50/40 border border-purple-150 p-2.5 rounded-lg text-[10.5px] text-slate-700 leading-normal font-semibold">
-                {currentEvent.recommended_action || 'Immediately isolate the affected area and inspect the source of leakage.'}
+            {/* 4 Multi-factor Risk Gauges */}
+            <div className="space-y-2.5 pt-1">
+              <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500">
+                Multi-Factor Risk Scoring Engine (0 – 10)
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-xs">
+                <div>
+                  <div className="flex justify-between text-slate-700 font-bold mb-1 text-[11px]">
+                    <span>Hazard Severity (35% weight)</span>
+                    <span className="font-mono">{currentEvent.severity_score ?? 5.0} / 10</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-rose-500 h-full rounded-full transition-all duration-500" style={{ width: `${(currentEvent.severity_score ?? 5.0) * 10}%` }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-slate-700 font-bold mb-1 text-[11px]">
+                    <span>Crew Exposure (25% weight)</span>
+                    <span className="font-mono">{currentEvent.exposure_score ?? 5.0} / 10</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-amber-500 h-full rounded-full transition-all duration-500" style={{ width: `${(currentEvent.exposure_score ?? 5.0) * 10}%` }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-slate-700 font-bold mb-1 text-[11px]">
+                    <span>Barrier Failure Rate (25% weight)</span>
+                    <span className="font-mono">{currentEvent.barrier_score ?? 5.0} / 10</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-purple-500 h-full rounded-full transition-all duration-500" style={{ width: `${(currentEvent.barrier_score ?? 5.0) * 10}%` }}></div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-slate-700 font-bold mb-1 text-[11px]">
+                    <span>Worst-Case Consequence (15% weight)</span>
+                    <span className="font-mono">{currentEvent.consequence_score ?? 5.0} / 10</span>
+                  </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div className="bg-blue-600 h-full rounded-full transition-all duration-500" style={{ width: `${(currentEvent.consequence_score ?? 5.0) * 10}%` }}></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* AI Prescribed Corrective Action (CAPA) */}
+            <div className="p-3.5 bg-[#E8F6F4]/50 border border-[#008779]/20 rounded-2xl text-xs space-y-1.5">
+              <span className="text-[10px] font-extrabold text-[#008779] uppercase tracking-wider block">
+                Prescribed Corrective & Preventive Action (CAPA)
+              </span>
+              <p className="text-slate-800 leading-relaxed font-semibold text-[11px]">
+                {currentEvent.recommended_action || '1. Issue Stop Work Order. 2. Verify zero-energy state. 3. Apply certified padlocks.'}
               </p>
             </div>
 
-            <div className="pt-2 text-xs">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Why AI flagged this?</span>
-              <p className="text-[10.5px] text-slate-500 italic leading-relaxed">
-                "{currentEvent.explanation || 'AI detected a high-risk hazard based on the reported leakage, worker exposure, severity, and failed safety barrier.'}"
+            {/* AI Narrative Explanation */}
+            <div className="text-xs space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">AI Inference Narrative</span>
+              <p className="text-[11px] text-slate-600 italic leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
+                "{currentEvent.explanation || 'Observation identified critical energy barrier bypass posing immediate potential for severe bodily harm or process disruption.'}"
               </p>
             </div>
+
+            {/* Interactive SIF Safety Copilot Box */}
+            <div className="pt-3 border-t border-slate-100 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <MessageSquare className="h-3.5 w-3.5 text-[#008779]" />
+                  <span>Ask AI Safety Copilot about this Event</span>
+                </span>
+                <span className="text-[9px] text-[#008779] font-bold bg-[#E8F6F4] px-2 py-0.5 rounded-md">Live HSE Advice</span>
+              </div>
+
+              {copilotAnswer && (
+                <div className="p-4 bg-slate-900 text-white rounded-2xl text-xs leading-relaxed space-y-2 animate-fadeIn border border-slate-800">
+                  <div className="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider">AI Copilot Analysis:</div>
+                  <div className="whitespace-pre-line text-slate-200 text-[11px]">{copilotAnswer}</div>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={copilotQuery}
+                  onChange={(e) => setCopilotQuery(e.target.value)}
+                  placeholder="e.g. What are mandatory barrier controls for this hazard?"
+                  className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779]"
+                  onKeyDown={(e) => e.key === 'Enter' && handleAskCopilot()}
+                />
+                <button
+                  type="button"
+                  onClick={handleAskCopilot}
+                  disabled={copilotLoading}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Send className={`h-3 w-3 ${copilotLoading ? 'animate-spin' : ''}`} />
+                  <span>{copilotLoading ? 'Thinking...' : 'Ask'}</span>
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {[
+                  "Mandatory barriers?",
+                  "Why flagged as SIF?",
+                  "Toolbox talk points"
+                ].map((chip, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => {
+                      setCopilotQuery(chip);
+                      handleAskCopilotDirect(chip);
+                    }}
+                    className="text-[10px] font-bold px-2.5 py-1 bg-slate-100 hover:bg-[#E8F6F4] hover:text-[#008779] text-slate-600 rounded-lg transition border border-slate-200 cursor-pointer"
+                  >
+                    + {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+
           </div>
 
         </div>

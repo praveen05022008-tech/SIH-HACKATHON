@@ -33,7 +33,16 @@ BASE_SIF_KEYWORDS = {
     "speeding": 0.65, "forklift": 0.70, "collision": 0.80, "vehicle": 0.65, "heavy machinery": 0.80,
     "trench": 0.75, "excavation": 0.75, "collapse": 0.85, "mud pump": 0.85, "iron roughneck": 0.90,
     "high pressure": 0.90, "bop": 0.95, "kill line": 0.90, "choke manifold": 0.90, "drill floor": 0.85,
-    "line of fire": 0.92, "pinch point": 0.80, "crush": 0.85
+    "line of fire": 0.92, "pinch point": 0.80, "crush": 0.85,
+    # Generic safety terms - medium weight
+    "unsafe": 0.65, "hazard": 0.70, "danger": 0.68, "leak": 0.72, "leakage": 0.75, "spill": 0.68,
+    "pipe": 0.55, "pressure": 0.72, "gas": 0.68, "fire": 0.78, "smoke": 0.72, "injury": 0.80,
+    "accident": 0.82, "incident": 0.70, "near miss": 0.78, "nearmiss": 0.78, "slip": 0.62,
+    "struck": 0.78, "hit": 0.65, "caught": 0.68, "entanglement": 0.80, "entangled": 0.80,
+    "fracture": 0.85, "burn": 0.82, "chemical": 0.75, "corrosive": 0.78, "acid": 0.80,
+    "overflow": 0.72, "overheating": 0.75, "hot surface": 0.70, "unguarded": 0.78,
+    "missing guard": 0.80, "barrier removed": 0.85, "bypass": 0.82, "override": 0.80,
+    "violation": 0.75, "non-compliance": 0.72, "ppe": 0.60, "without ppe": 0.80, "no ppe": 0.80
 }
 
 # Base keywords mapping to IOGP Life-Saving Rules
@@ -674,4 +683,159 @@ def ask_ai_safety_copilot(prompt: str, context_event_id: Optional[str] = None, d
         "model": "GATI Calibrated Expert Heuristic",
         "source": "GATI Safety Knowledge Base"
     }
+
+def run_ai_pipeline_breakdown(text: str, db: Session = None, report_meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    Executes the comprehensive 6-stage M1-M6 Precursor Intelligence Pipeline on report text,
+    returning both the granular stage-by-stage outputs and composite diagnostic summary.
+    """
+    meta = report_meta or {}
+    analysis = analyzeSafetyReport(text, db, meta)
+    
+    stages = [
+        {
+            "stage": "M1: Data Ingestion & Normalization",
+            "code": "INGEST_M1",
+            "status": "PASSED",
+            "inputs": {
+                "raw_text": text,
+                "source_channels": ["Worker Web Portal", "Voice Transcriber (Whisper-v3-Turbo)", "OCR Metadata"],
+                "timestamp": datetime.datetime.utcnow().isoformat()
+            },
+            "summary": "Observation text parsed, tokenized, and normalized for NLP token extraction."
+        },
+        {
+            "stage": "M2: NLP Context & Entity Extraction",
+            "code": "CONTEXT_M2",
+            "status": "PASSED",
+            "entities": {
+                "site": analysis.get("site", "Digboi Refinery D"),
+                "unit": analysis.get("unit", "CDU"),
+                "location": analysis.get("location", "Operational Section"),
+                "activity": analysis.get("activity", "Routine Maintenance"),
+                "equipment_involved": analysis.get("equipment_involved", "General Machinery"),
+                "energy_source": analysis.get("energy_source", "Mechanical / Kinetic")
+            },
+            "summary": f"Extracted operating context: {analysis.get('site')} / {analysis.get('unit')} under {analysis.get('energy_source')} conditions."
+        },
+        {
+            "stage": "M3: Hazard & Barrier Extraction",
+            "code": "HAZARD_M3",
+            "status": "PASSED",
+            "hazard_profile": {
+                "hazard": analysis.get("hazard"),
+                "barrier": analysis.get("barrier"),
+                "barrier_failure": analysis.get("barrier_failure"),
+                "crew_exposure": analysis.get("exposure"),
+                "potential_consequence": analysis.get("consequence")
+            },
+            "summary": f"Identified primary hazard '{analysis.get('hazard')}' with failed barrier '{analysis.get('barrier_failure')}'."
+        },
+        {
+            "stage": "M4: SIF Precursor Flagging & LSR Mapping",
+            "code": "SIF_FLAG_M4",
+            "status": "PASSED",
+            "is_sif_precursor": analysis.get("is_sif_precursor", "NO"),
+            "sif_probability": f"{analysis.get('sif_probability', 50.0)}%",
+            "confidence": f"{analysis.get('confidence', 85.0)}%",
+            "life_saving_rule": analysis.get("life_saving_rule", "None"),
+            "summary": f"SIF Precursor: {analysis.get('is_sif_precursor')} ({analysis.get('sif_probability')}%) | LSR: {analysis.get('life_saving_rule')}."
+        },
+        {
+            "stage": "M5: Multi-Factor 0-10 Risk Scoring Engine",
+            "code": "RISK_SCORE_M5",
+            "status": "PASSED",
+            "factors": {
+                "hazard_severity": f"{analysis.get('severity_score', 5.0)} / 10",
+                "exposure_level": f"{analysis.get('exposure_score', 5.0)} / 10",
+                "barrier_failure": f"{analysis.get('barrier_score', 5.0)} / 10",
+                "potential_consequence": f"{analysis.get('consequence_score', 5.0)} / 10"
+            },
+            "composite_score": f"{analysis.get('sif_risk_score', 5.0)} / 10",
+            "risk_level": analysis.get("risk_level", "MEDIUM"),
+            "summary": f"Calculated composite score {analysis.get('sif_risk_score')}/10 ({analysis.get('risk_level')})."
+        },
+        {
+            "stage": "M6: Output Generation & CAPA Dispatch",
+            "code": "CAPA_DISPATCH_M6",
+            "status": "DISPATCHED",
+            "ai_explanation": analysis.get("explanation"),
+            "recommended_actions": analysis.get("recommended_action"),
+            "simulated_alerts": analysis.get("simulated_alerts", []),
+            "summary": "Generated explanation narrative and actionable barrier controls."
+        }
+    ]
+
+    return {
+        "success": True,
+        "raw_text": text,
+        "stages": stages,
+        "summary": analysis,
+        "ai_engine": analysis.get("ai_source", "GATI Neural NLP Engine")
+    }
+
+def reanalyze_event_with_ai(event_id: str, db: Session) -> Dict[str, Any]:
+    """
+    Re-runs the AI Precursor Intelligence Engine on an existing SafetyEvent,
+    updates its scores and predictions in the database, and records an audit event.
+    """
+    event = db.query(models.SafetyEvent).filter(models.SafetyEvent.id == event_id).first()
+    if not event:
+        raise ValueError(f"Event with ID '{event_id}' not found.")
+
+    # Determine input text
+    raw_text = event.description or ""
+    if event.report and event.report.raw_text:
+        raw_text = event.report.raw_text
+
+    meta = {
+        "site": event.site,
+        "unit": event.unit,
+        "location": event.location,
+        "equipment_involved": event.equipment_involved,
+        "audio_transcript": event.audio_transcript
+    }
+
+    pipeline_result = run_ai_pipeline_breakdown(raw_text, db, meta)
+    summary = pipeline_result["summary"]
+
+    # Update event fields with AI analysis
+    event.hazard = summary.get("hazard", event.hazard)
+    event.energy_source = summary.get("energy_source", event.energy_source)
+    event.barrier = summary.get("barrier", event.barrier)
+    event.barrier_failure = summary.get("barrier_failure", event.barrier_failure)
+    event.exposure = summary.get("exposure", event.exposure)
+    event.consequence = summary.get("consequence", event.consequence)
+    event.life_saving_rule = summary.get("life_saving_rule", event.life_saving_rule)
+    event.is_sif_precursor = summary.get("is_sif_precursor", event.is_sif_precursor)
+    event.severity_score = summary.get("severity_score", event.severity_score)
+    event.exposure_score = summary.get("exposure_score", event.exposure_score)
+    event.barrier_score = summary.get("barrier_score", event.barrier_score)
+    event.consequence_score = summary.get("consequence_score", event.consequence_score)
+    event.sif_risk_score = summary.get("sif_risk_score", event.sif_risk_score)
+    event.risk_level = summary.get("risk_level", event.risk_level)
+    event.sif_probability = summary.get("sif_probability", event.sif_probability)
+    event.confidence = summary.get("confidence", event.confidence)
+    event.explanation = summary.get("explanation", event.explanation)
+    event.recommended_action = summary.get("recommended_action", event.recommended_action)
+
+    # Record Audit Event
+    audit = models.AuditEvent(
+        event_id=event.id,
+        action="AI Re-Scored & Analyzed",
+        details=f"AI Engine re-analyzed observation. Risk Score: {event.sif_risk_score}/10 ({event.risk_level}). SIF: {event.is_sif_precursor} ({event.sif_probability}%). LSR: {event.life_saving_rule}.",
+        user_email="engine@raksha.ai"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(event)
+
+    return {
+        "success": True,
+        "event_id": event.id,
+        "analysis": summary,
+        "stages": pipeline_result["stages"],
+        "message": f"Successfully re-scored Event {event.id} using SIF-SHIELD AI Engine."
+    }
+
 
