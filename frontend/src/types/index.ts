@@ -21,7 +21,17 @@ export interface Unit {
 
 export interface SafetyReport {
   id: number;
+  report_code?: string;
+  report_type?: string;
   raw_text: string;
+  audio_transcript?: string | null;
+  photo_url?: string | null;
+  reporter_email?: string;
+  hazard_category?: string;
+  shift_timing?: string;
+  location_detail?: string;
+  equipment_involved?: string | null;
+  people_involved?: number;
   timestamp: string;
   status: 'Pending' | 'Analyzed' | 'Error';
 }
@@ -29,6 +39,13 @@ export interface SafetyReport {
 export interface SafetyEvent {
   id: string;
   report_id?: number;
+  report_code?: string;
+  report_type?: string;
+  reporter_email?: string;
+  hazard_category?: string;
+  shift_timing?: string;
+  location_detail?: string;
+  is_sif_precursor?: string;
   timestamp: string;
   site: string;
   unit: string;
@@ -162,3 +179,58 @@ export interface DashboardResponse {
   life_saving_rules: LifeSavingRuleStat[];
   recent_events: SafetyEvent[];
 }
+
+export interface OfficerProfile {
+  id: number;
+  officer_name: string;
+  officer_code: string;
+  email: string;
+  phone: string;
+  radio_channel: string;
+  site: string;
+  unit: string;
+  shift: string;
+  status: 'On Duty' | 'In Field' | 'Standby' | 'Off Duty' | string;
+  certifications: string[];
+  experience_years: number;
+  max_capacity: number;
+  open_reviews_count: number;
+  active_tasks_count: number;
+  completed_tasks_count: number;
+  total_tasks_count: number;
+  workload_score: number;
+  compliance_rate: number;
+}
+
+export interface OfficerTask {
+  id: number;
+  task_id: string;
+  title: string;
+  task_type: string;
+  site: string;
+  unit: string;
+  priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | string;
+  assigned_officer_id: number;
+  assigned_officer_name: string;
+  assigned_by: string;
+  instructions: string;
+  status: 'Assigned' | 'In Progress' | 'Completed' | 'Overdue' | string;
+  due_date: string;
+  findings?: string | null;
+  related_event_id?: string | null;
+  created_at: string;
+  completed_at?: string | null;
+}
+
+export interface SafetyDirective {
+  id: number;
+  directive_id: string;
+  title: string;
+  message: string;
+  priority: 'URGENT' | 'HIGH' | 'STANDARD' | string;
+  target_sites: string;
+  issued_by: string;
+  acknowledge_count: number;
+  created_at: string;
+}
+

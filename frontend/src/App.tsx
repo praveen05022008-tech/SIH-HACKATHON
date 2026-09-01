@@ -5,7 +5,6 @@ import { Topbar } from './components/Topbar';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Inbox } from './pages/Inbox';
-import { Analysis } from './pages/Analysis';
 import { SifIntelligence } from './pages/SifIntelligence';
 import { LifeSavingRules } from './pages/LifeSavingRules';
 import { Precursors } from './pages/Precursors';
@@ -19,12 +18,31 @@ import { Detail } from './pages/Detail';
 import { WorkerPortal } from './pages/WorkerPortal';
 import { TakeAction } from './pages/TakeAction';
 import { TrackActions } from './pages/TrackActions';
+import { SafetyManager } from './pages/SafetyManager';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState<string>('dashboard');
   const [selectedEvent, setSelectedEvent] = useState<SafetyEvent | null>(null);
   
+  // Theme state (dark / light)
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('raksha_theme') as 'dark' | 'light') || 'light';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('raksha_theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
   // Notification system
   const [notifications, setNotifications] = useState<string[]>([
     "Review required: EVT-10291 (High SIF Potential isolated breaker bypass)",
@@ -52,10 +70,10 @@ function App() {
     let defaultPage = 'dashboard';
     if (loggedInUser.role === 'Field Worker') {
       defaultPage = 'worker-portal';
-    } else if (loggedInUser.role === 'AI Pipeline Viewer') {
-      defaultPage = 'analysis';
     } else if (loggedInUser.role === 'Safety Officer') {
       defaultPage = 'dashboard';
+    } else if (loggedInUser.role === 'Safety Manager') {
+      defaultPage = 'manager';
     } else if (loggedInUser.role === 'Admin') {
       defaultPage = 'settings';
     }
@@ -69,15 +87,11 @@ function App() {
     let role = 'Safety Manager';
     let defaultPage = 'dashboard';
     
-    if (email === 'worker@refinery.safe') {
+    if (email === 'worker@refinery.safe' || email === 'field.worker@sifdemo.com') {
       name = 'Field Employee / Worker';
       role = 'Field Worker';
       defaultPage = 'worker-portal';
-    } else if (email === 'pipeline@sifshield.ai') {
-      name = 'AI Ingestion Pipeline';
-      role = 'AI Pipeline Viewer';
-      defaultPage = 'analysis';
-    } else if (email === 'officer@refinery.safe') {
+    } else if (email === 'officer@refinery.safe' || email === 'officer@sifdemo.com') {
       name = 'Safety Officer Lead';
       role = 'Safety Officer';
       defaultPage = 'dashboard';
@@ -85,14 +99,18 @@ function App() {
       name = 'Demo Reviewer';
       role = 'Safety Officer';
       defaultPage = 'dashboard';
-    } else if (email === 'manager@refinery.safe') {
+    } else if (email === 'manager@refinery.safe' || email === 'manager@sifdemo.com') {
       name = 'HSE Manager / Lead';
       role = 'Safety Manager';
-      defaultPage = 'dashboard';
-    } else if (email === 'admin@refinery.safe') {
+      defaultPage = 'manager';
+    } else if (email === 'admin@refinery.safe' || email === 'admin@sifdemo.com') {
       name = 'System Administrator';
       role = 'Admin';
       defaultPage = 'settings';
+    } else if (email === 'ai.pipeline@sifdemo.com') {
+      name = 'AI Ingestion Pipeline';
+      role = 'AI Pipeline Viewer';
+      defaultPage = 'dashboard';
     }
 
     const updatedUser = {
@@ -132,14 +150,27 @@ function App() {
     if (currentPage === 'detail' && selectedEvent) {
       return `Safety Alert: ${selectedEvent.id}`;
     }
+    if (user?.role === 'Field Worker' || currentPage === 'worker-portal') {
+      return 'Field Worker Safety Portal';
+    }
+    if (user?.role === 'Safety Officer' && currentPage === 'inbox') {
+      return 'Safety Officer Intelligence Console';
+    }
+    if (user?.role === 'Safety Manager' && currentPage === 'manager') {
+      return 'HSE Manager Command Center';
+    }
+    if (user?.role === 'Admin' && currentPage === 'settings') {
+      return 'System Administration Console';
+    }
+
     const titles: Record<string, string> = {
       dashboard: user?.role === 'Safety Officer' ? 'Safety Officer Dashboard' : 'Executive Safety Dashboard',
       inbox: 'Safety Alerts',
-      analysis: 'Report Analysis Engine',
+      manager: 'HSE Manager Command Center',
       sif: 'SIF Risk Intelligence',
-      lsr: 'Life-Saving Rules conformance',
+      lsr: 'Life-Saving Rules Conformance',
       precursors: 'Recurring Precursor Patterns',
-      sites: 'Sites operational Risk Context',
+      sites: 'Sites Operational Risk Context',
       review: 'Review & Validate',
       learning: 'GATI Continuous Learning Centre',
       reports: 'Compliance Reports Exporter',
@@ -150,6 +181,14 @@ function App() {
     };
     return titles[currentPage] || 'SIF-SHIELD AI Platform';
   };
+
+  // Field Worker route guard enforcement
+  useEffect(() => {
+    if (user && user.role === 'Field Worker' && currentPage !== 'worker-portal') {
+      setCurrentPage('worker-portal');
+      setSelectedEvent(null);
+    }
+  }, [user, currentPage]);
 
   // If not logged in, force Login screen
   if (!user) {
@@ -162,6 +201,7 @@ function App() {
       <Sidebar 
         currentPage={currentPage === 'detail' ? 'inbox' : currentPage} 
         setCurrentPage={(page) => {
+          if (user.role === 'Field Worker') return;
           setSelectedEvent(null);
           setCurrentPage(page);
         }} 
@@ -183,56 +223,50 @@ function App() {
         />
 
         {/* Scrollable Page Body */}
-        <main className="flex-1 mt-16 p-8 overflow-y-auto">
-          {currentPage === 'dashboard' && (
+        <main className="flex-1 pt-20 px-8 pb-12 overflow-y-auto">
+          {currentPage === 'dashboard' && user.role !== 'Field Worker' && (
             <Dashboard 
               onViewEvent={handleViewEvent} 
               triggerNotification={triggerNotification} 
               triggerStateRefresh={triggerStateRefresh} 
               onNavigateTo={setCurrentPage}
+              userRole={user.role}
+              userName={user.name}
             />
           )}
 
-          {currentPage === 'inbox' && (
+          {currentPage === 'inbox' && user.role !== 'Field Worker' && (
             <Inbox 
               onViewEvent={handleViewEvent} 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'analysis' && (
-            <Analysis 
-              onEventCreated={handleRefreshApp}
-              onViewEvent={handleViewEvent}
-              triggerNotification={triggerNotification}
-            />
-          )}
-
-          {currentPage === 'sif' && (
+          {currentPage === 'sif' && user.role !== 'Field Worker' && (
             <SifIntelligence 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'lsr' && (
+          {currentPage === 'lsr' && user.role !== 'Field Worker' && (
             <LifeSavingRules 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'precursors' && (
+          {currentPage === 'precursors' && user.role !== 'Field Worker' && (
             <Precursors 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'sites' && (
+          {currentPage === 'sites' && user.role !== 'Field Worker' && (
             <Sites 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'review' && (
+          {currentPage === 'review' && user.role !== 'Field Worker' && (
             <Review 
               reviewerName={user.name} 
               onReviewSubmitted={handleRefreshApp}
@@ -240,35 +274,41 @@ function App() {
             />
           )}
 
-          {currentPage === 'learning' && (
+          {currentPage === 'learning' && user.role !== 'Field Worker' && (
             <Learning 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'reports' && (
+          {currentPage === 'manager' && (
+            <SafetyManager 
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+              onNavigateTo={(page) => {
+                setSelectedEvent(null);
+                setCurrentPage(page);
+              }}
+            />
+          )}
+
+          {currentPage === 'reports' && user.role !== 'Field Worker' && (
             <Reports />
           )}
 
           {currentPage === 'settings' && (
-            <>
-              <AdminConsole
-                onResetDb={handleRefreshApp}
-                triggerNotification={triggerNotification}
-                onNavigateTo={(page) => {
-                  setSelectedEvent(null);
-                  setCurrentPage(page);
-                }}
-              />
-              <Settings
-                onResetDb={handleRefreshApp}
-                triggerNotification={triggerNotification}
-              />
-            </>
+            <AdminConsole
+              onResetDb={handleRefreshApp}
+              triggerNotification={triggerNotification}
+              onNavigateTo={(page) => {
+                setSelectedEvent(null);
+                setCurrentPage(page);
+              }}
+            />
           )}
 
           {currentPage === 'worker-portal' && (
             <WorkerPortal 
+              user={user}
               triggerNotification={triggerNotification}
               triggerStateRefresh={triggerStateRefresh}
               onEventCreated={handleRefreshApp}

@@ -1,8 +1,23 @@
 import random
 import datetime
+import sys
+import os
 from sqlalchemy.orm import Session
-from backend.app.database import SessionLocal, Base, engine
-from backend.app import models, ai_service, precursor_engine
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+try:
+    from backend.app.database import SessionLocal, Base, engine
+    from backend.app import models, ai_service, precursor_engine
+except ImportError:
+    try:
+        from app.database import SessionLocal, Base, engine
+        from app import models, ai_service, precursor_engine
+    except ImportError:
+        from database import SessionLocal, Base, engine
+        import models, ai_service, precursor_engine
 
 # Raw synthetic reports dataset (100+ reports)
 RAW_REPORTS_DATA = [
@@ -154,6 +169,99 @@ def seed_database():
         db.add(u)
     db.commit()
     print("Users seeded successfully with 5 personas.")
+
+    # 2b. Seed Officer Profiles
+    officer_profiles = [
+        models.OfficerProfile(
+            officer_name="Capt. Arvind Sen",
+            officer_code="OFF-101",
+            email="officer@refinery.safe",
+            phone="+91 98450 11001",
+            radio_channel="Ch 4 (VHF Drilling)",
+            site="Drilling Site A",
+            unit="Rig Floor 01",
+            shift="Shift A (06:00 - 14:00)",
+            status="On Duty",
+            certifications="LOTO Auditor, Heavy Lift Supervisor, NEBOSH IGC, High-Pressure Gas Specialist",
+            experience_years=12,
+            max_capacity=8
+        ),
+        models.OfficerProfile(
+            officer_name="Priya Sharma",
+            officer_code="OFF-102",
+            email="reviewer@refinery.safe",
+            phone="+91 98450 11002",
+            radio_channel="Ch 2 (VHF Refinery)",
+            site="Digboi Refinery D",
+            unit="CDU",
+            shift="Shift B (14:00 - 22:00)",
+            status="In Field",
+            certifications="Confined Space Entry Lead, Gas Tester Certified, Working at Height Auditor",
+            experience_years=8,
+            max_capacity=6
+        ),
+        models.OfficerProfile(
+            officer_name="Rajesh Verma",
+            officer_code="OFF-103",
+            email="r.verma@refinery.safe",
+            phone="+91 98450 11003",
+            radio_channel="Ch 6 (Offshore KG)",
+            site="Offshore Rig 04",
+            unit="Substructure & BOP",
+            shift="Night Vigil (22:00 - 06:00)",
+            status="On Duty",
+            certifications="BOSIET Offshore, Well-Control Barrier Certified, Emergency Response Commander",
+            experience_years=10,
+            max_capacity=7
+        ),
+        models.OfficerProfile(
+            officer_name="Ananya Das",
+            officer_code="OFF-104",
+            email="a.das@refinery.safe",
+            phone="+91 98450 11004",
+            radio_channel="Ch 3 (Process Safety)",
+            site="Drilling Site B",
+            unit="Mud Pump Area",
+            shift="Shift A (06:00 - 14:00)",
+            status="In Field",
+            certifications="Energy Isolation Master, Hot Work Permit Issuer, Incident Investigator",
+            experience_years=7,
+            max_capacity=6
+        ),
+        models.OfficerProfile(
+            officer_name="Col. M. S. Gill",
+            officer_code="OFF-105",
+            email="ms.gill@refinery.safe",
+            phone="+91 98450 11005",
+            radio_channel="Ch 5 (Field Ops)",
+            site="Drilling Site C",
+            unit="Rig Floor 01",
+            shift="Shift B (14:00 - 22:00)",
+            status="On Standby",
+            certifications="Drilling Rig Safety Lead, Crane & Lifting Auditor, Hazardous Chemical Safety",
+            experience_years=15,
+            max_capacity=9
+        ),
+        models.OfficerProfile(
+            officer_name="Sunil Sengupta",
+            officer_code="OFF-106",
+            email="s.sengupta@refinery.safe",
+            phone="+91 98450 11006",
+            radio_channel="Ch 1 (Operations)",
+            site="Barauni Unit E",
+            unit="FCCU",
+            shift="Night Vigil (22:00 - 06:00)",
+            status="On Duty",
+            certifications="Electrical Safety Auditor, LOTO Specialist, Fire Prevention Lead",
+            experience_years=6,
+            max_capacity=5
+        )
+    ]
+    for op in officer_profiles:
+        db.add(op)
+    db.commit()
+    print("Officer Profiles seeded.")
+
 
     # 3. Seed Sites and Units
     sites_data = [
@@ -444,9 +552,102 @@ def seed_database():
         event.status = "Corrected"
         event.reviewer = reviewer_user.name
         
+    # 6. Seed Safety Manager Allotted Tasks
+    tasks_seed = [
+        models.OfficerTask(
+            task_id="TSK-101",
+            title="Surprise LOTO Audit & Zero-Energy Verification",
+            task_type="Surprise LOTO Inspection",
+            site="Drilling Site A",
+            unit="Rig Floor 01",
+            priority="CRITICAL",
+            assigned_officer_id=1,
+            assigned_officer_name="Capt. Arvind Sen",
+            assigned_by="Dr. Vikram Roy (Head of HSE)",
+            instructions="Inspect all double block and bleed valve lockouts on line FL-402 and verify physical padlocks before next mud pump pressurization test.",
+            status="In Progress",
+            due_date=datetime.datetime.utcnow() + datetime.timedelta(hours=18),
+            findings="Inspected 3 isolation stations. 1 tag missing signature, immediate remedy applied.",
+            related_event_id="EVT-10001"
+        ),
+        models.OfficerTask(
+            task_id="TSK-102",
+            title="Scaffold Fall-Arrest Anchorage Audit",
+            task_type="SIF Precursor Audit",
+            site="Digboi Refinery D",
+            unit="CDU",
+            priority="HIGH",
+            assigned_officer_id=2,
+            assigned_officer_name="Priya Sharma",
+            assigned_by="Dr. Vikram Roy (Head of HSE)",
+            instructions="Execute physical tag verification on all contractor scaffolding above 6m height following recurring near-miss reports.",
+            status="Assigned",
+            due_date=datetime.datetime.utcnow() + datetime.timedelta(days=1),
+            related_event_id="EVT-10004"
+        ),
+        models.OfficerTask(
+            task_id="TSK-103",
+            title="Offshore BOP Stack High-Pressure Barrier Check",
+            task_type="Stop Work Verification",
+            site="Offshore Rig 04",
+            unit="Substructure & BOP",
+            priority="CRITICAL",
+            assigned_officer_id=3,
+            assigned_officer_name="Rajesh Verma",
+            assigned_by="Dr. Vikram Roy (Head of HSE)",
+            instructions="Verify accumulator bottle pressure gauges and secondary shear ram hydraulic backup systems.",
+            status="Completed",
+            due_date=datetime.datetime.utcnow() - datetime.timedelta(hours=6),
+            findings="Accumulator pressure checked at 3000 PSI nominal. Shear rams operational. Certification logged.",
+            completed_at=datetime.datetime.utcnow() - datetime.timedelta(hours=5),
+            related_event_id="EVT-10008"
+        ),
+        models.OfficerTask(
+            task_id="TSK-104",
+            title="Mud Pump Circulation Zone Safety Patrol",
+            task_type="Zone Safety Patrol",
+            site="Drilling Site B",
+            unit="Mud Pump Area",
+            priority="MEDIUM",
+            assigned_officer_id=4,
+            assigned_officer_name="Ananya Das",
+            assigned_by="Dr. Vikram Roy (Head of HSE)",
+            instructions="Inspect mud shaker vibrating screens and verify high-pressure hose whip-check cables are secured.",
+            status="Assigned",
+            due_date=datetime.datetime.utcnow() + datetime.timedelta(days=2)
+        )
+    ]
+    for ts_item in tasks_seed:
+        db.add(ts_item)
+
+    # 7. Seed Safety Directives from Safety Manager
+    directives_seed = [
+        models.SafetyDirective(
+            directive_id="DIR-501",
+            title="Mandatory Double Block & Bleed Verification for All Valve Disconnects",
+            message="Effective immediately across all drilling and refinery sites: Single-valve isolations on lines >150 PSI are strictly prohibited without written HSE Lead exemption. All officers must physically spot-check breaker panels.",
+            priority="URGENT",
+            target_sites="All Operational Sites",
+            issued_by="Dr. Vikram Roy (Head of HSE)",
+            acknowledge_count=5
+        ),
+        models.SafetyDirective(
+            directive_id="DIR-502",
+            title="High-Wind Rig Crane Operation Stand-Down Protocol",
+            message="Sustained wind gusts exceeding 20 knots require immediate cessation of heavy tandem lifts at Drilling Site A and B. Safety officers must confirm crane anemometer calibration.",
+            priority="HIGH",
+            target_sites="Drilling Site A, Drilling Site B",
+            issued_by="Dr. Vikram Roy (Head of HSE)",
+            acknowledge_count=4
+        )
+    ]
+    for ds in directives_seed:
+        db.add(ds)
+
     db.commit()
     print("Database seeding completed successfully.")
     db.close()
+
 
 if __name__ == "__main__":
     seed_database()

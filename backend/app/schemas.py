@@ -24,6 +24,9 @@ class UserLogin(BaseModel):
 class SafetyReportCreate(BaseModel):
     raw_text: str
     report_type: Optional[str] = "Unsafe Condition"  # Unsafe Act, Unsafe Condition, Near Miss
+    hazard_category: Optional[str] = None
+    shift_timing: Optional[str] = None
+    location_detail: Optional[str] = None
     site: Optional[str] = "Drilling Site A"
     unit: Optional[str] = "Rig Floor 01"
     location: Optional[str] = "Substructure / BOP Area"
@@ -55,6 +58,10 @@ class SafetyEventResponse(BaseModel):
     report_id: Optional[int] = None
     report_code: Optional[str] = None
     report_type: Optional[str] = "Unsafe Condition"
+    reporter_email: Optional[str] = None
+    hazard_category: Optional[str] = None
+    shift_timing: Optional[str] = None
+    location_detail: Optional[str] = None
     timestamp: datetime.datetime
     site: Optional[str] = None
     unit: Optional[str] = None
@@ -80,8 +87,8 @@ class SafetyEventResponse(BaseModel):
     is_sif_precursor: Optional[str] = "NO"
     
     # Legacy compatibility
-    sif_probability: float
-    confidence: float
+    sif_probability: Optional[float] = 50.0
+    confidence: Optional[float] = 85.0
     life_saving_rule: Optional[str] = None
     status: str
     reviewer: Optional[str] = None
@@ -113,7 +120,7 @@ class SafetyEventReview(BaseModel):
     sif_potential: str  # "SIF Potential" or "Non-SIF"
     life_saving_rule: str
     reviewer_name: str
-    verification_action: Optional[str] = "correct" # "correct", "investigate", "incorrect"
+    verification_action: Optional[str] = "correct"  # "correct", "investigate", "incorrect"
     stop_work: Optional[bool] = False
     assigned_team: Optional[str] = "Maintenance Team"
     corrective_action_text: Optional[str] = None
@@ -123,7 +130,7 @@ class ActionDispatchPayload(BaseModel):
     event_id: str
     action_description: str
     assigned_team: str
-    priority: str = "HIGH" # CRITICAL, HIGH, MEDIUM, LOW
+    priority: str = "HIGH"  # CRITICAL, HIGH, MEDIUM, LOW
     stop_work: bool = False
     due_days: int = 3
     feedback: Optional[str] = None
@@ -196,3 +203,60 @@ class DashboardResponse(BaseModel):
     life_saving_rules: List[LifeSavingRuleStat]
     recent_events: List[SafetyEventResponse]
 
+# Manager & Officer Management Schemas
+class OfficerAllotmentPayload(BaseModel):
+    officer_id: int
+    site: str
+    unit: str
+    shift: str
+    status: Optional[str] = "On Duty"
+    radio_channel: Optional[str] = None
+
+class OfficerTaskCreatePayload(BaseModel):
+    title: str
+    task_type: str = "SIF Precursor Audit"
+    site: str
+    unit: str
+    priority: str = "HIGH"  # CRITICAL, HIGH, MEDIUM, LOW
+    assigned_officer_id: int
+    instructions: str
+    due_days: int = 2
+    related_event_id: Optional[str] = None
+
+class OfficerTaskUpdatePayload(BaseModel):
+    status: Optional[str] = None  # Assigned, In Progress, Completed, Overdue
+    findings: Optional[str] = None
+    assigned_officer_id: Optional[int] = None
+
+class SafetyDirectivePayload(BaseModel):
+    title: str
+    message: str
+    priority: str = "HIGH"  # URGENT, HIGH, STANDARD
+    target_sites: str = "All Operational Sites"
+
+class ReassignEventPayload(BaseModel):
+    event_id: str
+    officer_name: str
+    manager_note: Optional[str] = None
+
+# AI Engine Schemas
+class AIConfigPayload(BaseModel):
+    provider: Optional[str] = "cerebras"
+    api_key: Optional[str] = None
+    base_url: Optional[str] = "https://api.cerebras.ai/v1"
+    model: Optional[str] = "gpt-oss-120b"
+
+class AITestKeyPayload(BaseModel):
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    model: Optional[str] = None
+
+class AIPipelinePayload(BaseModel):
+    text: str
+    site: Optional[str] = None
+    unit: Optional[str] = None
+    equipment_involved: Optional[str] = None
+
+class AIChatPayload(BaseModel):
+    message: str
+    context_event_id: Optional[str] = None

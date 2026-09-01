@@ -10,7 +10,10 @@ import {
   Shield,
   Trash2,
   Lock,
-  Cpu
+  Cpu,
+  Moon,
+  Sun,
+  Palette
 } from 'lucide-react';
 import { AuditEvent, User } from '../types';
 
@@ -228,7 +231,6 @@ export const Settings: React.FC<SettingsProps> = ({ onResetDb, triggerNotificati
                 className="px-3 py-1.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-800"
               >
                 <option value="Field Worker">Field Worker</option>
-                <option value="AI Pipeline Viewer">AI Pipeline Viewer</option>
                 <option value="Safety Officer">Safety Officer</option>
                 <option value="Safety Manager">Safety Manager</option>
                 <option value="Admin">Admin</option>

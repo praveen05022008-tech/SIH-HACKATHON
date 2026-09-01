@@ -69,26 +69,9 @@ const PORTALS: PortalDef[] = [
     ]
   },
   {
-    id: 'ai-engine',
-    name: 'AI Engine & Analysis',
-    persona: 'Persona 2',
-    icon: BrainCircuit,
-    color: 'text-purple-700',
-    bgColor: 'bg-purple-50',
-    borderColor: 'border-purple-200',
-    description: 'Automated 6-step NLP pipeline (M1–M6) processes every report. Extracts hazards, energy sources, barrier failures, assigns 0–10 multi-factor SIF risk scores, and classifies LSR violations.',
-    route: 'analysis',
-    capabilities: ['NLP entity extraction', 'Multi-factor risk scoring (0–10)', 'LSR classification', 'SIF precursor detection', 'GATI learning feedback'],
-    stats: [
-      { label: 'Model', value: 'GATI v1.3' },
-      { label: 'Accuracy', value: '94.8%' },
-      { label: 'Avg. Process', value: '1.4 sec' }
-    ]
-  },
-  {
     id: 'review',
     name: 'Safety Officer Center',
-    persona: 'Persona 3',
+    persona: 'Persona 2',
     icon: ClipboardCheck,
     color: 'text-blue-700',
     bgColor: 'bg-blue-50',
@@ -105,7 +88,7 @@ const PORTALS: PortalDef[] = [
   {
     id: 'dashboard',
     name: 'Safety Manager Dashboard',
-    persona: 'Persona 4',
+    persona: 'Persona 3',
     icon: BarChart3,
     color: 'text-amber-700',
     bgColor: 'bg-amber-50',
@@ -127,7 +110,6 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
   // Portal states
   const [portalStates, setPortalStates] = useState<Record<string, { enabled: boolean; maintenance: boolean; accessLevel: string }>>({
     'worker-portal': { enabled: true, maintenance: false, accessLevel: 'All Field Workers' },
-    'ai-engine': { enabled: true, maintenance: false, accessLevel: 'Automatic (System)' },
     'review': { enabled: true, maintenance: false, accessLevel: 'Safety Officers Only' },
     'dashboard': { enabled: true, maintenance: false, accessLevel: 'Safety Managers + Admin' }
   });
@@ -146,11 +128,43 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
   const [auditLogs, setAuditLogs] = useState<AuditEvent[]>([]);
   const [loadingAudits, setLoadingAudits] = useState(false);
 
-  // AI Thresholds
+  // AI Thresholds & Live LLM Configuration
   const [criticalThreshold, setCriticalThreshold] = useState(8.0);
   const [highThreshold, setHighThreshold] = useState(6.0);
   const [autoStopWork, setAutoStopWork] = useState(true);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+
+  // Live AI Key & Provider Settings
+  const [aiProvider, setAiProvider] = useState('cerebras');
+  const [aiApiKey, setAiApiKey] = useState('');
+  const [aiBaseUrl, setAiBaseUrl] = useState('https://api.cerebras.ai/v1');
+  const [aiModel, setAiModel] = useState('gpt-oss-120b');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [aiStatusData, setAiStatusData] = useState<any>(null);
+  const [testingKey, setTestingKey] = useState(false);
+  const [testResult, setTestResult] = useState<{ success?: boolean; status?: string; message?: string; latency_ms?: number; provider?: string } | null>(null);
+
+  // Live AI Inspector / Sample Test
+  const [sampleText, setSampleText] = useState('Contractor climbed the derrick mast at Drilling Site B without securing safety harness lanyard to horizontal lifeline.');
+  const [sampleAnalyzing, setSampleAnalyzing] = useState(false);
+  const [sampleResult, setSampleResult] = useState<any>(null);
+
+  const fetchAIStatus = () => {
+    fetch('http://localhost:8000/api/ai/status')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d) {
+          setAiStatusData(d);
+          setAiProvider(d.provider || 'cerebras');
+          setAiModel(d.model || 'gpt-oss-120b');
+          setAiBaseUrl(d.base_url || 'https://api.cerebras.ai/v1');
+          if (d.masked_key) {
+            setAiApiKey(d.masked_key);
+          }
+        }
+      })
+      .catch(() => {});
+  };
 
   useEffect(() => {
     if (activeTab === 'audit') {
@@ -161,7 +175,63 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
         .catch(() => {})
         .finally(() => setLoadingAudits(false));
     }
+    if (activeTab === 'ai') {
+      fetchAIStatus();
+    }
   }, [activeTab]);
+
+  const handleTestAIConnection = async () => {
+    setTestingKey(true);
+    setTestResult(null);
+    try {
+      const res = await fetch('http://localhost:8000/api/ai/test-key', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: aiApiKey.includes('...') ? undefined : aiApiKey,
+          base_url: aiBaseUrl,
+          model: aiModel
+        })
+      });
+      const data = await res.json();
+      setTestResult(data);
+      if (triggerNotification) {
+        triggerNotification(data.success ? `✅ AI Connection Success (${data.latency_ms}ms)` : `⚠️ AI Test: ${data.status}`);
+      }
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        status: 'Network Error',
+        message: 'Could not connect to backend AI testing endpoint.'
+      });
+    } finally {
+      setTestingKey(false);
+    }
+  };
+
+  const handleRunSampleAnalysis = async () => {
+    if (!sampleText.trim()) return;
+    setSampleAnalyzing(true);
+    setSampleResult(null);
+    try {
+      const res = await fetch('http://localhost:8000/api/ai/pipeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: sampleText })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSampleResult(data.summary);
+        if (triggerNotification) {
+          triggerNotification(`🤖 AI Scan Complete: SIF Score ${data.summary.sif_risk_score}/10 (${data.summary.risk_level})`);
+        }
+      }
+    } catch (err) {
+      console.warn('Sample analysis failed:', err);
+    } finally {
+      setSampleAnalyzing(false);
+    }
+  };
 
   const togglePortalEnabled = (id: string) => {
     setPortalStates(prev => {
@@ -187,11 +257,27 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
     });
   };
 
-  const handleSaveAIConfig = (e: React.FormEvent) => {
+  const handleSaveAIConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaveSuccess('AI thresholds saved successfully.');
-    if (triggerNotification) triggerNotification(`⚙️ AI weights updated. Critical threshold: ${criticalThreshold}/10, High: ${highThreshold}/10.`);
-    setTimeout(() => setSaveSuccess(null), 3000);
+    try {
+      if (!aiApiKey.includes('...')) {
+        await fetch('http://localhost:8000/api/ai/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: aiProvider,
+            api_key: aiApiKey,
+            base_url: aiBaseUrl,
+            model: aiModel
+          })
+        });
+      }
+    } catch (err) {}
+    
+    setSaveSuccess('AI engine configurations and thresholds saved successfully.');
+    if (triggerNotification) triggerNotification(`⚙️ AI Engine & scoring thresholds updated. Critical: ${criticalThreshold}/10, Model: ${aiModel}.`);
+    fetchAIStatus();
+    setTimeout(() => setSaveSuccess(null), 3500);
   };
 
   const tabs = [
@@ -209,7 +295,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
       <div className="bg-[#0B2A56] rounded-2xl p-6 text-white shadow-lg border border-blue-500/20">
         <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-xs font-bold uppercase tracking-wider mb-3 border border-purple-500/30">
           <ShieldCheck className="h-3.5 w-3.5" />
-          <span>Persona 5 — System Administrator</span>
+          <span>Persona 4 — System Administrator</span>
         </div>
         <h1 className="text-2xl font-extrabold tracking-tight">Portal Management & Control Center</h1>
         <p className="text-slate-300 text-sm mt-1 max-w-2xl">
@@ -222,7 +308,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
             { label: 'AI Engine', status: 'Online', color: 'bg-emerald-400' },
             { label: 'GATI Model', status: 'v1.3 Active', color: 'bg-purple-400' },
             { label: 'Database', status: 'Healthy', color: 'bg-blue-400' },
-            { label: 'All Portals', status: `${Object.values(portalStates).filter(s => s.enabled).length}/4 Online`, color: 'bg-amber-400' }
+            { label: 'All Portals', status: `${Object.values(portalStates).filter(s => s.enabled).length}/3 Online`, color: 'bg-amber-400' }
           ].map(item => (
             <div key={item.label} className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg text-xs font-semibold">
               <span className={`h-2 w-2 rounded-full ${item.color} animate-pulse`} />
@@ -481,65 +567,290 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
         </div>
       )}
 
-      {/* ── TAB: AI THRESHOLDS ── */}
+      {/* ── TAB: AI THRESHOLDS & LLM CREDENTIALS ── */}
       {activeTab === 'ai' && (
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-          <form onSubmit={handleSaveAIConfig} className="space-y-6">
-            <div className="pb-4 border-b border-slate-100">
-              <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">AI Engine & Multi-Factor Scoring Thresholds</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Tune the SIF risk scoring boundaries that trigger alerts, Stop Work orders, and escalations.</p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="p-4 bg-red-50/60 border border-red-200 rounded-xl space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-slate-800">Critical SIF Threshold</label>
-                  <span className="text-xs font-black text-red-600">{criticalThreshold.toFixed(1)} / 10</span>
+        <div className="space-y-6">
+          
+          {/* 1. Live LLM Engine & API Key Settings */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-50 text-purple-700 border border-purple-200">
+                    Active AI Model
+                  </span>
+                  <span className="text-xs font-black text-slate-800">
+                    {aiStatusData?.model || aiModel}
+                  </span>
                 </div>
-                <input type="range" min="7.0" max="9.5" step="0.1" value={criticalThreshold}
-                  onChange={e => setCriticalThreshold(Number(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-red-600"
-                />
-                <p className="text-[11px] text-slate-500">Reports above this automatically trigger a Stop Work suggestion and Critical Alert push.</p>
+                <h3 className="text-sm font-extrabold text-slate-900 mt-1">SIF-SHIELD AI Large Language Model & Provider Credentials</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Direct API connection to Cerebras / OpenAI / Gemini for real-time NLP entity extraction, hazard mapping, and multi-factor 0-10 SIF risk scoring.
+                </p>
               </div>
 
-              <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-xl space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-slate-800">High Risk Threshold</label>
-                  <span className="text-xs font-black text-amber-600">{highThreshold.toFixed(1)} / 10</span>
-                </div>
-                <input type="range" min="5.0" max="7.5" step="0.1" value={highThreshold}
-                  onChange={e => setHighThreshold(Number(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                />
-                <p className="text-[11px] text-slate-500">Dispatches a priority alert to the Safety Officer review queue.</p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleTestAIConnection}
+                  disabled={testingKey}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl text-xs font-bold transition border border-purple-200"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${testingKey ? 'animate-spin' : ''}`} />
+                  <span>{testingKey ? 'Testing Connection...' : 'Test AI Connection'}</span>
+                </button>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <input type="checkbox" id="autoStopWork" checked={autoStopWork}
-                onChange={e => setAutoStopWork(e.target.checked)}
-                className="h-4 w-4 rounded accent-blue-600 cursor-pointer"
-              />
-              <label htmlFor="autoStopWork" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                Automatically suggest Stop Work Order when report crosses Critical SIF threshold
-              </label>
-            </div>
-
-            {saveSuccess && (
-              <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                {saveSuccess}
+            {/* Test Connection Result Card */}
+            {testResult && (
+              <div className={`p-4 rounded-xl border text-xs flex items-start gap-3 ${
+                testResult.success 
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900' 
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              }`}>
+                {testResult.success ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                )}
+                <div>
+                  <div className="font-extrabold text-xs">
+                    {testResult.success ? `Connected to ${testResult.provider?.toUpperCase()} (${testResult.latency_ms}ms)` : `Notice: ${testResult.status}`}
+                  </div>
+                  <p className="mt-0.5 text-[11.5px] leading-relaxed">
+                    {testResult.message}
+                  </p>
+                </div>
               </div>
             )}
 
-            <button type="submit"
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
-            >
-              <Save className="h-4 w-4" />
-              Save AI Configurations
-            </button>
-          </form>
+            {/* Credentials Form */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">AI Provider</label>
+                <select
+                  value={aiProvider}
+                  onChange={e => setAiProvider(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50 font-bold text-slate-800"
+                >
+                  <option value="cerebras">Cerebras Cloud AI (Ultra-Fast Hardware Inference)</option>
+                  <option value="openai">OpenAI (GPT-4o / GPT-4o-mini)</option>
+                  <option value="gemini">Google Gemini API</option>
+                  <option value="groq">Groq LPU Inference</option>
+                  <option value="custom">Custom / Local Ollama Endpoint</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">AI Model ID</label>
+                <input
+                  type="text"
+                  value={aiModel}
+                  onChange={e => setAiModel(e.target.value)}
+                  placeholder="e.g. gpt-oss-120b, gemma-4-31b, llama-3.3-70b"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50 font-mono font-bold text-slate-800"
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">API Key</label>
+                <div className="relative">
+                  <input
+                    type={showApiKey ? 'text' : 'password'}
+                    value={aiApiKey}
+                    onChange={e => setAiApiKey(e.target.value)}
+                    placeholder="Enter API Key (e.g. csk-... or sk-...)"
+                    className="w-full pl-3.5 pr-10 py-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50 font-mono text-slate-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                  >
+                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  API Key is securely passed to backend runtime and stored in <code className="text-slate-600 font-bold">backend/app/.env</code>.
+                </span>
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">API Base URL</label>
+                <input
+                  type="text"
+                  value={aiBaseUrl}
+                  onChange={e => setAiBaseUrl(e.target.value)}
+                  placeholder="https://api.cerebras.ai/v1"
+                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50 font-mono text-slate-800"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* 2. SIF Scoring Thresholds */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+            <form onSubmit={handleSaveAIConfig} className="space-y-6">
+              <div className="pb-4 border-b border-slate-100">
+                <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Multi-Factor Scoring & Escalation Thresholds</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Configure the SIF risk scoring boundaries that trigger alerts, Stop Work orders, and notifications.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="p-4 bg-red-50/60 border border-red-200 rounded-xl space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-slate-800">Critical SIF Threshold</label>
+                    <span className="text-xs font-black text-red-600">{criticalThreshold.toFixed(1)} / 10</span>
+                  </div>
+                  <input type="range" min="7.0" max="9.5" step="0.1" value={criticalThreshold}
+                    onChange={e => setCriticalThreshold(Number(e.target.value))}
+                    className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-red-600"
+                  />
+                  <p className="text-[11px] text-slate-500">Reports above this automatically suggest a Stop Work Order and send high-priority notifications.</p>
+                </div>
+
+                <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-xl space-y-3">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-slate-800">High Risk Threshold</label>
+                    <span className="text-xs font-black text-amber-600">{highThreshold.toFixed(1)} / 10</span>
+                  </div>
+                  <input type="range" min="5.0" max="7.5" step="0.1" value={highThreshold}
+                    onChange={e => setHighThreshold(Number(e.target.value))}
+                    className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                  />
+                  <p className="text-[11px] text-slate-500">Dispatches a priority alert to the Safety Officer review queue.</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                <input type="checkbox" id="autoStopWork" checked={autoStopWork}
+                  onChange={e => setAutoStopWork(e.target.checked)}
+                  className="h-4 w-4 rounded accent-blue-600 cursor-pointer"
+                />
+                <label htmlFor="autoStopWork" className="text-xs font-semibold text-slate-700 cursor-pointer">
+                  Automatically suggest Stop Work Order when report crosses Critical SIF threshold
+                </label>
+              </div>
+
+              {saveSuccess && (
+                <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                  {saveSuccess}
+                </div>
+              )}
+
+              <button type="submit"
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+              >
+                <Save className="h-4 w-4" />
+                Save AI Configurations
+              </button>
+            </form>
+          </div>
+
+          {/* 3. Interactive Sample Observation Tester */}
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+            <div className="pb-3 border-b border-slate-100">
+              <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Live AI Safety Observation Inspector</h3>
+              <p className="text-xs text-slate-500 mt-0.5">Test real-time NLP entity extraction, Life-Saving Rule mapping, and multi-factor 0-10 risk scoring on any test observation.</p>
+            </div>
+
+            <div className="space-y-3">
+              <textarea
+                rows={3}
+                value={sampleText}
+                onChange={e => setSampleText(e.target.value)}
+                placeholder="Enter worker observation text..."
+                className="w-full p-3.5 border border-slate-300 rounded-xl text-xs bg-slate-50 text-slate-800 focus:bg-white focus:outline-none"
+              />
+
+              <div className="flex justify-between items-center">
+                <span className="text-[11px] text-slate-400">
+                  Click below to trigger the SIF-SHIELD AI analysis pipeline.
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRunSampleAnalysis}
+                  disabled={sampleAnalyzing}
+                  className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+                >
+                  <BrainCircuit className={`h-4 w-4 ${sampleAnalyzing ? 'animate-spin' : ''}`} />
+                  <span>{sampleAnalyzing ? 'Scanning with AI...' : 'Scan Observation with AI'}</span>
+                </button>
+              </div>
+
+              {sampleResult && (
+                <div className="mt-4 p-5 bg-slate-50 border border-slate-200 rounded-xl space-y-4 animate-fadeIn">
+                  <div className="flex flex-wrap justify-between items-center gap-2 pb-3 border-b border-slate-200">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-extrabold text-slate-800">Composite Risk Score:</span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-black border ${
+                        sampleResult.sif_risk_score >= 8.5
+                          ? 'bg-red-100 text-red-800 border-red-200'
+                          : sampleResult.sif_risk_score >= 6.5
+                            ? 'bg-orange-100 text-orange-800 border-orange-200'
+                            : 'bg-emerald-100 text-emerald-800 border-emerald-200'
+                      }`}>
+                        {sampleResult.sif_risk_score} / 10 ({sampleResult.risk_level})
+                      </span>
+                    </div>
+
+                    <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded">
+                      {sampleResult.ai_source || 'SIF-SHIELD AI Engine'}
+                    </span>
+                  </div>
+
+                  {/* Factor breakdown */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                      <div className="text-[9px] font-bold text-slate-400 uppercase">Severity</div>
+                      <div className="text-sm font-black text-slate-800 mt-0.5">{sampleResult.severity_score} / 10</div>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                      <div className="text-[9px] font-bold text-slate-400 uppercase">Exposure</div>
+                      <div className="text-sm font-black text-slate-800 mt-0.5">{sampleResult.exposure_score} / 10</div>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                      <div className="text-[9px] font-bold text-slate-400 uppercase">Barrier Failure</div>
+                      <div className="text-sm font-black text-slate-800 mt-0.5">{sampleResult.barrier_score} / 10</div>
+                    </div>
+                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                      <div className="text-[9px] font-bold text-slate-400 uppercase">Consequence</div>
+                      <div className="text-sm font-black text-slate-800 mt-0.5">{sampleResult.consequence_score} / 10</div>
+                    </div>
+                  </div>
+
+                  {/* Extracted Context */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase">IOGP Life-Saving Rule</div>
+                      <div className="font-extrabold text-blue-700">{sampleResult.life_saving_rule}</div>
+                    </div>
+                    <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-1">
+                      <div className="text-[10px] font-bold text-slate-400 uppercase">Detected Hazard</div>
+                      <div className="font-semibold text-slate-800">{sampleResult.hazard}</div>
+                    </div>
+                  </div>
+
+                  {/* Explanation & Action */}
+                  <div className="bg-white p-3.5 rounded-lg border border-slate-200 space-y-2 text-xs">
+                    <div>
+                      <span className="font-bold text-slate-900 block mb-0.5">AI Safety Explanation:</span>
+                      <p className="text-slate-700 leading-relaxed">{sampleResult.explanation}</p>
+                    </div>
+                    <div>
+                      <span className="font-bold text-slate-900 block mb-0.5">Recommended Corrective Action:</span>
+                      <p className="text-emerald-800 font-semibold bg-emerald-50/50 p-2.5 rounded border border-emerald-200/60 leading-relaxed">
+                        {sampleResult.recommended_action}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       )}
 

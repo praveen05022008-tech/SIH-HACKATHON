@@ -25,7 +25,6 @@ export const Topbar: React.FC<TopbarProps> = ({
 
   const personas = [
     { label: '👷‍♂️ Field Employee / Worker', email: 'worker@refinery.safe', role: 'Field Worker' },
-    { label: '🤖 AI Pipeline Viewer', email: 'pipeline@sifshield.ai', role: 'AI Pipeline Viewer' },
     { label: '🛡️ Safety Officer', email: 'officer@refinery.safe', role: 'Safety Officer' },
     { label: '📊 Safety Manager / HSE Lead', email: 'manager@refinery.safe', role: 'Safety Manager' },
     { label: '⚙️ System Admin', email: 'admin@refinery.safe', role: 'Admin' }
@@ -41,8 +40,6 @@ export const Topbar: React.FC<TopbarProps> = ({
       case 'Safety Officer':
       case 'Reviewer':
         return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'AI Pipeline Viewer':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'Admin':
         return 'bg-red-100 text-red-800 border-red-200';
       default:

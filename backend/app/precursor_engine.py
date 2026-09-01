@@ -1,6 +1,19 @@
+import sys
+import os
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from backend.app import models
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+try:
+    from backend.app import models
+except ImportError:
+    try:
+        from app import models
+    except ImportError:
+        import models
 
 def detect_precursors(db: Session):
     """

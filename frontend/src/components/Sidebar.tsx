@@ -15,8 +15,10 @@ import {
   Database,
   Activity,
   FileText,
-  Zap
+  Zap,
+  Users
 } from 'lucide-react';
+
 
 interface SidebarProps {
   currentPage: string;
@@ -36,12 +38,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, s
         return [
           { id: 'worker-portal', label: 'Worker Portal', icon: FileText }
         ];
-      case 'AI Pipeline Viewer':
-        return [
-          { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-          { id: 'analysis', label: 'AI Ingestion Pipeline', icon: Cpu },
-          { id: 'learning', label: 'GATI Learning Centre', icon: GraduationCap }
-        ];
       case 'Safety Officer':
         return [
           { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
@@ -53,18 +49,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, s
       case 'Safety Manager':
         return [
           { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+          { id: 'manager', label: 'Manager Command Center', icon: Users },
           { id: 'sif', label: 'SIF Intelligence', icon: ShieldAlert },
           { id: 'precursors', label: 'Precursor Patterns', icon: Network },
           { id: 'sites', label: 'Sites & Activities', icon: MapPin },
+          { id: 'track-actions', label: 'Track Actions', icon: Activity },
           { id: 'reports', label: 'Compliance Reports', icon: FileBarChart2 }
         ];
       case 'Admin':
         return [
-          { id: 'settings', label: 'System Admin Console', icon: SettingsIcon }
+          { id: 'settings', label: 'System Admin Console', icon: SettingsIcon },
+          { id: 'manager', label: 'Workforce Allotment', icon: Users }
         ];
       default:
         return [
           { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
+          { id: 'manager', label: 'Manager Center', icon: Users },
           { id: 'inbox', label: 'Safety Events', icon: Inbox },
           { id: 'sif', label: 'SIF Intelligence', icon: ShieldAlert },
           { id: 'lsr', label: 'Life-Saving Rules', icon: FileCheck2 },

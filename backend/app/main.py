@@ -1,4 +1,5 @@
 import os
+import sys
 import datetime
 import random
 from fastapi import FastAPI, Depends, HTTPException, Query, status
@@ -7,7 +8,17 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional, List, Dict, Any
 
-from backend.app import models, schemas, database, ai_service, precursor_engine, auth, seed
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+try:
+    from backend.app import models, schemas, database, ai_service, precursor_engine, auth, seed, config
+except ImportError:
+    try:
+        from app import models, schemas, database, ai_service, precursor_engine, auth, seed, config
+    except ImportError:
+        import models, schemas, database, ai_service, precursor_engine, auth, seed, config
 
 app = FastAPI(
     title="SIF-SHIELD AI Engine API",
@@ -579,6 +590,54 @@ def inspect_ai_pipeline(payload: Dict[str, Any], db: Session = Depends(get_db)):
         "summary": analysis
     }
 
+# GET /api/ai/status
+@app.get("/api/ai/status")
+def get_ai_status():
+    has_key = bool(config.AI_API_KEY and len(config.AI_API_KEY.strip()) > 0)
+    masked_key = ""
+    if has_key:
+        k = config.AI_API_KEY.strip()
+        masked_key = f"{k[:7]}...{k[-4:]}" if len(k) > 12 else "****"
+        
+    return {
+        "provider": config.AI_PROVIDER,
+        "model": config.AI_MODEL,
+        "base_url": config.AI_BASE_URL,
+        "has_api_key": has_key,
+        "masked_key": masked_key,
+        "status": "Configured (Ready)" if has_key else "Operating on GATI Heuristic Engine",
+        "fallback_engine": "GATI Multi-Factor SIF Scoring & IOGP Rule Heuristics (Active)"
+    }
+
+# POST /api/ai/test-key
+@app.post("/api/ai/test-key")
+def test_ai_key(payload: Optional[Dict[str, Any]] = None):
+    p = payload or {}
+    api_key = p.get("api_key") or config.AI_API_KEY
+    base_url = p.get("base_url") or config.AI_BASE_URL
+    model = p.get("model") or config.AI_MODEL
+    
+    result = ai_service.test_ai_connection(api_key, base_url, model)
+    return result
+
+# POST /api/ai/config
+@app.post("/api/ai/config")
+def update_ai_config(payload: Dict[str, Any]):
+    if "api_key" in payload and payload["api_key"]:
+        config.AI_API_KEY = payload["api_key"].strip()
+    if "model" in payload and payload["model"]:
+        config.AI_MODEL = payload["model"].strip()
+    if "provider" in payload and payload["provider"]:
+        config.AI_PROVIDER = payload["provider"].strip()
+    if "base_url" in payload and payload["base_url"]:
+        config.AI_BASE_URL = payload["base_url"].strip()
+        
+    return {
+        "success": True,
+        "message": "AI Engine settings updated successfully.",
+        "status": get_ai_status()
+    }
+
 # GET /api/sif
 @app.get("/api/sif")
 def get_sif_intelligence(db: Session = Depends(get_db)):
@@ -760,4 +819,384 @@ def reset_and_seed_db():
         return {"success": True, "message": "Database successfully reset and re-seeded with SIF-SHIELD AI demo dataset."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Reset database failed: {str(e)}")
+
+# ==========================================
+# SAFETY MANAGER: OFFICER MANAGEMENT & ALLOTMENTS
+# ==========================================
+
+# GET /api/manager/officers
+@app.get("/api/manager/officers")
+def get_manager_officers(db: Session = Depends(get_db)):
+    officers = db.query(models.OfficerProfile).all()
+    results = []
+    
+    for off in officers:
+        # Calculate active workload metrics
+        open_reviews = db.query(models.SafetyEvent).filter(
+            models.SafetyEvent.status == "Needs Review",
+            (models.SafetyEvent.reviewer == off.officer_name) | (models.SafetyEvent.site == off.site)
+        ).count()
+        
+        assigned_tasks = db.query(models.OfficerTask).filter(
+            models.OfficerTask.assigned_officer_id == off.id,
+            models.OfficerTask.status.in_(["Assigned", "In Progress"])
+        ).count()
+        
+        completed_tasks = db.query(models.OfficerTask).filter(
+            models.OfficerTask.assigned_officer_id == off.id,
+            models.OfficerTask.status == "Completed"
+        ).count()
+        
+        total_tasks = db.query(models.OfficerTask).filter(
+            models.OfficerTask.assigned_officer_id == off.id
+        ).count()
+        
+        # Workload calculation: 0 - 100%
+        workload_score = min(100, int(((assigned_tasks * 20) + (open_reviews * 10)) / max(1, off.max_capacity * 10) * 100))
+        
+        results.append({
+            "id": off.id,
+            "officer_name": off.officer_name,
+            "officer_code": off.officer_code,
+            "email": off.email,
+            "phone": off.phone,
+            "radio_channel": off.radio_channel,
+            "site": off.site,
+            "unit": off.unit,
+            "shift": off.shift,
+            "status": off.status,
+            "certifications": off.certifications.split(", ") if off.certifications else [],
+            "experience_years": off.experience_years,
+            "max_capacity": off.max_capacity,
+            "open_reviews_count": open_reviews,
+            "active_tasks_count": assigned_tasks,
+            "completed_tasks_count": completed_tasks,
+            "total_tasks_count": total_tasks,
+            "workload_score": workload_score,
+            "compliance_rate": 98.4 if completed_tasks > 0 else 95.0
+        })
+        
+    return results
+
+# POST /api/manager/officers/allot
+@app.post("/api/manager/officers/allot")
+def allot_officer(payload: schemas.OfficerAllotmentPayload, db: Session = Depends(get_db)):
+    officer = db.query(models.OfficerProfile).filter(models.OfficerProfile.id == payload.officer_id).first()
+    if not officer:
+        raise HTTPException(status_code=404, detail="Officer profile not found")
+        
+    old_site = officer.site
+    old_shift = officer.shift
+    
+    officer.site = payload.site
+    officer.unit = payload.unit
+    officer.shift = payload.shift
+    if payload.status:
+        officer.status = payload.status
+    if payload.radio_channel:
+        officer.radio_channel = payload.radio_channel
+        
+    # Audit log
+    audit = models.AuditEvent(
+        event_id=f"ALLOT-{officer.officer_code}",
+        action="Manager Workforce Allotment",
+        details=f"HSE Manager reallocated Officer '{officer.officer_name}' from [{old_site} | {old_shift}] to [{payload.site} ({payload.unit}) | {payload.shift}]. Status: {payload.status}.",
+        user_email="manager@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(officer)
+    
+    return {
+        "success": True,
+        "message": f"Successfully updated allotment for {officer.officer_name} to {officer.site} ({officer.shift}).",
+        "officer": {
+            "id": officer.id,
+            "name": officer.officer_name,
+            "site": officer.site,
+            "unit": officer.unit,
+            "shift": officer.shift,
+            "status": officer.status
+        }
+    }
+
+# GET /api/manager/tasks
+@app.get("/api/manager/tasks")
+def get_manager_tasks(
+    officer_id: Optional[int] = None, 
+    site: Optional[str] = None,
+    status: Optional[str] = None,
+    priority: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.OfficerTask)
+    
+    if officer_id:
+        query = query.filter(models.OfficerTask.assigned_officer_id == officer_id)
+    if site:
+        query = query.filter(models.OfficerTask.site == site)
+    if status:
+        query = query.filter(models.OfficerTask.status == status)
+    if priority:
+        query = query.filter(models.OfficerTask.priority == priority)
+        
+    tasks = query.order_by(models.OfficerTask.created_at.desc()).all()
+    
+    return [
+        {
+            "id": t.id,
+            "task_id": t.task_id,
+            "title": t.title,
+            "task_type": t.task_type,
+            "site": t.site,
+            "unit": t.unit,
+            "priority": t.priority,
+            "assigned_officer_id": t.assigned_officer_id,
+            "assigned_officer_name": t.assigned_officer_name,
+            "assigned_by": t.assigned_by,
+            "instructions": t.instructions,
+            "status": t.status,
+            "due_date": t.due_date.isoformat(),
+            "findings": t.findings,
+            "related_event_id": t.related_event_id,
+            "created_at": t.created_at.isoformat(),
+            "completed_at": t.completed_at.isoformat() if t.completed_at else None
+        }
+        for t in tasks
+    ]
+
+# POST /api/manager/tasks
+@app.post("/api/manager/tasks")
+def create_manager_task(payload: schemas.OfficerTaskCreatePayload, db: Session = Depends(get_db)):
+    officer = db.query(models.OfficerProfile).filter(models.OfficerProfile.id == payload.assigned_officer_id).first()
+    if not officer:
+        raise HTTPException(status_code=404, detail="Assigned officer profile not found")
+        
+    task_count = db.query(models.OfficerTask).count() + 1
+    task_id = f"TSK-{100 + task_count:03d}"
+    
+    due_date = datetime.datetime.utcnow() + datetime.timedelta(days=payload.due_days)
+    
+    new_task = models.OfficerTask(
+        task_id=task_id,
+        title=payload.title,
+        task_type=payload.task_type,
+        site=payload.site,
+        unit=payload.unit,
+        priority=payload.priority,
+        assigned_officer_id=officer.id,
+        assigned_officer_name=officer.officer_name,
+        assigned_by="Dr. Vikram Roy (Head of HSE)",
+        instructions=payload.instructions,
+        status="Assigned",
+        due_date=due_date,
+        related_event_id=payload.related_event_id
+    )
+    db.add(new_task)
+    
+    # Audit log
+    audit = models.AuditEvent(
+        event_id=task_id,
+        action="Manager Task Allotment",
+        details=f"HSE Manager dispatched safety inspection '{payload.title}' ({payload.priority} Priority) to Officer '{officer.officer_name}' at {payload.site}.",
+        user_email="manager@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(new_task)
+    
+    return {
+        "success": True,
+        "task_id": task_id,
+        "message": f"Task {task_id} successfully created and allotted to {officer.officer_name}."
+    }
+
+# PUT /api/manager/tasks/{task_id}
+@app.put("/api/manager/tasks/{task_id}")
+def update_manager_task(task_id: str, payload: schemas.OfficerTaskUpdatePayload, db: Session = Depends(get_db)):
+    task = db.query(models.OfficerTask).filter(models.OfficerTask.task_id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    if payload.status:
+        task.status = payload.status
+        if payload.status == "Completed":
+            task.completed_at = datetime.datetime.utcnow()
+    if payload.findings:
+        task.findings = payload.findings
+    if payload.assigned_officer_id:
+        officer = db.query(models.OfficerProfile).filter(models.OfficerProfile.id == payload.assigned_officer_id).first()
+        if officer:
+            task.assigned_officer_id = officer.id
+            task.assigned_officer_name = officer.officer_name
+            
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": f"Task {task_id} updated successfully."
+    }
+
+# POST /api/manager/broadcast
+@app.post("/api/manager/broadcast")
+def broadcast_safety_directive(payload: schemas.SafetyDirectivePayload, db: Session = Depends(get_db)):
+    dir_count = db.query(models.SafetyDirective).count() + 1
+    directive_id = f"DIR-{500 + dir_count:03d}"
+    
+    directive = models.SafetyDirective(
+        directive_id=directive_id,
+        title=payload.title,
+        message=payload.message,
+        priority=payload.priority,
+        target_sites=payload.target_sites,
+        issued_by="Dr. Vikram Roy (Head of HSE)",
+        acknowledge_count=0
+    )
+    db.add(directive)
+    
+    audit = models.AuditEvent(
+        event_id=directive_id,
+        action="Safety Directive Broadcast",
+        details=f"HSE Manager broadcasted '{payload.title}' to '{payload.target_sites}'. Priority: {payload.priority}.",
+        user_email="manager@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    
+    return {
+        "success": True,
+        "directive_id": directive_id,
+        "message": f"Safety Directive {directive_id} broadcasted to all safety officers."
+    }
+
+# GET /api/manager/directives
+@app.get("/api/manager/directives")
+def get_safety_directives(db: Session = Depends(get_db)):
+    directives = db.query(models.SafetyDirective).order_by(models.SafetyDirective.created_at.desc()).limit(20).all()
+    return [
+        {
+            "id": d.id,
+            "directive_id": d.directive_id,
+            "title": d.title,
+            "message": d.message,
+            "priority": d.priority,
+            "target_sites": d.target_sites,
+            "issued_by": d.issued_by,
+            "acknowledge_count": d.acknowledge_count,
+            "created_at": d.created_at.isoformat()
+        }
+        for d in directives
+    ]
+
+# POST /api/manager/reassign-event
+@app.post("/api/manager/reassign-event")
+def reassign_event_to_officer(payload: schemas.ReassignEventPayload, db: Session = Depends(get_db)):
+    event = db.query(models.SafetyEvent).filter(models.SafetyEvent.id == payload.event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+        
+    old_reviewer = event.reviewer or "Unassigned"
+    event.reviewer = payload.officer_name
+    
+    audit = models.AuditEvent(
+        event_id=event.id,
+        action="Manager Event Reassignment",
+        details=f"HSE Manager reassigned event '{event.id}' from {old_reviewer} to '{payload.officer_name}'. Manager Note: {payload.manager_note or 'Priority Investigation Allotment'}.",
+        user_email="manager@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": f"Event {event.id} successfully reassigned to Safety Officer {payload.officer_name}."
+    }
+
+# ==========================================
+# SIF-SHIELD AI INTELLIGENCE ENDPOINTS
+# ==========================================
+
+# GET /api/ai/status
+@app.get("/api/ai/status")
+def get_ai_status_endpoint():
+    """
+    Returns AI provider configuration, model info, masked API key, and live connectivity status.
+    """
+    return ai_service.get_ai_status()
+
+# POST /api/ai/test-key
+@app.post("/api/ai/test-key")
+def test_ai_key_endpoint(payload: schemas.AITestKeyPayload):
+    """
+    Runs a live ping test to the Cerebras / LLM endpoint with latency measurement.
+    """
+    return ai_service.test_ai_connection(
+        api_key=payload.api_key,
+        base_url=payload.base_url,
+        model=payload.model
+    )
+
+# POST /api/ai/config
+@app.post("/api/ai/config")
+def update_ai_config_endpoint(payload: schemas.AIConfigPayload, db: Session = Depends(get_db)):
+    """
+    Updates AI provider, model, and API key dynamically and persists to .env.
+    """
+    result = ai_service.update_ai_config(
+        provider=payload.provider,
+        api_key=payload.api_key,
+        base_url=payload.base_url,
+        model=payload.model
+    )
+    
+    # Create audit event
+    audit = models.AuditEvent(
+        event_id="AI-CONFIG-UPDATE",
+        action="AI Engine Configuration",
+        details=f"Administrator updated AI configuration: Provider={payload.provider}, Model={payload.model}.",
+        user_email="admin@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    
+    return {
+        "success": True,
+        "message": "AI Engine configuration updated successfully.",
+        "config": result
+    }
+
+# POST /api/ai/pipeline
+@app.post("/api/ai/pipeline")
+def run_ai_pipeline_test(payload: schemas.AIPipelinePayload, db: Session = Depends(get_db)):
+    """
+    Runs the full M1-M6 precursor intelligence pipeline on sample text without saving to the DB.
+    """
+    meta = {
+        "site": payload.site or "Digboi Refinery D",
+        "unit": payload.unit or "CDU",
+        "equipment_involved": payload.equipment_involved
+    }
+    
+    analysis = ai_service.analyzeSafetyReport(payload.text, db, meta)
+    
+    return {
+        "success": True,
+        "summary": analysis,
+        "raw_text": payload.text
+    }
+
+# POST /api/ai/chat
+@app.post("/api/ai/chat")
+def ai_safety_copilot_chat(payload: schemas.AIChatPayload, db: Session = Depends(get_db)):
+    """
+    AI Safety Copilot Q&A endpoint for safety officers and workers.
+    """
+    res = ai_service.ask_ai_safety_copilot(
+        prompt=payload.message,
+        context_event_id=payload.context_event_id,
+        db=db
+    )
+    return res
+
+
 
