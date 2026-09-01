@@ -608,13 +608,13 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
       </div>
 
       {/* Tabs Navigation */}
-      <div className="flex border-b border-slate-200 bg-white rounded-t-xl px-4 pt-2">
+      <div className="flex border-b border-slate-200 bg-white rounded-2xl p-1.5 shadow-xs gap-1.5 overflow-x-auto">
         <button
           onClick={() => setActiveTab('workforce')}
-          className={`px-5 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
+          className={`px-5 py-2.5 text-xs font-extrabold rounded-xl flex items-center gap-2 transition cursor-pointer ${
             activeTab === 'workforce'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-[#008779] text-white shadow-md shadow-[#008779]/25'
+              : 'text-slate-600 hover:bg-[#E8F6F4]/60 hover:text-[#008779]'
           }`}
         >
           <Users className="h-4 w-4" />
@@ -623,10 +623,10 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
 
         <button
           onClick={() => setActiveTab('tasks')}
-          className={`px-5 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
+          className={`px-5 py-2.5 text-xs font-extrabold rounded-xl flex items-center gap-2 transition cursor-pointer ${
             activeTab === 'tasks'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-[#008779] text-white shadow-md shadow-[#008779]/25'
+              : 'text-slate-600 hover:bg-[#E8F6F4]/60 hover:text-[#008779]'
           }`}
         >
           <Layers className="h-4 w-4" />
@@ -635,10 +635,10 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
 
         <button
           onClick={() => setActiveTab('directives')}
-          className={`px-5 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
+          className={`px-5 py-2.5 text-xs font-extrabold rounded-xl flex items-center gap-2 transition cursor-pointer ${
             activeTab === 'directives'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-[#008779] text-white shadow-md shadow-[#008779]/25'
+              : 'text-slate-600 hover:bg-[#E8F6F4]/60 hover:text-[#008779]'
           }`}
         >
           <Radio className="h-4 w-4" />
@@ -647,10 +647,10 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
 
         <button
           onClick={() => setActiveTab('reassign')}
-          className={`px-5 py-3 text-xs font-bold border-b-2 flex items-center gap-2 transition ${
+          className={`px-5 py-2.5 text-xs font-extrabold rounded-xl flex items-center gap-2 transition cursor-pointer ${
             activeTab === 'reassign'
-              ? 'border-blue-600 text-blue-600'
-              : 'border-transparent text-slate-500 hover:text-slate-800'
+              ? 'bg-[#008779] text-white shadow-md shadow-[#008779]/25'
+              : 'text-slate-600 hover:bg-[#E8F6F4]/60 hover:text-[#008779]'
           }`}
         >
           <ArrowRightLeft className="h-4 w-4" />

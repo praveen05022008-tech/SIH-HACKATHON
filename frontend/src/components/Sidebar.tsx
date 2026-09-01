@@ -15,7 +15,8 @@ import {
   Zap,
   Activity,
   LogOut,
-  Sparkles
+  Sparkles,
+  Users
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -53,18 +54,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ];
       case 'Safety Manager':
         return [
-          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+          { id: 'manager', label: 'Command Center', icon: Users },
+          { id: 'dashboard', label: 'Executive Dashboard', icon: LayoutDashboard },
           { id: 'sif', label: 'SIF Intelligence', icon: ShieldAlert },
           { id: 'precursors', label: 'Precursors', icon: Network },
           { id: 'sites', label: 'Sites & Units', icon: MapPin },
+          { id: 'track-actions', label: 'Track Actions', icon: Activity },
           { id: 'reports', label: 'Reports', icon: FileBarChart2 }
         ];
       case 'Admin':
         return [
-          { id: 'settings', label: 'Admin Console', icon: SettingsIcon }
+          { id: 'settings', label: 'Admin Console', icon: SettingsIcon },
+          { id: 'manager', label: 'Workforce Allotment', icon: Users }
         ];
       default:
         return [
+          { id: 'manager', label: 'Command Center', icon: Users },
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { id: 'inbox', label: 'Safety Alerts', icon: Inbox },
           { id: 'sif', label: 'SIF Intelligence', icon: ShieldAlert },

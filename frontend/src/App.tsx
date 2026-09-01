@@ -18,6 +18,7 @@ import { Detail } from './pages/Detail';
 import { WorkerPortal } from './pages/WorkerPortal';
 import { TakeAction } from './pages/TakeAction';
 import { TrackActions } from './pages/TrackActions';
+import { SafetyManager } from './pages/SafetyManager';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -71,6 +72,8 @@ function App() {
       defaultPage = 'worker-portal';
     } else if (loggedInUser.role === 'Safety Officer') {
       defaultPage = 'dashboard';
+    } else if (loggedInUser.role === 'Safety Manager') {
+      defaultPage = 'manager';
     } else if (loggedInUser.role === 'Admin') {
       defaultPage = 'settings';
     }
@@ -99,7 +102,7 @@ function App() {
     } else if (email === 'manager@refinery.safe' || email === 'manager@sifdemo.com') {
       name = 'HSE Manager / Lead';
       role = 'Safety Manager';
-      defaultPage = 'dashboard';
+      defaultPage = 'manager';
     } else if (email === 'admin@refinery.safe' || email === 'admin@sifdemo.com') {
       name = 'System Administrator';
       role = 'Admin';
@@ -149,14 +152,15 @@ function App() {
     if (user?.role === 'Safety Officer' && currentPage === 'inbox') {
       return 'Safety Officer Intelligence Console';
     }
-    if (user?.role === 'Safety Manager' && currentPage === 'dashboard') {
-      return 'Safety Manager Compliance Suite';
+    if (user?.role === 'Safety Manager' && currentPage === 'manager') {
+      return 'HSE Manager Command Center';
     }
     if (user?.role === 'Admin' && currentPage === 'settings') {
       return 'System Administration Console';
     }
 
     const titles: Record<string, string> = {
+      manager: 'HSE Manager Command Center',
       dashboard: user?.role === 'Safety Officer' ? 'Safety Officer Dashboard' : 'Executive Safety Dashboard',
       inbox: 'Safety Alerts',
       analysis: 'Report Analysis Engine',
@@ -275,6 +279,17 @@ function App() {
 
           {currentPage === 'reports' && user.role !== 'Field Worker' && (
             <Reports />
+          )}
+
+          {currentPage === 'manager' && (
+            <SafetyManager
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+              onNavigateTo={(page) => {
+                setSelectedEvent(null);
+                setCurrentPage(page);
+              }}
+            />
           )}
 
           {currentPage === 'settings' && (
