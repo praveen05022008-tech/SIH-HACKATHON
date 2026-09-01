@@ -1,7 +1,17 @@
 import datetime
+import sys
+import os
 from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
-from backend.app.database import Base
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+try:
+    from app.database import Base
+except ImportError:
+    from backend.app.database import Base
 
 class User(Base):
     __tablename__ = "users"
@@ -10,7 +20,7 @@ class User(Base):
     email = Column(String(100), unique=True, index=True, nullable=False)
     password_hash = Column(String(200), nullable=False)
     name = Column(String(100), nullable=False)
-    role = Column(String(50), nullable=False)  # Field Worker, Safety Officer, Safety Manager, Admin, AI Pipeline Viewer
+    role = Column(String(50), nullable=False)  # Field Worker, Safety Officer, Safety Manager, Admin
     is_active = Column(Boolean, default=True)
 
 class Site(Base):
@@ -43,21 +53,32 @@ class SafetyReport(Base):
     raw_text = Column(Text, nullable=False)
     audio_transcript = Column(Text, nullable=True)
     photo_url = Column(String(255), nullable=True)
+    site = Column(String(100), nullable=True)
+    unit = Column(String(100), nullable=True)
+    location = Column(String(255), nullable=True)
     equipment_involved = Column(String(100), nullable=True)
+    energy_source = Column(String(100), nullable=True)
     people_involved = Column(Integer, default=1)
     reporter_email = Column(String(100), default="worker@refinery.safe")
+    hazard_category = Column(String(100), nullable=True)
+    shift_timing = Column(String(100), nullable=True)
+    location_detail = Column(String(255), nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     status = Column(String(50), default="Pending")  # Pending, Analyzed, Error
     
-    events = relationship("SafetyEvent", back_populates="report")
+    events = relationship("SafetyEvent", back_populates="report", cascade="all, delete-orphan")
 
 class SafetyEvent(Base):
     __tablename__ = "safety_events"
     
     id = Column(String(50), primary_key=True, index=True)  # e.g., SIF-10001 or #SIF26165-001
-    report_id = Column(Integer, ForeignKey("safety_reports.id"))
+    report_id = Column(Integer, ForeignKey("safety_reports.id"), nullable=True)
     report_code = Column(String(50), nullable=True) # formatted e.g. #SIF26165-001
     report_type = Column(String(50), default="Unsafe Condition") # Unsafe Act, Unsafe Condition, Near Miss
+    reporter_email = Column(String(100), default="worker@refinery.safe")
+    hazard_category = Column(String(100), nullable=True)
+    shift_timing = Column(String(100), nullable=True)
+    location_detail = Column(String(255), nullable=True)
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
     site = Column(String(100))
     unit = Column(String(100))
@@ -113,8 +134,8 @@ class SafetyEvent(Base):
     l6_job = Column(String(200))
 
     report = relationship("SafetyReport", back_populates="events")
-    reviews = relationship("Review", back_populates="event")
-    interventions = relationship("Intervention", back_populates="event")
+    reviews = relationship("Review", back_populates="event", cascade="all, delete-orphan")
+    interventions = relationship("Intervention", back_populates="event", cascade="all, delete-orphan")
 
 class LifeSavingRule(Base):
     __tablename__ = "life_saving_rules"

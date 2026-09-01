@@ -29,6 +29,13 @@ export interface SafetyReport {
 export interface SafetyEvent {
   id: string;
   report_id?: number;
+  report_code?: string;
+  report_type?: string;
+  reporter_email?: string;
+  hazard_category?: string;
+  shift_timing?: string;
+  location_detail?: string;
+  is_sif_precursor?: string;
   timestamp: string;
   site: string;
   unit: string;

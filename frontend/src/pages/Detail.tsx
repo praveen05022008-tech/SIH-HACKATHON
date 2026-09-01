@@ -212,20 +212,20 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
     <div className="space-y-6">
       
       {/* Back Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between bg-white border border-[#E6ECEB] p-4 rounded-3xl shadow-sm">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-xs text-industrial-blue hover:text-blue-800 font-bold"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#008779] hover:bg-[#007064] text-white text-xs font-extrabold rounded-full transition shadow-md shadow-[#008779]/20 cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Back to Safety Alerts</span>
         </button>
 
-        <div className="flex gap-2">
-          <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-700">
+        <div className="flex items-center gap-2.5">
+          <span className="px-3.5 py-1.5 bg-[#E8F6F4] border border-[#008779]/20 rounded-full text-xs font-mono font-bold text-[#008779]">
             {currentEvent.id}
           </span>
-          <span className="px-2.5 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-bold text-slate-500">
+          <span className="px-3.5 py-1.5 bg-slate-50 border border-[#E6ECEB] rounded-full text-xs font-semibold text-slate-600">
             {new Date(currentEvent.timestamp).toLocaleString()}
           </span>
         </div>

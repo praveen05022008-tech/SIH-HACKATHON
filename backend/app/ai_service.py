@@ -1,9 +1,19 @@
 import re
 import random
 import datetime
+import sys
+import os
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
-from backend.app import models
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+try:
+    from app import models
+except ImportError:
+    from backend.app import models
 
 # Base dictionary of keywords for SIF indicators and their initial weights (0 - 1.0)
 BASE_SIF_KEYWORDS = {
@@ -324,7 +334,7 @@ def analyzeSafetyReport(text: str, db: Session = None, report_meta: Optional[Dic
         simulated_alerts.append({
             "channel": "SMS_BROADCAST",
             "target": "+91-98765-XXXXX (Site Safety Head)",
-            "message": f"[SIF-SHIELD AI ALERT] Critical precursor flagged at {site}. Score: {sif_risk_score}/10. Action required: {recommended_action[:60]}...",
+            "message": f"[RAKSHA AI ALERT] Critical precursor flagged at {site}. Score: {sif_risk_score}/10. Action required: {recommended_action[:60]}...",
             "status": "Delivered"
         })
         simulated_alerts.append({

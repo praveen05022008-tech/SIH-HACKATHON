@@ -1,4 +1,5 @@
 import os
+import sys
 import datetime
 import random
 from fastapi import FastAPI, Depends, HTTPException, Query, status
@@ -7,11 +8,18 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional, List, Dict, Any
 
-from backend.app import models, schemas, database, ai_service, precursor_engine, auth, seed
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+try:
+    from app import models, schemas, database, ai_service, precursor_engine, auth, seed
+except ImportError:
+    from backend.app import models, schemas, database, ai_service, precursor_engine, auth, seed
 
 app = FastAPI(
-    title="SIF-SHIELD AI Engine API",
-    description="AI/NLP Engine to Detect Serious Injury & Fatality Precursors for OIL Operations",
+    title="RAKSHA AI Engine API",
+    description="Enterprise SIF Precursor Intelligence & Safety Analytics Platform",
     version="2.0.0"
 )
 
@@ -34,11 +42,11 @@ get_db = database.get_db
 def read_root():
     return {
         "status": "online",
-        "app": "SIF-SHIELD AI – SIF Precursor Intelligence Engine",
-        "organization": "Oil India Limited (OIL) & Refineries",
+        "app": "RAKSHA AI – Enterprise SIF Precursor Intelligence Platform",
+        "organization": "Refinery & Heavy Chemical Industrial Operations",
         "version": "2.0.0",
-        "engine": "GATI Calibrated Neural NLP",
-        "database_type": "SQLite Fallback" if "sqlite" in str(database.engine.url) else "TiDB Cloud"
+        "engine": "GATI Calibrated Neural NLP Engine",
+        "database_type": "SQLite Fallback" if "sqlite" in str(database.engine.url) else "TiDB Cloud Enterprise"
     }
 
 # POST /api/auth/login
@@ -52,7 +60,12 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
             "officer@refinery.safe": ("Safety Officer Lead", "Safety Officer"),
             "reviewer@refinery.safe": ("Demo Reviewer", "Safety Officer"),
             "manager@refinery.safe": ("HSE Manager / Lead", "Safety Manager"),
-            "admin@refinery.safe": ("System Administrator", "Admin")
+            "admin@refinery.safe": ("System Administrator", "Admin"),
+            "field.worker@sifdemo.com": ("Field Worker Demo", "Field Worker"),
+            "ai.pipeline@sifdemo.com": ("AI Ingestion Pipeline", "AI Pipeline Viewer"),
+            "officer@sifdemo.com": ("Capt. Arvind Sen", "Safety Officer"),
+            "manager@sifdemo.com": ("Dr. Vikram Roy", "Safety Manager"),
+            "admin@sifdemo.com": ("System Administrator", "Admin")
         }
         if payload.email in fallback_roles:
             name, role = fallback_roles[payload.email]
@@ -178,6 +191,7 @@ def get_events(
     risk_level: Optional[str] = None,
     report_type: Optional[str] = None,
     life_saving_rule: Optional[str] = None,
+    reporter_email: Optional[str] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
@@ -193,6 +207,8 @@ def get_events(
         query = query.filter(models.SafetyEvent.report_type == report_type)
     if life_saving_rule and life_saving_rule != "All Rules":
         query = query.filter(models.SafetyEvent.life_saving_rule == life_saving_rule)
+    if reporter_email:
+        query = query.filter(models.SafetyEvent.reporter_email == reporter_email)
         
     if sif_potential == "SIF Potential":
         query = query.filter((models.SafetyEvent.sif_risk_score >= 6.5) | (models.SafetyEvent.sif_probability >= 50.0))
@@ -242,10 +258,17 @@ def analyze_report(payload: schemas.SafetyReportCreate, db: Session = Depends(ge
     report = models.SafetyReport(
         report_code=report_code,
         report_type=payload.report_type or "Unsafe Condition",
+        hazard_category=payload.hazard_category,
+        shift_timing=payload.shift_timing,
+        location_detail=payload.location_detail,
+        site=payload.site,
+        unit=payload.unit,
+        location=payload.location,
         raw_text=payload.raw_text,
         audio_transcript=payload.audio_transcript,
         photo_url=payload.photo_url,
         equipment_involved=payload.equipment_involved,
+        energy_source=payload.energy_source,
         people_involved=payload.people_involved or 1,
         reporter_email=payload.reporter_email or "worker@refinery.safe",
         status="Pending"
@@ -275,6 +298,10 @@ def analyze_report(payload: schemas.SafetyReportCreate, db: Session = Depends(ge
             report_id=report.id,
             report_code=report_code,
             report_type=payload.report_type or "Unsafe Condition",
+            reporter_email=payload.reporter_email or "worker@refinery.safe",
+            hazard_category=payload.hazard_category,
+            shift_timing=payload.shift_timing,
+            location_detail=payload.location_detail,
             timestamp=datetime.datetime.utcnow(),
             site=analysis["site"],
             unit=analysis["unit"],
@@ -320,8 +347,8 @@ def analyze_report(payload: schemas.SafetyReportCreate, db: Session = Depends(ge
         audit = models.AuditEvent(
             event_id=evt_id,
             action="AI Scanned & Classified",
-            details=f"SIF-SHIELD AI evaluated report {report_code}. Risk Score: {analysis['sif_risk_score']}/10 ({analysis['risk_level']}). Precursor: {analysis['is_sif_precursor']}. Rule: {analysis['life_saving_rule']}.",
-            user_email="engine@sifshield.ai"
+            details=f"RAKSHA AI evaluated report {report_code}. Risk Score: {analysis['sif_risk_score']}/10 ({analysis['risk_level']}). Precursor: {analysis['is_sif_precursor']}. Rule: {analysis['life_saving_rule']}.",
+            user_email="engine@raksha.ai"
         )
         db.add(audit)
         
@@ -740,8 +767,8 @@ def generate_report(payload: Dict[str, str]):
         "timestamp": datetime.datetime.utcnow().isoformat(),
         "download_url": "/api/reports/download/sif-shield-summary.pdf",
         "metadata": {
-            "generator": "SIF-SHIELD AI Reporting Engine",
-            "standard": "OIL HSE & IOGP Life-Saving Rules Conformance",
+            "generator": "RAKSHA AI Reporting Engine",
+            "standard": "Refinery HSE & IOGP Life-Saving Rules Conformance",
             "format": "PDF / CSV",
             "generated_by": "Safety Officer / HSE Lead"
         }
@@ -752,7 +779,7 @@ def generate_report(payload: Dict[str, str]):
 def reset_and_seed_db():
     try:
         seed.seed_database()
-        return {"success": True, "message": "Database successfully reset and re-seeded with SIF-SHIELD AI demo dataset."}
+        return {"success": True, "message": "Database successfully reset and re-seeded with RAKSHA AI enterprise dataset."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Reset database failed: {str(e)}")
 
