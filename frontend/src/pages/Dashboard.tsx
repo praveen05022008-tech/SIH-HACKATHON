@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { SafetyEvent } from '../types';
+import { SafetyEvent, SafetyDirective } from '../types';
 import { 
   ShieldAlert, 
   Clock, 
@@ -30,7 +30,10 @@ import {
   LayoutGrid,
   Sparkles,
   Info,
-  Radio
+  Radio,
+  Send,
+  BarChart3,
+  Check
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -51,6 +54,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
   userName = 'Safety Officer Lead'
 }) => {
   const [events, setEvents] = useState<SafetyEvent[]>([]);
+  const [directives, setDirectives] = useState<SafetyDirective[]>([]);
+  const [acknowledgedDirIds, setAcknowledgedDirIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -266,19 +271,54 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/events');
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        setEvents(data);
+      const [evtRes, dirRes] = await Promise.all([
+        fetch('http://localhost:8000/api/events'),
+        fetch('http://localhost:8000/api/manager/directives')
+      ]);
+
+      if (evtRes.ok) {
+        const data = await evtRes.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setEvents(data);
+        } else {
+          setEvents(fallbackEvents);
+        }
       } else {
         setEvents(fallbackEvents);
+      }
+
+      if (dirRes.ok) {
+        const dirData = await dirRes.json();
+        setDirectives(dirData);
       }
     } catch (err) {
       console.warn("FastAPI offline or empty, utilizing baseline events dataset.");
       setEvents(fallbackEvents);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAcknowledgeDirective = async (dir: SafetyDirective) => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/manager/directives/${dir.directive_id}/acknowledge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_email: 'officer@refinery.safe',
+          user_name: userName || 'Capt. Arvind Sen',
+          site: 'All Operational Sites',
+          role: userRole || 'Safety Officer'
+        })
+      });
+      if (res.ok) {
+        setAcknowledgedDirIds(prev => new Set(prev).add(dir.directive_id));
+        triggerNotification(`✓ Acknowledged Directive ${dir.directive_id} as ${userRole}`);
+        fetchDashboardData();
+      }
+    } catch (err) {
+      console.warn('Failed to acknowledge directive from dashboard:', err);
+      setAcknowledgedDirIds(prev => new Set(prev).add(dir.directive_id));
     }
   };
 
@@ -616,12 +656,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
 
                   <button
-                    onClick={() => onNavigateTo?.('settings')}
-                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                    title="Admins cannot directly modify field logs; click to run system diagnostics & microservice repairs"
+                    onClick={() => onNavigateTo?.('worker-portal')}
+                    className="w-full py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <Wrench className="h-3.5 w-3.5 text-amber-400" />
-                    <span>Service & Diagnostics</span>
+                    <span>Open Field Portal</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
@@ -660,12 +699,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
 
                   <button
-                    onClick={() => onNavigateTo?.('settings')}
-                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                    title="Admins cannot directly modify field logs; click to run system diagnostics & microservice repairs"
+                    onClick={() => onNavigateTo?.('analysis')}
+                    className="w-full py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <Wrench className="h-3.5 w-3.5 text-amber-400" />
-                    <span>Service & Diagnostics</span>
+                    <span>Open AI Diagnostics</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
@@ -704,12 +742,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
 
                   <button
-                    onClick={() => onNavigateTo?.('settings')}
-                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                    title="Admins cannot directly modify field logs; click to run system diagnostics & microservice repairs"
+                    onClick={() => onNavigateTo?.('inbox')}
+                    className="w-full py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <Wrench className="h-3.5 w-3.5 text-amber-400" />
-                    <span>Service & Diagnostics</span>
+                    <span>Open Review Center</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
 
@@ -748,15 +785,77 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
 
                   <button
-                    onClick={() => onNavigateTo?.('settings')}
-                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                    title="Admins cannot directly modify field logs; click to run system diagnostics & microservice repairs"
+                    onClick={() => onNavigateTo?.('manager-portal')}
+                    className="w-full py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                   >
-                    <Wrench className="h-3.5 w-3.5 text-amber-400" />
-                    <span>Service & Diagnostics</span>
+                    <span>Open Manager Suite</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* 1C. ACTIVE SAFETY DIRECTIVES RIBBON (COMPANY-WIDE / TARGETED) */}
+          {directives.length > 0 && (
+            <div className="space-y-3">
+              {directives.slice(0, 2).map((dir) => {
+                const isAcknowledged = acknowledgedDirIds.has(dir.directive_id) || dir.acknowledge_count > 0;
+                const isUrgent = dir.priority === 'URGENT';
+                const targetScope = dir.target_scope || 'ALL';
+                const targetName = dir.target_name || dir.target_sites;
+
+                return (
+                  <div
+                    key={dir.id}
+                    className={`border rounded-2xl p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3 transition ${
+                      isUrgent 
+                        ? 'bg-red-50 border-red-200 ring-1 ring-red-500/20' 
+                        : 'bg-amber-50/80 border-amber-200'
+                    }`}
+                  >
+                    <div className="space-y-1.5 max-w-3xl">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="flex items-center gap-1 text-[9.5px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-600 text-white shadow-2xs">
+                          <Radio className="h-3 w-3 animate-pulse" />
+                          <span>{dir.priority} Directive</span>
+                        </span>
+                        <span className="font-mono text-xs font-black text-slate-800 bg-white/90 px-2 py-0.5 rounded border border-slate-300">
+                          {dir.directive_id}
+                        </span>
+                        <span className="text-[10.5px] font-bold text-slate-700">
+                          Target: <b className="text-slate-900">{targetScope === 'ALL' ? '🌐 All Operational Teams' : `👥 ${targetName}`}</b>
+                        </span>
+                      </div>
+
+                      <h4 className="font-extrabold text-slate-900 text-xs">{dir.title}</h4>
+                      <p className="text-[11.5px] text-slate-700 leading-snug font-medium line-clamp-2">
+                        {dir.message}
+                      </p>
+                    </div>
+
+                    <div className="shrink-0 flex items-center gap-2 w-full md:w-auto justify-end">
+                      <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-1 rounded-lg border border-emerald-250">
+                        {dir.acknowledge_count} Acknowledged
+                      </span>
+                      {isAcknowledged ? (
+                        <span className="px-3 py-1.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-bold flex items-center gap-1">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                          <span>Signed</span>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleAcknowledgeDirective(dir)}
+                          className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-1 cursor-pointer"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          <span>Sign Acknowledgment</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 

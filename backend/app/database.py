@@ -53,9 +53,31 @@ def get_engine():
 engine = get_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+from sqlalchemy import text
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
+    try:
+        with engine.connect() as conn:
+            try:
+                conn.execute(text("ALTER TABLE safety_directives ADD COLUMN target_scope VARCHAR(50) DEFAULT 'ALL'"))
+                conn.commit()
+            except Exception:
+                pass
+            try:
+                conn.execute(text("ALTER TABLE safety_directives ADD COLUMN target_name VARCHAR(100) DEFAULT 'All Operational Teams'"))
+                conn.commit()
+            except Exception:
+                pass
+    except Exception as e:
+        logger.warning(f"Column migration check note: {e}")
+
+init_db()
+
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
+

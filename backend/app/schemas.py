@@ -232,7 +232,15 @@ class SafetyDirectivePayload(BaseModel):
     title: str
     message: str
     priority: str = "HIGH"  # URGENT, HIGH, STANDARD
-    target_sites: str = "All Operational Sites"
+    target_scope: Optional[str] = "ALL"  # ALL, TEAM, SITE, OFFICER, SHIFT
+    target_name: Optional[str] = "All Operational Teams"
+    target_sites: Optional[str] = "All Operational Sites"
+
+class DirectiveAcknowledgePayload(BaseModel):
+    user_email: Optional[str] = "worker@refinery.safe"
+    user_name: Optional[str] = "Field Worker"
+    site: Optional[str] = "Digboi Refinery D"
+    role: Optional[str] = "Field Worker"
 
 class ReassignEventPayload(BaseModel):
     event_id: str

@@ -1043,12 +1043,18 @@ def broadcast_safety_directive(payload: schemas.SafetyDirectivePayload, db: Sess
     dir_count = db.query(models.SafetyDirective).count() + 1
     directive_id = f"DIR-{500 + dir_count:03d}"
     
+    target_scope = payload.target_scope or "ALL"
+    target_name = payload.target_name or "All Operational Teams"
+    target_sites = payload.target_sites or (target_name if target_scope == "SITE" else "All Operational Sites")
+    
     directive = models.SafetyDirective(
         directive_id=directive_id,
         title=payload.title,
         message=payload.message,
         priority=payload.priority,
-        target_sites=payload.target_sites,
+        target_scope=target_scope,
+        target_name=target_name,
+        target_sites=target_sites,
         issued_by="Dr. Vikram Roy (Head of HSE)",
         acknowledge_count=0
     )
@@ -1057,7 +1063,7 @@ def broadcast_safety_directive(payload: schemas.SafetyDirectivePayload, db: Sess
     audit = models.AuditEvent(
         event_id=directive_id,
         action="Safety Directive Broadcast",
-        details=f"HSE Manager broadcasted '{payload.title}' to '{payload.target_sites}'. Priority: {payload.priority}.",
+        details=f"HSE Manager broadcasted '{payload.title}' to {target_scope}: '{target_name}'. Priority: {payload.priority}.",
         user_email="manager@refinery.safe"
     )
     db.add(audit)
@@ -1066,13 +1072,15 @@ def broadcast_safety_directive(payload: schemas.SafetyDirectivePayload, db: Sess
     return {
         "success": True,
         "directive_id": directive_id,
-        "message": f"Safety Directive {directive_id} broadcasted to all safety officers."
+        "target_scope": target_scope,
+        "target_name": target_name,
+        "message": f"Safety Directive {directive_id} broadcasted to {target_name} ({target_scope})."
     }
 
 # GET /api/manager/directives
 @app.get("/api/manager/directives")
 def get_safety_directives(db: Session = Depends(get_db)):
-    directives = db.query(models.SafetyDirective).order_by(models.SafetyDirective.created_at.desc()).limit(20).all()
+    directives = db.query(models.SafetyDirective).order_by(models.SafetyDirective.created_at.desc()).limit(25).all()
     return [
         {
             "id": d.id,
@@ -1080,6 +1088,8 @@ def get_safety_directives(db: Session = Depends(get_db)):
             "title": d.title,
             "message": d.message,
             "priority": d.priority,
+            "target_scope": getattr(d, "target_scope", "ALL") or "ALL",
+            "target_name": getattr(d, "target_name", "All Operational Teams") or "All Operational Teams",
             "target_sites": d.target_sites,
             "issued_by": d.issued_by,
             "acknowledge_count": d.acknowledge_count,
@@ -1087,6 +1097,35 @@ def get_safety_directives(db: Session = Depends(get_db)):
         }
         for d in directives
     ]
+
+# POST /api/manager/directives/{directive_id}/acknowledge
+@app.post("/api/manager/directives/{directive_id}/acknowledge")
+def acknowledge_safety_directive(directive_id: str, payload: schemas.DirectiveAcknowledgePayload, db: Session = Depends(get_db)):
+    directive = db.query(models.SafetyDirective).filter(
+        (models.SafetyDirective.directive_id == directive_id) | (models.SafetyDirective.id == directive_id)
+    ).first()
+    
+    if not directive:
+        raise HTTPException(status_code=404, detail="Directive not found")
+        
+    directive.acknowledge_count += 1
+    
+    audit = models.AuditEvent(
+        event_id=directive.directive_id,
+        action="Directive Acknowledged",
+        details=f"{payload.role or 'Field Worker'} '{payload.user_name}' ({payload.user_email}) at {payload.site or 'Operational Site'} confirmed compliance with Directive {directive.directive_id}: '{directive.title}'.",
+        user_email=payload.user_email or "worker@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    
+    return {
+        "success": True,
+        "directive_id": directive.directive_id,
+        "acknowledge_count": directive.acknowledge_count,
+        "message": f"Directive {directive.directive_id} acknowledged by {payload.user_name}."
+    }
+
 
 # POST /api/manager/reassign-event
 @app.post("/api/manager/reassign-event")

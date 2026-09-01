@@ -278,7 +278,10 @@ class SafetyDirective(Base):
     title = Column(String(200), nullable=False)
     message = Column(Text, nullable=False)
     priority = Column(String(20), default="HIGH")  # URGENT, HIGH, STANDARD
+    target_scope = Column(String(50), default="ALL")  # ALL, TEAM, SITE, OFFICER, SHIFT
+    target_name = Column(String(100), default="All Operational Teams")
     target_sites = Column(String(200), default="All Operational Sites")
     issued_by = Column(String(100), default="Dr. Vikram Roy (Head of HSE)")
     acknowledge_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+

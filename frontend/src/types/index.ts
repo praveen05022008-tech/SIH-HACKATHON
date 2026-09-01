@@ -228,9 +228,12 @@ export interface SafetyDirective {
   title: string;
   message: string;
   priority: 'URGENT' | 'HIGH' | 'STANDARD' | string;
+  target_scope?: 'ALL' | 'TEAM' | 'SITE' | 'OFFICER' | 'SHIFT' | string;
+  target_name?: string;
   target_sites: string;
   issued_by: string;
   acknowledge_count: number;
   created_at: string;
 }
+
 
