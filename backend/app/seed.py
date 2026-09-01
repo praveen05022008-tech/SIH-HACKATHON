@@ -251,7 +251,7 @@ def seed_database():
             site="Barauni Unit E",
             unit="FCCU",
             shift="Night Vigil (22:00 - 06:00)",
-            status="On Duty",
+            status="Off Duty",
             certifications="Electrical Safety Auditor, LOTO Specialist, Fire Prevention Lead",
             experience_years=6,
             max_capacity=5

@@ -713,48 +713,86 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
           </div>
 
           {/* Officers Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {filteredOfficers.map((off) => {
+              const isOffDuty = off.status === 'Off Duty';
+              const isInField = off.status === 'In Field';
+              const isOnStandby = off.status === 'On Standby' || off.status === 'Standby';
+              const isOnDuty = off.status === 'On Duty';
+
               const isWorkloadHigh = off.workload_score >= 80;
               const isWorkloadMedium = off.workload_score >= 50 && off.workload_score < 80;
 
               return (
                 <div 
                   key={off.id}
-                  className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between"
+                  className={`border rounded-2xl p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between relative overflow-hidden ${
+                    isOffDuty
+                      ? 'bg-slate-50/70 border-slate-250 opacity-80'
+                      : isInField
+                        ? 'bg-white border-blue-200/90 ring-1 ring-blue-500/10'
+                        : isOnStandby
+                          ? 'bg-white border-amber-200/90'
+                          : 'bg-white border-emerald-250/90 ring-1 ring-emerald-500/10'
+                  }`}
                 >
+                  {/* Top Status Accent Bar */}
+                  <div className={`absolute top-0 left-0 right-0 h-1.5 ${
+                    isInField ? 'bg-blue-600' : isOnDuty ? 'bg-[#008779]' : isOnStandby ? 'bg-amber-500' : 'bg-slate-300'
+                  }`} />
+
                   <div>
                     {/* Header */}
-                    <div className="flex justify-between items-start">
+                    <div className="flex justify-between items-start pt-1">
                       <div className="flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-full bg-blue-50 border border-blue-200 text-blue-700 flex items-center justify-center font-black text-sm">
+                        <div className={`h-11 w-11 rounded-2xl flex items-center justify-center font-black text-sm border shadow-xs ${
+                          isInField
+                            ? 'bg-blue-50 border-blue-200 text-blue-700'
+                            : isOnDuty
+                              ? 'bg-[#E8F6F4] border-[#008779]/30 text-[#008779]'
+                              : isOnStandby
+                                ? 'bg-amber-50 border-amber-200 text-amber-700'
+                                : 'bg-slate-100 border-slate-300 text-slate-500'
+                        }`}>
                           {off.officer_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
                             <h3 className="font-extrabold text-slate-900 text-sm">{off.officer_name}</h3>
-                            <span className="text-[9px] font-bold text-slate-400">{off.officer_code}</span>
+                            <span className="text-[9.5px] font-mono font-bold text-slate-400">{off.officer_code}</span>
                           </div>
-                          <div className="text-[11px] text-slate-500">{off.phone}</div>
+                          <div className="text-[11px] text-slate-500 font-medium">{off.phone}</div>
                         </div>
                       </div>
 
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${
-                        off.status === 'On Duty' 
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          : off.status === 'In Field'
-                            ? 'bg-blue-50 text-blue-700 border-blue-200'
-                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                      {/* Explicit Duty Status Badge */}
+                      <span className={`px-2.5 py-1 rounded-full text-[9.5px] font-black uppercase tracking-wider border shadow-2xs flex items-center gap-1 ${
+                        isInField
+                          ? 'bg-blue-50 text-blue-700 border-blue-200 animate-pulse'
+                          : isOnDuty
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-250'
+                            : isOnStandby
+                              ? 'bg-amber-50 text-amber-700 border-amber-250'
+                              : 'bg-slate-100 text-slate-500 border-slate-300'
                       }`}>
-                        {off.status}
+                        <span className={`h-1.5 w-1.5 rounded-full ${
+                          isInField ? 'bg-blue-600' : isOnDuty ? 'bg-emerald-600' : isOnStandby ? 'bg-amber-500' : 'bg-slate-400'
+                        }`} />
+                        <span>{off.status}</span>
                       </span>
                     </div>
 
-                    {/* Site, Unit, Shift, Radio Channel */}
-                    <div className="mt-4 p-3 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5 text-xs text-slate-700">
+                    {/* Operational Duty Details Card */}
+                    <div className={`mt-4 p-3.5 rounded-xl space-y-2 text-xs border ${
+                      isInField
+                        ? 'bg-blue-50/40 border-blue-150 text-slate-800'
+                        : isOffDuty
+                          ? 'bg-slate-100/60 border-slate-200 text-slate-600'
+                          : 'bg-slate-50 border-slate-200 text-slate-800'
+                    }`}>
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-slate-400 uppercase">Site & Unit</span>
-                        <span className="font-bold text-slate-800">{off.site} • {off.unit}</span>
+                        <span className="font-bold text-slate-900">{off.site} • {off.unit}</span>
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-slate-400 uppercase">Coverage Shift</span>
@@ -762,9 +800,27 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-[10px] font-bold text-slate-400 uppercase">Radio Comms</span>
-                        <span className="font-mono text-[11px] font-bold text-blue-700 flex items-center gap-1">
+                        <span className={`font-mono text-[11px] font-bold flex items-center gap-1 ${
+                          isInField ? 'text-blue-700 font-extrabold' : isOffDuty ? 'text-slate-400' : 'text-[#008779]'
+                        }`}>
                           <Radio className="h-3 w-3" />
-                          {off.radio_channel}
+                          {isOffDuty ? 'Muted (Off-Duty)' : off.radio_channel}
+                        </span>
+                      </div>
+
+                      {/* Operational Allotment Role Tag */}
+                      <div className="pt-1.5 border-t border-slate-200/60 flex items-center justify-between text-[10px]">
+                        <span className="font-bold text-slate-400 uppercase">Access Allotment</span>
+                        <span className={`font-extrabold px-2 py-0.5 rounded ${
+                          isInField
+                            ? 'bg-blue-100 text-blue-800'
+                            : isOnDuty
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : isOnStandby
+                                ? 'bg-amber-100 text-amber-800'
+                                : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {isInField ? '⚡ Direct On-Site Physical Verifications' : isOnDuty ? '🛡️ SIF Triage & Permit Reviews' : isOnStandby ? '⏱️ Emergency Response Backup' : '⛔ Locked (Rest Period)'}
                         </span>
                       </div>
                     </div>
@@ -773,16 +829,16 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
                     <div className="mt-4 space-y-1">
                       <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
                         <span className="text-slate-400">Workload Capacity</span>
-                        <span className={isWorkloadHigh ? 'text-red-600' : isWorkloadMedium ? 'text-amber-600' : 'text-emerald-600'}>
-                          {off.workload_score}% ({off.active_tasks_count} Tasks • {off.open_reviews_count} Reviews)
+                        <span className={isOffDuty ? 'text-slate-400' : isWorkloadHigh ? 'text-red-600 font-black' : isWorkloadMedium ? 'text-amber-600 font-black' : 'text-[#008779] font-black'}>
+                          {isOffDuty ? '0% (Shift Inactive)' : `${off.workload_score}% (${off.active_tasks_count} Tasks • ${off.open_reviews_count} Reviews)`}
                         </span>
                       </div>
                       <div className="w-full bg-slate-150 h-2 rounded-full overflow-hidden">
                         <div 
                           className={`h-full rounded-full transition-all duration-300 ${
-                            isWorkloadHigh ? 'bg-red-500' : isWorkloadMedium ? 'bg-amber-500' : 'bg-emerald-500'
+                            isOffDuty ? 'bg-slate-300' : isWorkloadHigh ? 'bg-red-500' : isWorkloadMedium ? 'bg-amber-500' : 'bg-[#008779]'
                           }`}
-                          style={{ width: `${Math.min(100, off.workload_score)}%` }}
+                          style={{ width: `${isOffDuty ? 0 : Math.min(100, off.workload_score)}%` }}
                         />
                       </div>
                     </div>
@@ -807,7 +863,7 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
                     <span className="text-[10px] text-slate-400 font-semibold">Exp: {off.experience_years} yrs</span>
                     <button
                       onClick={() => handleOpenAllotModal(off)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-bold transition border border-blue-200"
+                      className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#E8F6F4] hover:bg-[#d5f0ec] text-[#008779] rounded-xl text-xs font-extrabold transition border border-[#008779]/20 cursor-pointer shadow-2xs"
                     >
                       <SlidersHorizontal className="h-3.5 w-3.5" />
                       <span>Reallocate Shift & Site</span>
@@ -1191,15 +1247,24 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Assigned Officer</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Assigned Officer (Duty-Aware)</label>
                   <select
                     value={taskForm.assigned_officer_id}
                     onChange={(e) => setTaskForm({ ...taskForm, assigned_officer_id: Number(e.target.value) })}
                     className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50 font-bold text-slate-800"
                   >
-                    {officers.map(o => (
-                      <option key={o.id} value={o.id}>{o.officer_name} ({o.site})</option>
-                    ))}
+                    {officers.map(o => {
+                      const isOff = o.status === 'Off Duty';
+                      return (
+                        <option 
+                          key={o.id} 
+                          value={o.id}
+                          disabled={isOff}
+                        >
+                          {o.officer_name} • [{o.status}] • {o.site} ({o.workload_score}% cap) {isOff ? '🚫 (Off Duty - Locked)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
               </div>
@@ -1351,11 +1416,18 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
                   className="w-full p-2.5 border border-slate-300 rounded-xl text-xs bg-slate-50 font-bold text-slate-800"
                   required
                 >
-                  {officers.map(o => (
-                    <option key={o.id} value={o.officer_name}>
-                      {o.officer_name} ({o.site} • {o.shift})
-                    </option>
-                  ))}
+                  {officers.map(o => {
+                    const isOff = o.status === 'Off Duty';
+                    return (
+                      <option 
+                        key={o.id} 
+                        value={o.officer_name}
+                        disabled={isOff}
+                      >
+                        {o.officer_name} • [{o.status}] • {o.site} ({o.workload_score}% load) {isOff ? '🚫 (Off Duty)' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
