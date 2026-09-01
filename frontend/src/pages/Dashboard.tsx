@@ -506,35 +506,255 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="relative z-10 max-w-xl">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-[11px] font-bold text-emerald-100 mb-2 border border-white/20">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
-                <span>Safety Officer Command Dashboard</span>
+                <span>{userRole === 'Admin' ? 'System Administrator & Governance Hub' : 'Safety Officer Command Dashboard'}</span>
               </div>
 
               <h1 className="text-2xl font-black tracking-tight text-white">
-                Welcome Back, {userRole === 'Safety Officer' ? 'Safety Officer!' : `${userName}!`}
+                Welcome Back, {userRole === 'Admin' ? 'System Administrator' : userRole === 'Safety Officer' ? 'Safety Officer!' : `${userName}!`}
               </h1>
               <p className="text-sm text-emerald-50/90 italic mt-1 font-medium leading-relaxed">
-                Let’s Upgrade Your Precursor Prevention & SIF Shield Now
+                {userRole === 'Admin' 
+                  ? 'Enterprise Portal Operations, System Health, and AI Precursor Governance'
+                  : 'Let’s Upgrade Your Precursor Prevention & SIF Shield Now'}
               </p>
               
               <div className="mt-5 flex flex-wrap items-center gap-3">
-                <button
-                  onClick={() => onNavigateTo?.('take-action')}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
-                >
-                  <span>Take Action Now</span>
-                  <ChevronRight className="h-3.5 w-3.5" />
-                </button>
+                {userRole === 'Admin' ? (
+                  <>
+                    <button
+                      onClick={() => onNavigateTo?.('admin-console')}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#008779] text-xs font-extrabold rounded-full shadow-md hover:bg-emerald-50 transition-all duration-200 cursor-pointer"
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5 text-[#008779]" />
+                      <span>Configure AI Thresholds & Security</span>
+                    </button>
+                    <button
+                      onClick={() => onNavigateTo?.('manager-portal')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
+                    >
+                      <BarChart3 className="h-3.5 w-3.5 text-emerald-100" />
+                      <span>Open Manager Suite</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => onNavigateTo?.('take-action')}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
+                    >
+                      <span>Take Action Now</span>
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
 
-                <button
-                  onClick={() => onNavigateTo?.('track-actions')}
-                  className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
-                >
-                  <Activity className="h-3.5 w-3.5 text-emerald-100" />
-                  <span>Track Actions ({metrics.incompleted} Open)</span>
-                </button>
+                    <button
+                      onClick={() => onNavigateTo?.('track-actions')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
+                    >
+                      <Activity className="h-3.5 w-3.5 text-emerald-100" />
+                      <span>Track Actions ({metrics.incompleted} Open)</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
+
+          {/* 1B. ADMIN ENTERPRISE PORTALS GRID (VISIBLE ON DASHBOARD FOR ADMIN ROLE) */}
+          {userRole === 'Admin' && (
+            <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div>
+                  <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                    <ShieldCheck className="h-4.5 w-4.5 text-[#008779]" />
+                    <span>RAKSHA Enterprise Portal Operations & Control</span>
+                  </h2>
+                  <p className="text-xs text-slate-400 font-medium mt-0.5">
+                    Launch operational portals, monitor live throughput, and oversee active user sessions.
+                  </p>
+                </div>
+                <button
+                  onClick={() => onNavigateTo?.('admin-console')}
+                  className="px-3.5 py-1.5 rounded-xl bg-[#E8F6F4] text-[#008779] text-xs font-extrabold hover:bg-[#d4f0eb] transition border border-[#008779]/20 cursor-pointer"
+                >
+                  Manage Portals →
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Persona 1: Field Worker Portal */}
+                <div className="border border-emerald-200 bg-emerald-50/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-3 hover:shadow-sm transition">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-9 w-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                          <HardHat className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-emerald-800 block">Persona 1 — Field Ops</span>
+                          <h4 className="text-sm font-extrabold text-slate-900">Field Worker Portal</h4>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        ● Online
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center mt-3 pt-2.5 border-t border-emerald-200/60 text-xs">
+                      <div>
+                        <div className="font-extrabold text-slate-900">24</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">Active Users</div>
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-slate-900">8</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">Reports Today</div>
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-slate-900">2.3 min</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">Avg Submit</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onNavigateTo?.('worker-portal')}
+                    className="w-full py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>Open Field Portal</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Persona 2: AI Engine & Precursor Analysis */}
+                <div className="border border-purple-200 bg-purple-50/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-3 hover:shadow-sm transition">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-9 w-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                          <BrainCircuit className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-purple-800 block">Persona 2 — AI Engine</span>
+                          <h4 className="text-sm font-extrabold text-slate-900">AI Triage & Analysis</h4>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-100 text-purple-800 border border-purple-300">
+                        ● Online
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center mt-3 pt-2.5 border-t border-purple-200/60 text-xs">
+                      <div>
+                        <div className="font-extrabold text-purple-900">GATI v1.3</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">Engine Model</div>
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-purple-900">94.8%</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">Accuracy</div>
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-purple-900">1.4 sec</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">Avg Latency</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onNavigateTo?.('analysis')}
+                    className="w-full py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>Open AI Diagnostics</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Persona 3: Safety Officer Center */}
+                <div className="border border-blue-200 bg-blue-50/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-3 hover:shadow-sm transition">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-9 w-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                          <ClipboardCheck className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-blue-800 block">Persona 3 — Safety Lead</span>
+                          <h4 className="text-sm font-extrabold text-slate-900">Safety Officer Center</h4>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-blue-100 text-blue-800 border border-blue-300">
+                        ● Online
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center mt-3 pt-2.5 border-t border-blue-200/60 text-xs">
+                      <div>
+                        <div className="font-extrabold text-blue-900">{metrics.incompleted}</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">Pending Review</div>
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-blue-900">6</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">Active SWA</div>
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-blue-900">4.2 hrs</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">Avg Turnaround</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onNavigateTo?.('inbox')}
+                    className="w-full py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>Open Review Center</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Persona 4: Safety Manager Suite */}
+                <div className="border border-teal-200 bg-teal-50/40 rounded-2xl p-4.5 flex flex-col justify-between space-y-3 hover:shadow-sm transition">
+                  <div>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2.5">
+                        <div className="h-9 w-9 rounded-xl bg-teal-100 text-[#008779] flex items-center justify-center font-bold">
+                          <BarChart3 className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <span className="text-[9.5px] font-extrabold uppercase tracking-wider text-[#008779] block">Persona 4 — HSE Manager</span>
+                          <h4 className="text-sm font-extrabold text-slate-900">HSE Manager Command</h4>
+                        </div>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-teal-100 text-[#008779] border border-teal-300">
+                        ● Online
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center mt-3 pt-2.5 border-t border-teal-200/60 text-xs">
+                      <div>
+                        <div className="font-extrabold text-[#008779]">5</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">Monitored Sites</div>
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-[#008779]">10</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">LSR Active</div>
+                      </div>
+                      <div>
+                        <div className="font-extrabold text-[#008779]">94.2%</div>
+                        <div className="text-[9px] text-slate-500 font-bold uppercase">SIF Prevention</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => onNavigateTo?.('manager-portal')}
+                    className="w-full py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <span>Open Manager Suite</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 2. FOUR STAT BOXES DIRECTLY UNDER THE WELCOME BOX */}
           {/* Total Issues | Completed Issues | Incompleted Issues | Overdue Issues */}
