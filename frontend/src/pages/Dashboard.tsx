@@ -1499,46 +1499,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 </div>
                 <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[#008779] group-hover:translate-x-0.5 transition" />
               </div>
-
-              <div 
-                onClick={() => onNavigateTo?.('track-actions')}
-                className="p-3 bg-white border border-[#E6ECEB] rounded-2xl flex items-center justify-between hover:border-[#008779]/40 hover:shadow-xs transition cursor-pointer group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                    <Wrench className="h-4.5 w-4.5" />
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-extrabold text-slate-800 group-hover:text-blue-600 transition">
-                      Mast Anchor Inspection
-                    </h5>
-                    <p className="text-[9px] text-slate-400 font-semibold mt-0.5">
-                      2 Days 5 hours remaining
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition" />
-              </div>
-
-              <div 
-                onClick={() => onNavigateTo?.('track-actions')}
-                className="p-3 bg-white border border-[#E6ECEB] rounded-2xl flex items-center justify-between hover:border-[#008779]/40 hover:shadow-xs transition cursor-pointer group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-amber-50 text-[#FF7A1A] flex items-center justify-center shrink-0">
-                    <Activity className="h-4.5 w-4.5" />
-                  </div>
-                  <div>
-                    <h5 className="text-xs font-extrabold text-slate-800 group-hover:text-[#FF7A1A] transition">
-                      Pump Motor Terminal Cover
-                    </h5>
-                    <p className="text-[9px] text-slate-400 font-semibold mt-0.5">
-                      3 Days 8 hours remaining
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[#FF7A1A] group-hover:translate-x-0.5 transition" />
-              </div>
             </div>
           </div>
 
