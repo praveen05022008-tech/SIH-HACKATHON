@@ -510,13 +510,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     );
   };
 
-  // Quick categories for LSR
-  const quickCategories = [
-    { title: 'Energy Isolation', count: '12 Precursors', icon: Wrench, color: 'bg-[#E8F6F4] text-[#008779]' },
-    { title: 'Working at Height', count: '24 Precursors', icon: Layers, color: 'bg-blue-50 text-blue-600' },
-    { title: 'Confined Space', count: '15 Precursors', icon: Flame, color: 'bg-amber-50 text-[#FF7A1A]' }
-  ];
-
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] text-slate-500">
@@ -1469,49 +1462,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             <div className="text-center text-[10px] font-bold text-slate-500 pt-1">
               Total Precursor Shield <span className="text-[#008779] font-extrabold">{metrics.completedRate || 75}% Active</span>
-            </div>
-          </div>
-
-          {/* Card 2: Quick Precursor Group Cards */}
-          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-5 shadow-sm space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
-                Priority Precursors
-              </h3>
-              <button
-                onClick={() => onNavigateTo?.('precursors')}
-                className="text-[10px] text-[#008779] font-bold hover:underline cursor-pointer"
-              >
-                View Rules
-              </button>
-            </div>
-
-            <div className="space-y-2.5">
-              {quickCategories.map((cat, idx) => {
-                const CatIcon = cat.icon;
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => onNavigateTo?.('precursors')}
-                    className="p-3 bg-slate-50/70 border border-[#E6ECEB] rounded-2xl flex items-center justify-between hover:border-[#008779]/40 hover:bg-white hover:shadow-2xs transition-all duration-200 cursor-pointer group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${cat.color} group-hover:scale-105 transition-transform shrink-0`}>
-                        <CatIcon className="h-4.5 w-4.5" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-extrabold text-slate-800 leading-tight group-hover:text-[#008779] transition">
-                          {cat.title}
-                        </h4>
-                        <span className="text-[10px] text-slate-400 font-semibold">
-                          {cat.count}
-                        </span>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[#008779] group-hover:translate-x-0.5 transition" />
-                  </div>
-                );
-              })}
             </div>
           </div>
 
