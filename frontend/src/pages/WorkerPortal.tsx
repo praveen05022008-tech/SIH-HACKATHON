@@ -531,66 +531,6 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
         </div>
       </div>
 
-      {/* 1B. INTERCONNECTED HSE DIRECTIVES BROADCAST BANNER */}
-      {directives.length > 0 && (
-        <div className="space-y-3 animate-fadeIn">
-          {directives.slice(0, 2).map((dir) => {
-            const isAcknowledged = acknowledgedIds.has(dir.directive_id) || dir.acknowledge_count > 0;
-            const isUrgent = dir.priority === 'URGENT';
-            const targetScope = dir.target_scope || 'ALL';
-            const targetName = dir.target_name || dir.target_sites;
-
-            return (
-              <div 
-                key={dir.id}
-                className={`border rounded-2xl p-4.5 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition ${
-                  isUrgent 
-                    ? 'bg-red-50/90 border-red-200 ring-1 ring-red-500/20' 
-                    : 'bg-amber-50/80 border-amber-200'
-                }`}
-              >
-                <div className="space-y-1.5 max-w-3xl">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-red-600 text-white shadow-2xs">
-                      <Radio className="h-3 w-3 animate-pulse" />
-                      <span>{dir.priority} Safety Directive</span>
-                    </span>
-                    <span className="font-mono text-xs font-black text-slate-800 bg-white/80 px-2 py-0.5 rounded border border-slate-300">
-                      {dir.directive_id}
-                    </span>
-                    <span className="text-[11px] font-bold text-slate-700">
-                      Audience: <b className="text-slate-900">{targetScope === 'ALL' ? '🌐 All Operational Teams' : `👥 ${targetName}`}</b>
-                    </span>
-                  </div>
-
-                  <h3 className="font-extrabold text-slate-900 text-sm">{dir.title}</h3>
-                  <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                    {dir.message}
-                  </p>
-                </div>
-
-                <div className="shrink-0 flex items-center gap-2 w-full md:w-auto justify-end">
-                  {isAcknowledged ? (
-                    <div className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl text-xs font-black shadow-2xs">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                      <span>✓ Signed & Acknowledged</span>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleAcknowledgeDirective(dir)}
-                      className="w-full md:w-auto px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-extrabold shadow-md shadow-red-600/30 transition flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <Check className="h-4 w-4" />
-                      <span>Acknowledge & Sign Compliance</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Report Submission Form */}
