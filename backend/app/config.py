@@ -9,7 +9,7 @@ else:
     load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "")
-SECRET_KEY = os.getenv("SECRET_KEY", "gati_secret_key_sih_2026_mayan_safe")
+SECRET_KEY = os.getenv("SECRET_KEY", "raksha_ai_secret_key_2026")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 ENV = os.getenv("ENV", "development")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
