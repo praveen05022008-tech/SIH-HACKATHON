@@ -25,7 +25,15 @@ import {
   ChevronRight,
   Info,
   Wrench,
-  Shield
+  Shield,
+  Award,
+  Sparkles,
+  Search,
+  Sliders,
+  Check,
+  Server,
+  KeyRound,
+  UserPlus
 } from 'lucide-react';
 import { User, AuditEvent } from '../types';
 
@@ -44,6 +52,7 @@ interface PortalDef {
   color: string;
   bgColor: string;
   borderColor: string;
+  badgeColor: string;
   description: string;
   route: string;
   capabilities: string[];
@@ -54,11 +63,12 @@ const PORTALS: PortalDef[] = [
   {
     id: 'worker-portal',
     name: 'Field Worker Portal',
-    persona: 'Persona 1',
+    persona: 'Persona 1 — Field Operations',
     icon: HardHat,
     color: 'text-emerald-700',
-    bgColor: 'bg-emerald-50',
+    bgColor: 'bg-emerald-50/70',
     borderColor: 'border-emerald-200',
+    badgeColor: 'bg-emerald-100 text-emerald-800',
     description: 'Allows field employees to submit safety observations (Unsafe Act, Unsafe Condition, Near-Miss) via text, voice dictation, or photo evidence. Reports are immediately queued for AI analysis.',
     route: 'worker-portal',
     capabilities: ['Submit safety reports', 'Voice transcription', 'Photo attachment', 'Track own submissions', 'Receive feedback'],
@@ -71,11 +81,12 @@ const PORTALS: PortalDef[] = [
   {
     id: 'ai-engine',
     name: 'AI Engine & Analysis',
-    persona: 'Persona 2',
+    persona: 'Persona 2 — AI Processing',
     icon: BrainCircuit,
     color: 'text-purple-700',
-    bgColor: 'bg-purple-50',
+    bgColor: 'bg-purple-50/70',
     borderColor: 'border-purple-200',
+    badgeColor: 'bg-purple-100 text-purple-800',
     description: 'Automated 6-step NLP pipeline (M1–M6) processes every report. Extracts hazards, energy sources, barrier failures, assigns 0–10 multi-factor SIF risk scores, and classifies LSR violations.',
     route: 'analysis',
     capabilities: ['NLP entity extraction', 'Multi-factor risk scoring (0–10)', 'LSR classification', 'SIF precursor detection', 'GATI learning feedback'],
@@ -88,65 +99,69 @@ const PORTALS: PortalDef[] = [
   {
     id: 'review',
     name: 'Safety Officer Center',
-    persona: 'Persona 3',
+    persona: 'Persona 3 — Safety Lead',
     icon: ClipboardCheck,
     color: 'text-blue-700',
-    bgColor: 'bg-blue-50',
+    bgColor: 'bg-blue-50/70',
     borderColor: 'border-blue-200',
+    badgeColor: 'bg-blue-100 text-blue-800',
     description: 'Safety Officers review AI-scored reports, verify SIF precursor classification, issue Stop Work Orders, dispatch corrective actions (ACT-XXXX), and provide worker feedback.',
-    route: 'review',
+    route: 'dashboard',
     capabilities: ['Review AI-scored reports', 'Issue Stop Work Orders', 'Dispatch corrective actions', 'Override AI classification', 'Provide worker feedback'],
     stats: [
       { label: 'Pending Review', value: '12' },
-      { label: 'Actioned Today', value: '6' },
-      { label: 'SIF Confirmed', value: '3' }
+      { label: 'Actions Active', value: '6' },
+      { label: 'Avg. SLA Turnaround', value: '4.2 hrs' }
     ]
   },
   {
-    id: 'dashboard',
-    name: 'Safety Manager Dashboard',
-    persona: 'Persona 4',
+    id: 'manager',
+    name: 'HSE Manager Suite',
+    persona: 'Persona 4 — HSE Leadership',
     icon: BarChart3,
-    color: 'text-amber-700',
-    bgColor: 'bg-amber-50',
-    borderColor: 'border-amber-200',
-    description: 'Executive intelligence dashboard with live KPIs (120/5/15/30/70 dataset), drilling site precursor density heatmaps, Life-Saving Rule breakdown, and compliance report generation.',
+    color: 'text-[#008779]',
+    bgColor: 'bg-[#E8F6F4]/70',
+    borderColor: 'border-teal-200',
+    badgeColor: 'bg-teal-100 text-[#008779]',
+    description: 'Executive dashboards, SIF precursor intelligence heatmaps, Life-Saving Rules compliance analytics, and continuous learning feedback monitoring for operational leadership.',
     route: 'dashboard',
-    capabilities: ['Live KPI monitoring', 'Site risk heatmaps', 'LSR compliance tracking', 'Trend analysis', 'PDF/CSV report export'],
+    capabilities: ['Executive KPI telemetry', 'Precursor bubble clusters', 'LSR compliance matrix', 'Export regulatory reports', 'Continuous model fine-tuning'],
     stats: [
-      { label: 'Total Reports', value: '120' },
-      { label: 'SIF Critical', value: '5' },
-      { label: 'Open Actions', value: '18' }
+      { label: 'Monitored Sites', value: '5' },
+      { label: 'LSR Rules Active', value: '10' },
+      { label: 'SIF Prevention Rate', value: '94.2%' }
     ]
   }
 ];
 
-export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNotification, onNavigateTo }) => {
+export const AdminConsole: React.FC<AdminConsoleProps> = ({
+  onResetDb,
+  triggerNotification,
+  onNavigateTo
+}) => {
   const [activeTab, setActiveTab] = useState<'portals' | 'users' | 'ai' | 'audit' | 'data'>('portals');
-
-  // Portal states
   const [portalStates, setPortalStates] = useState<Record<string, { enabled: boolean; maintenance: boolean; accessLevel: string }>>({
-    'worker-portal': { enabled: true, maintenance: false, accessLevel: 'All Field Workers' },
-    'ai-engine': { enabled: true, maintenance: false, accessLevel: 'Automatic (System)' },
-    'review': { enabled: true, maintenance: false, accessLevel: 'Safety Officers Only' },
-    'dashboard': { enabled: true, maintenance: false, accessLevel: 'Safety Managers + Admin' }
+    'worker-portal': { enabled: true, maintenance: false, accessLevel: 'Field Worker, All Authenticated' },
+    'ai-engine':     { enabled: true, maintenance: false, accessLevel: 'All Roles (Background Pipeline)' },
+    'review':        { enabled: true, maintenance: false, accessLevel: 'Safety Officer, Safety Manager, Admin' },
+    'manager':       { enabled: true, maintenance: false, accessLevel: 'Safety Manager, Admin' }
   });
+
   const [expandedPortal, setExpandedPortal] = useState<string | null>(null);
   const [savedNotif, setSavedNotif] = useState<string | null>(null);
-
-  // Users
-  const [users, setUsers] = useState<User[]>([
-    { email: 'worker@refinery.safe', name: 'Field Employee (Worker)', role: 'Field Worker' },
-    { email: 'officer@refinery.safe', name: 'Safety Officer', role: 'Safety Officer' },
-    { email: 'manager@refinery.safe', name: 'Safety Manager (HSE Lead)', role: 'Safety Manager' },
-    { email: 'admin@refinery.safe', name: 'System Administrator', role: 'Admin' }
-  ]);
-
-  // Audit logs
   const [auditLogs, setAuditLogs] = useState<AuditEvent[]>([]);
   const [loadingAudits, setLoadingAudits] = useState(false);
 
-  // AI Thresholds
+  // Users state
+  const [users, setUsers] = useState<User[]>([
+    { email: 'worker@refinery.safe',  name: 'Ramesh Kumar (Drilling Tech)',     role: 'Field Worker' },
+    { email: 'officer@refinery.safe', name: 'Capt. Arvind Sen (Safety Lead)',    role: 'Safety Officer' },
+    { email: 'reviewer@refinery.safe',name: 'Priya Sharma (HSE Inspector)',     role: 'Safety Officer' },
+    { email: 'manager@refinery.safe', name: 'Dr. Vikram Roy (Head of HSE)',     role: 'Safety Manager' },
+    { email: 'admin@refinery.safe',   name: 'DevOps System Admin',              role: 'Admin' },
+  ]);
+
+  // AI Threshold State
   const [criticalThreshold, setCriticalThreshold] = useState(8.0);
   const [highThreshold, setHighThreshold] = useState(6.0);
   const [autoStopWork, setAutoStopWork] = useState(true);
@@ -189,7 +204,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
 
   const handleSaveAIConfig = (e: React.FormEvent) => {
     e.preventDefault();
-    setSaveSuccess('AI thresholds saved successfully.');
+    setSaveSuccess('AI thresholds and neural parameters saved successfully.');
     if (triggerNotification) triggerNotification(`⚙️ AI weights updated. Critical threshold: ${criticalThreshold}/10, High: ${highThreshold}/10.`);
     setTimeout(() => setSaveSuccess(null), 3000);
   };
@@ -203,46 +218,57 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+    <div className="max-w-7xl mx-auto space-y-6 pb-12">
 
-      {/* Header */}
-      <div className="bg-[#0B2A56] rounded-2xl p-6 text-white shadow-lg border border-blue-500/20">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-purple-500/20 text-purple-300 rounded-full text-xs font-bold uppercase tracking-wider mb-3 border border-purple-500/30">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          <span>Persona 5 — System Administrator</span>
+      {/* 1. HERO HEADER BANNER (Consistent with RAKSHA Design System) */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#007A78] via-[#008779] to-[#00A389] text-white p-7 shadow-lg shadow-[#008779]/20">
+        
+        {/* Background Watermark Icon */}
+        <div className="absolute right-6 -bottom-6 opacity-15 pointer-events-none">
+          <Award className="h-48 w-48 text-white stroke-1" />
         </div>
-        <h1 className="text-2xl font-extrabold tracking-tight">Portal Management & Control Center</h1>
-        <p className="text-slate-300 text-sm mt-1 max-w-2xl">
-          Oversee, configure, enable/disable, and navigate all SIF-SHIELD AI portals. Manage roles, AI thresholds, and system health from one governance hub.
-        </p>
 
-        {/* System Health Strip */}
-        <div className="mt-4 flex flex-wrap gap-3">
-          {[
-            { label: 'AI Engine', status: 'Online', color: 'bg-emerald-400' },
-            { label: 'GATI Model', status: 'v1.3 Active', color: 'bg-purple-400' },
-            { label: 'Database', status: 'Healthy', color: 'bg-blue-400' },
-            { label: 'All Portals', status: `${Object.values(portalStates).filter(s => s.enabled).length}/4 Online`, color: 'bg-amber-400' }
-          ].map(item => (
-            <div key={item.label} className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-lg text-xs font-semibold">
-              <span className={`h-2 w-2 rounded-full ${item.color} animate-pulse`} />
-              <span className="text-slate-300">{item.label}:</span>
-              <span className="text-white">{item.status}</span>
-            </div>
-          ))}
+        <div className="relative z-10 max-w-2xl">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-[11px] font-bold text-emerald-100 mb-2 border border-white/20">
+            <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
+            <span>Persona 5 — System Administrator & Governance</span>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            Portal Management & Control Center
+          </h1>
+          <p className="text-sm text-emerald-50/90 italic mt-1 font-medium leading-relaxed">
+            Oversee, configure, and govern all RAKSHA AI enterprise portals, roles, AI thresholds, and system health.
+          </p>
+
+          {/* System Health Status Badges */}
+          <div className="mt-5 flex flex-wrap gap-2.5">
+            {[
+              { label: 'AI Engine', status: 'Online', color: 'bg-emerald-400' },
+              { label: 'GATI Model', status: 'v1.3 Active', color: 'bg-teal-300' },
+              { label: 'Database', status: 'Healthy', color: 'bg-emerald-400' },
+              { label: 'All Portals', status: `${Object.values(portalStates).filter(s => s.enabled).length}/4 Online`, color: 'bg-amber-300' }
+            ].map(item => (
+              <div key={item.label} className="flex items-center gap-2 bg-white/15 backdrop-blur-xs border border-white/20 px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-2xs">
+                <span className={`h-2 w-2 rounded-full ${item.color} animate-pulse`} />
+                <span className="text-emerald-100 font-semibold">{item.label}:</span>
+                <span>{item.status}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Saved Notification Toast */}
       {savedNotif && (
-        <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs font-bold animate-fadeIn">
+        <div className="flex items-center gap-2 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold shadow-xs animate-fadeIn">
           <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-          {savedNotif}
+          <span>{savedNotif}</span>
         </div>
       )}
 
-      {/* Tab Navigation */}
-      <div className="flex flex-wrap gap-2">
+      {/* 2. TAB NAVIGATION PILLS */}
+      <div className="flex flex-wrap gap-2 bg-white p-2 rounded-2xl border border-[#E6ECEB] shadow-2xs">
         {tabs.map(tab => {
           const Icon = tab.icon;
           const active = activeTab === tab.id;
@@ -250,33 +276,39 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-150 cursor-pointer ${
                 active
-                  ? 'bg-[#0B2A56] text-white border-transparent shadow-md'
-                  : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  ? 'bg-[#008779] text-white shadow-md shadow-[#008779]/25 scale-[1.01]'
+                  : 'bg-transparent text-slate-600 hover:bg-[#E8F6F4]/60 hover:text-[#008779]'
               }`}
             >
-              <Icon className="h-4 w-4" />
-              {tab.label}
+              <Icon className={`h-4 w-4 ${active ? 'text-white' : 'text-slate-400'}`} />
+              <span>{tab.label}</span>
             </button>
           );
         })}
       </div>
 
-      {/* ── TAB: PORTAL MANAGEMENT ── */}
+      {/* ── TAB 1: PORTAL MANAGEMENT ── */}
       {activeTab === 'portals' && (
-        <div className="space-y-4">
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm">
-            <h2 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider mb-1 flex items-center gap-2">
-              <Globe className="h-4 w-4 text-blue-600" />
-              All SIF-SHIELD AI Portals
-            </h2>
-            <p className="text-xs text-slate-500">
-              Control access, maintenance mode, and navigate into each portal. Changes are reflected immediately for all users.
-            </p>
+        <div className="space-y-6">
+          <div className="bg-white rounded-3xl p-6 border border-[#E6ECEB] shadow-sm">
+            <div className="flex items-center gap-2.5 mb-1">
+              <div className="h-8 w-8 rounded-xl bg-[#E8F6F4] text-[#008779] flex items-center justify-center">
+                <Globe className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
+                  All RAKSHA AI Portals
+                </h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Control access permissions, toggle maintenance modes, and navigate into each operational portal.
+                </p>
+              </div>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {PORTALS.map(portal => {
               const Icon = portal.icon;
               const state = portalStates[portal.id];
@@ -285,93 +317,93 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
               return (
                 <div
                   key={portal.id}
-                  className={`bg-white rounded-2xl border shadow-sm overflow-hidden transition-all ${
-                    state.enabled ? portal.borderColor : 'border-slate-200 opacity-70'
+                  className={`bg-white rounded-3xl border shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden ${
+                    state.enabled ? portal.borderColor : 'border-slate-200 opacity-75'
                   }`}
                 >
                   {/* Portal Card Header */}
-                  <div className={`p-5 ${state.enabled ? portal.bgColor : 'bg-slate-50'}`}>
+                  <div className={`p-6 ${state.enabled ? portal.bgColor : 'bg-slate-50'}`}>
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-xl flex items-center justify-center ${state.enabled ? portal.bgColor : 'bg-slate-100'} border ${portal.borderColor}`}>
-                          <Icon className={`h-5 w-5 ${state.enabled ? portal.color : 'text-slate-400'}`} />
+                      <div className="flex items-center gap-3.5">
+                        <div className={`h-12 w-12 rounded-2xl flex items-center justify-center ${state.enabled ? 'bg-white shadow-xs' : 'bg-slate-100'} border ${portal.borderColor}`}>
+                          <Icon className={`h-6 w-6 ${state.enabled ? portal.color : 'text-slate-400'}`} />
                         </div>
                         <div>
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{portal.persona}</div>
-                          <div className={`text-sm font-extrabold ${state.enabled ? 'text-slate-900' : 'text-slate-500'}`}>{portal.name}</div>
+                          <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{portal.persona}</div>
+                          <div className={`text-base font-extrabold mt-0.5 ${state.enabled ? 'text-slate-900' : 'text-slate-500'}`}>{portal.name}</div>
                         </div>
                       </div>
 
                       {/* Status Badge */}
                       <div className="flex flex-col items-end gap-1 shrink-0">
                         {state.maintenance ? (
-                          <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-300 flex items-center gap-1">
+                          <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-300 flex items-center gap-1 shadow-2xs">
                             <Wrench className="h-3 w-3" /> Maintenance
                           </span>
                         ) : state.enabled ? (
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-300 flex items-center gap-1">
+                          <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-300 flex items-center gap-1 shadow-2xs">
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Online
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full bg-red-100 text-red-800 text-[10px] font-black border border-red-300 flex items-center gap-1">
+                          <span className="px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-[10px] font-black border border-rose-300 flex items-center gap-1 shadow-2xs">
                             <Power className="h-3 w-3" /> Disabled
                           </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Quick Stats */}
-                    <div className="flex gap-3 mt-3">
+                    {/* Quick Stats Strip */}
+                    <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-200/60 bg-white/60 p-3 rounded-2xl">
                       {portal.stats.map(s => (
                         <div key={s.label} className="text-center">
-                          <div className={`text-sm font-black ${state.enabled ? portal.color : 'text-slate-400'}`}>{s.value}</div>
-                          <div className="text-[9px] text-slate-400 font-semibold uppercase">{s.label}</div>
+                          <div className={`text-sm font-black font-mono-numbers ${state.enabled ? portal.color : 'text-slate-400'}`}>{s.value}</div>
+                          <div className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">{s.label}</div>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Portal Controls */}
-                  <div className="px-5 py-3 bg-white border-t border-slate-100 flex flex-wrap items-center gap-2">
+                  {/* Portal Action Bar */}
+                  <div className="px-6 py-3.5 bg-white border-t border-slate-100 flex flex-wrap items-center gap-2">
                     {/* Enable / Disable Toggle */}
                     <button
                       onClick={() => togglePortalEnabled(portal.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition border ${
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${
                         state.enabled
-                          ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100'
+                          ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
                           : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
                       }`}
                     >
                       <Power className="h-3.5 w-3.5" />
-                      {state.enabled ? 'Disable Portal' : 'Enable Portal'}
+                      <span>{state.enabled ? 'Disable' : 'Enable'}</span>
                     </button>
 
                     {/* Maintenance Mode */}
                     <button
                       onClick={() => togglePortalMaintenance(portal.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold transition border ${
+                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${
                         state.maintenance
                           ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
                           : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                       }`}
                     >
                       <Wrench className="h-3.5 w-3.5" />
-                      {state.maintenance ? 'Exit Maintenance' : 'Maintenance Mode'}
+                      <span>{state.maintenance ? 'Exit Maint.' : 'Maintenance'}</span>
                     </button>
 
-                    {/* Navigate To */}
+                    {/* Open Portal Button */}
                     <button
                       onClick={() => { if (onNavigateTo) onNavigateTo(portal.route); }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold bg-blue-600 text-white hover:bg-blue-700 transition ml-auto"
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-extrabold bg-[#008779] text-white hover:bg-[#007064] transition shadow-2xs ml-auto cursor-pointer"
                     >
-                      Open Portal
+                      <span>Open Portal</span>
                       <ChevronRight className="h-3.5 w-3.5" />
                     </button>
 
                     {/* Expand Details */}
                     <button
                       onClick={() => setExpandedPortal(isExpanded ? null : portal.id)}
-                      className="text-slate-400 hover:text-slate-700 transition"
+                      className="p-1.5 text-slate-400 hover:text-slate-700 transition cursor-pointer"
                       title="Toggle details"
                     >
                       <Info className="h-4 w-4" />
@@ -380,14 +412,14 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
 
                   {/* Expanded Details */}
                   {isExpanded && (
-                    <div className="px-5 py-4 bg-slate-50 border-t border-slate-100 text-xs space-y-3 animate-fadeIn">
-                      <p className="text-slate-600 leading-relaxed">{portal.description}</p>
+                    <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-100 text-xs space-y-3 animate-fadeIn">
+                      <p className="text-slate-600 leading-relaxed font-normal">{portal.description}</p>
 
                       <div>
                         <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Capabilities</div>
                         <div className="flex flex-wrap gap-1.5">
                           {portal.capabilities.map(cap => (
-                            <span key={cap} className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[11px] text-slate-700 font-medium">
+                            <span key={cap} className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-[11px] text-slate-700 font-semibold shadow-2xs">
                               {cap}
                             </span>
                           ))}
@@ -395,15 +427,15 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
                       </div>
 
                       <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Access Level</div>
-                        <div className="flex items-center gap-1.5 text-slate-700 font-semibold">
-                          <Shield className="h-3.5 w-3.5 text-blue-500" />
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Access Authorization Level</div>
+                        <div className="flex items-center gap-1.5 text-slate-700 font-semibold text-[11px]">
+                          <Shield className="h-3.5 w-3.5 text-[#008779]" />
                           {state.maintenance ? (
-                            <span className="text-amber-700">⚠ Restricted — Admin Only During Maintenance</span>
+                            <span className="text-amber-700 font-bold">⚠ Restricted — System Administrators Only</span>
                           ) : state.enabled ? (
                             <span>{portalStates[portal.id].accessLevel}</span>
                           ) : (
-                            <span className="text-red-600">🔒 Portal Disabled — No Access</span>
+                            <span className="text-rose-600 font-bold">🔒 Portal Offline — Access Blocked</span>
                           )}
                         </div>
                       </div>
@@ -414,21 +446,21 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
             })}
           </div>
 
-          {/* Summary Grid */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-            <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-4 flex items-center gap-2">
-              <Activity className="h-4 w-4 text-blue-600" />
-              Portal Status Overview
+          {/* Portal Health Overview Summary */}
+          <div className="bg-white rounded-3xl border border-[#E6ECEB] p-6 shadow-sm">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 mb-4 flex items-center gap-2">
+              <Activity className="h-4 w-4 text-[#008779]" />
+              <span>Real-Time Portal Status Matrix</span>
             </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
               {PORTALS.map(p => {
                 const state = portalStates[p.id];
                 const Icon = p.icon;
                 return (
-                  <div key={p.id} className={`p-3 rounded-xl border text-center ${state.enabled && !state.maintenance ? p.bgColor + ' ' + p.borderColor : 'bg-slate-50 border-slate-200'}`}>
-                    <Icon className={`h-5 w-5 mx-auto mb-1 ${state.enabled ? p.color : 'text-slate-400'}`} />
-                    <div className="text-[11px] font-bold text-slate-800 leading-tight">{p.name}</div>
-                    <div className={`text-[10px] font-black mt-1 ${state.maintenance ? 'text-amber-600' : state.enabled ? 'text-emerald-600' : 'text-red-600'}`}>
+                  <div key={p.id} className={`p-4 rounded-2xl border text-center transition-all ${state.enabled && !state.maintenance ? p.bgColor + ' ' + p.borderColor : 'bg-slate-50 border-slate-200'}`}>
+                    <Icon className={`h-6 w-6 mx-auto mb-1.5 ${state.enabled ? p.color : 'text-slate-400'}`} />
+                    <div className="text-xs font-extrabold text-slate-800 leading-tight">{p.name}</div>
+                    <div className={`text-[10px] font-black mt-1.5 ${state.maintenance ? 'text-amber-600' : state.enabled ? 'text-emerald-600' : 'text-rose-600'}`}>
                       {state.maintenance ? '⚠ Maintenance' : state.enabled ? '● Online' : '○ Disabled'}
                     </div>
                   </div>
@@ -439,139 +471,172 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
         </div>
       )}
 
-      {/* ── TAB: USERS ── */}
+      {/* ── TAB 2: USERS & ROLES ── */}
       {activeTab === 'users' && (
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
-          <div className="flex justify-between items-center pb-4 border-b border-slate-100">
+        <div className="bg-white rounded-3xl p-6 border border-[#E6ECEB] shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Active Users & Roles</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Control access rights across all 5 personas</p>
+              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Active Users & Role Governance</h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">Control access rights, role permissions, and user accounts across all 5 operational personas.</p>
             </div>
             <button
-              onClick={() => alert('New user registration modal')}
-              className="px-3.5 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition"
+              onClick={() => alert('Add User Modal')}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#008779] text-white rounded-xl text-xs font-extrabold hover:bg-[#007064] transition shadow-2xs cursor-pointer shrink-0"
             >
-              + Add User
+              <UserPlus className="h-3.5 w-3.5" />
+              <span>Add New User</span>
             </button>
           </div>
 
-          <div className="divide-y divide-slate-100">
-            {users.map((u) => (
-              <div key={u.email} className="py-3.5 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 bg-blue-100 text-blue-700 font-black rounded-full flex items-center justify-center text-sm shrink-0">
-                    {u.name[0]}
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-slate-900">{u.name}</div>
-                    <div className="text-[11px] text-slate-400 font-mono">{u.email}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className="px-2.5 py-1 bg-blue-50 border border-blue-200 text-blue-800 rounded-full text-[11px] font-bold">
-                    {u.role}
-                  </span>
-                  <span className="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                    Active
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto rounded-2xl border border-slate-200">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">
+                  <th className="py-3 px-4">User Details</th>
+                  <th className="py-3 px-4">Email Address</th>
+                  <th className="py-3 px-4">Assigned Role</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-xs">
+                {users.map((u) => (
+                  <tr key={u.email} className="hover:bg-[#E8F6F4]/30 transition-colors">
+                    <td className="py-3.5 px-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-9 w-9 bg-[#E8F6F4] text-[#008779] font-black rounded-full flex items-center justify-center text-sm shrink-0 border border-teal-200">
+                          {u.name[0]}
+                        </div>
+                        <div className="font-bold text-slate-900">{u.name}</div>
+                      </div>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">
+                      {u.email}
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${
+                        u.role === 'Admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                        u.role === 'Safety Manager' ? 'bg-teal-50 text-[#008779] border-teal-200' :
+                        u.role === 'Safety Officer' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                        'bg-amber-50 text-amber-700 border-amber-200'
+                      }`}>
+                        {u.role}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4">
+                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        Active
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <button className="text-xs font-bold text-[#008779] hover:underline cursor-pointer">
+                        Edit Role
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
 
-      {/* ── TAB: AI THRESHOLDS ── */}
+      {/* ── TAB 3: AI THRESHOLDS ── */}
       {activeTab === 'ai' && (
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+        <div className="bg-white rounded-3xl p-6 border border-[#E6ECEB] shadow-sm">
           <form onSubmit={handleSaveAIConfig} className="space-y-6">
             <div className="pb-4 border-b border-slate-100">
-              <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">AI Engine & Multi-Factor Scoring Thresholds</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Tune the SIF risk scoring boundaries that trigger alerts, Stop Work orders, and escalations.</p>
+              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">AI Multi-Factor Risk Scoring Calibration</h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">Tune the SIF precursor scoring sensitivity boundaries that trigger immediate alerts, Stop Work recommendations, and management escalations.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div className="p-4 bg-red-50/60 border border-red-200 rounded-xl space-y-3">
+              {/* Critical Threshold Slider */}
+              <div className="p-5 bg-rose-50/70 border border-rose-200 rounded-2xl space-y-3">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-slate-800">Critical SIF Threshold</label>
-                  <span className="text-xs font-black text-red-600">{criticalThreshold.toFixed(1)} / 10</span>
+                  <label className="text-xs font-extrabold text-slate-800">Critical SIF Threshold</label>
+                  <span className="text-xs font-black text-rose-600 font-mono-numbers bg-white px-2 py-0.5 rounded-md border border-rose-200">{criticalThreshold.toFixed(1)} / 10</span>
                 </div>
                 <input type="range" min="7.0" max="9.5" step="0.1" value={criticalThreshold}
                   onChange={e => setCriticalThreshold(Number(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-red-600"
+                  className="w-full h-2 bg-rose-200 rounded-lg appearance-none cursor-pointer accent-rose-600"
                 />
-                <p className="text-[11px] text-slate-500">Reports above this automatically trigger a Stop Work suggestion and Critical Alert push.</p>
+                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Observations scoring above this automatically flag as CRITICAL, suggest Stop Work Orders, and push emergency notifications.</p>
               </div>
 
-              <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-xl space-y-3">
+              {/* High Risk Threshold Slider */}
+              <div className="p-5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-3">
                 <div className="flex justify-between items-center">
-                  <label className="text-xs font-bold text-slate-800">High Risk Threshold</label>
-                  <span className="text-xs font-black text-amber-600">{highThreshold.toFixed(1)} / 10</span>
+                  <label className="text-xs font-extrabold text-slate-800">High SIF Risk Threshold</label>
+                  <span className="text-xs font-black text-amber-600 font-mono-numbers bg-white px-2 py-0.5 rounded-md border border-amber-200">{highThreshold.toFixed(1)} / 10</span>
                 </div>
                 <input type="range" min="5.0" max="7.5" step="0.1" value={highThreshold}
                   onChange={e => setHighThreshold(Number(e.target.value))}
-                  className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                  className="w-full h-2 bg-amber-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
                 />
-                <p className="text-[11px] text-slate-500">Dispatches a priority alert to the Safety Officer review queue.</p>
+                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Dispatches priority alert flags directly to the Safety Officer triage queue.</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
               <input type="checkbox" id="autoStopWork" checked={autoStopWork}
                 onChange={e => setAutoStopWork(e.target.checked)}
-                className="h-4 w-4 rounded accent-blue-600 cursor-pointer"
+                className="h-4 w-4 rounded accent-[#008779] cursor-pointer"
               />
-              <label htmlFor="autoStopWork" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                Automatically suggest Stop Work Order when report crosses Critical SIF threshold
+              <label htmlFor="autoStopWork" className="text-xs font-bold text-slate-700 cursor-pointer">
+                Automatically suggest Stop Work Authority invocation when report crosses Critical SIF threshold
               </label>
             </div>
 
             {saveSuccess && (
-              <div className="flex items-center gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800">
+              <div className="flex items-center gap-2 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-800 animate-fadeIn">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                {saveSuccess}
+                <span>{saveSuccess}</span>
               </div>
             )}
 
             <button type="submit"
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-sm"
+              className="flex items-center gap-2 px-6 py-2.5 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-sm cursor-pointer"
             >
               <Save className="h-4 w-4" />
-              Save AI Configurations
+              <span>Save AI Thresholds</span>
             </button>
           </form>
         </div>
       )}
 
-      {/* ── TAB: AUDIT LOGS ── */}
+      {/* ── TAB 4: AUDIT LOGS ── */}
       {activeTab === 'audit' && (
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div className="bg-white rounded-3xl p-6 border border-[#E6ECEB] shadow-sm space-y-5">
           <div className="flex justify-between items-center pb-3 border-b border-slate-100">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Tamper-Proof System Audit Logs</h3>
-              <p className="text-xs text-slate-500 mt-0.5">Chronological record of all submissions, AI scores, and officer verifications</p>
+              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Tamper-Proof System Audit Logs</h3>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">Chronological immutable record of all safety submissions, AI scores, and officer verifications.</p>
             </div>
-            <span className="text-xs text-slate-400 font-semibold bg-slate-100 px-2 py-1 rounded-lg">{auditLogs.length} Records</span>
+            <span className="text-xs text-[#008779] font-extrabold bg-[#E8F6F4] px-3 py-1 rounded-full border border-teal-100">{auditLogs.length} Records</span>
           </div>
 
           {loadingAudits ? (
-            <div className="py-10 text-center text-xs text-slate-400">Loading audit records...</div>
+            <div className="py-12 text-center text-xs text-slate-400">Loading audit records...</div>
           ) : auditLogs.length === 0 ? (
-            <div className="py-10 text-center text-xs text-slate-400">No audit records found.</div>
+            <div className="py-12 text-center text-xs text-slate-400">No audit records found.</div>
           ) : (
-            <div className="max-h-[450px] overflow-y-auto divide-y divide-slate-100 text-xs">
+            <div className="max-h-[480px] overflow-y-auto divide-y divide-slate-100 text-xs">
               {auditLogs.map(log => (
-                <div key={log.id} className="py-3 flex flex-col sm:flex-row sm:items-start justify-between gap-2 hover:bg-slate-50 px-2 rounded transition">
-                  <div>
-                    <div className="font-bold text-slate-900">{log.action}</div>
-                    <div className="text-[11px] text-slate-500 font-mono mt-0.5">{log.event_id}</div>
-                    {log.details && <p className="text-slate-500 mt-0.5 text-[11px] leading-snug">{log.details}</p>}
+                <div key={log.id} className="py-3.5 flex flex-col sm:flex-row sm:items-start justify-between gap-2 hover:bg-slate-50/80 px-3 rounded-2xl transition">
+                  <div className="space-y-0.5">
+                    <div className="font-extrabold text-slate-900 flex items-center gap-2">
+                      <span>{log.action}</span>
+                      <span className="text-[10px] font-mono text-[#008779] bg-[#E8F6F4] px-2 py-0.5 rounded-md">{log.event_id}</span>
+                    </div>
+                    {log.details && <p className="text-slate-500 text-[11px] leading-snug">{log.details}</p>}
                   </div>
                   <div className="text-right shrink-0">
                     <span className="text-[10px] text-slate-400 font-mono block">
                       {new Date(log.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
                     </span>
-                    <span className="text-[11px] text-blue-600 font-semibold">{log.user_email}</span>
+                    <span className="text-[11px] text-[#008779] font-bold">{log.user_email}</span>
                   </div>
                 </div>
               ))}
@@ -580,39 +645,39 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({ onResetDb, triggerNo
         </div>
       )}
 
-      {/* ── TAB: DATA & BACKUP ── */}
+      {/* ── TAB 5: DATA & BACKUP ── */}
       {activeTab === 'data' && (
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+        <div className="bg-white rounded-3xl p-6 border border-[#E6ECEB] shadow-sm space-y-6">
           <div className="pb-4 border-b border-slate-100">
-            <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">Database Integrity & Maintenance</h3>
-            <p className="text-xs text-slate-500 mt-0.5">Automated backups and reset functions for the SIF-SHIELD dataset</p>
+            <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Database Integrity & Maintenance</h3>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">Automated backups, database health metrics, and seed reset functions for the RAKSHA AI platform.</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
             {[
-              { label: 'Total Safety Events', value: '106', color: 'text-blue-700' },
-              { label: 'Active Users', value: '5', color: 'text-purple-700' },
-              { label: 'Audit Records', value: `${auditLogs.length || '—'}`, color: 'text-emerald-700' }
+              { label: 'Total Safety Records', value: '106+', color: 'text-[#008779]', bg: 'bg-[#E8F6F4]' },
+              { label: 'Active User Personas', value: '5', color: 'text-purple-700', bg: 'bg-purple-50' },
+              { label: 'Audit Log Entries', value: `${auditLogs.length || '12'}`, color: 'text-blue-700', bg: 'bg-blue-50' }
             ].map(s => (
-              <div key={s.label} className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
-                <div className={`text-xl font-black ${s.color}`}>{s.value}</div>
-                <div className="text-[10px] text-slate-500 font-semibold mt-0.5">{s.label}</div>
+              <div key={s.label} className={`p-4 ${s.bg} border border-slate-200/70 rounded-2xl text-center`}>
+                <div className={`text-2xl font-black font-mono-numbers ${s.color}`}>{s.value}</div>
+                <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">{s.label}</div>
               </div>
             ))}
           </div>
 
-          <div className="p-4 bg-red-50/60 border border-red-200 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="p-5 bg-rose-50/70 border border-rose-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <div className="text-xs font-bold text-slate-900">Reset Demo Database</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Purges and recreates the standard 120-report SIF-SHIELD dataset with all 5 user personas.</div>
+              <div className="text-xs font-extrabold text-slate-900">Purge & Re-Seed Demo Safety Dataset</div>
+              <div className="text-[11px] text-slate-500 mt-0.5">Replaces database with the comprehensive baseline RAKSHA AI dataset including all 5 personas and reference Life-Saving Rules catalog.</div>
             </div>
             <button
               type="button"
               onClick={onResetDb}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow transition shrink-0"
+              className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition shrink-0 cursor-pointer"
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              Reset Database
+              <span>Reset Database</span>
             </button>
           </div>
         </div>

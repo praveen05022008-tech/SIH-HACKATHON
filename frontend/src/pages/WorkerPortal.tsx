@@ -463,30 +463,23 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
   };
 
   return (
-    <div className="space-y-6 font-sans">
+    <div className="space-y-6 font-sans max-w-7xl mx-auto pb-10">
       
-      {/* Header Banner with Real Industrial Photo */}
-      <div className="relative overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-800 shadow-md bg-slate-900 text-white p-6">
-        <img 
-          src="/safety_banner.jpg" 
-          alt="Field Worker Safety Inspection" 
-          className="absolute inset-0 w-full h-full object-cover opacity-35"
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-blue-950/50"></div>
-
+      {/* Header Banner matching Reference Teal Hero */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#007A78] via-[#008779] to-[#00A389] text-white p-7 shadow-lg shadow-[#008779]/20">
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-xl md:text-2xl font-black text-white tracking-tight">Field Worker Safety Portal</h1>
-              <span className="bg-blue-600/90 text-white font-bold text-[10px] px-3 py-1 rounded-full border border-blue-400/40 uppercase tracking-wider shrink-0 whitespace-nowrap">
+              <span className="bg-white/20 text-white font-bold text-[10px] px-3 py-1 rounded-full border border-white/30 uppercase tracking-wider shrink-0 whitespace-nowrap">
                 Personal Access ({userEmail})
               </span>
             </div>
-            <p className="text-xs text-slate-300 mt-2 font-medium max-w-2xl leading-relaxed">
+            <p className="text-xs text-emerald-50/90 mt-2 font-medium max-w-2xl leading-relaxed">
               Submit unsafe-acts, unsafe-conditions, and near-misses organized by category, operational location, and shift timing. Real-time GATI telemetry processes each observation instantly.
             </p>
           </div>
-          <div className="h-12 w-12 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-400 shadow-md shrink-0">
+          <div className="h-12 w-12 rounded-2xl bg-white/20 border border-white/30 flex items-center justify-center text-white shadow-md shrink-0">
             <Mic className="h-6 w-6" />
           </div>
         </div>
@@ -497,13 +490,13 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
         {/* Report Submission Form */}
         <div className="lg:col-span-2 space-y-6">
           
-          <form onSubmit={handleSubmit} className="bg-white dark:bg-[#151D2A] border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-6">
+          <form onSubmit={handleSubmit} className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-6">
             
             {/* SECTION 1: CATEGORY-WISE SELECTION */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-800">
-                <Tag className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <h3 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                <Tag className="h-4 w-4 text-[#008779]" />
+                <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
                   1. Report Category & Hazard Type
                 </h3>
               </div>
@@ -523,16 +516,16 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                       key={item.type}
                       type="button"
                       onClick={() => setReportType(item.type as any)}
-                      className={`p-3 rounded-xl border text-left transition flex flex-col justify-between h-20 ${
+                      className={`p-3.5 rounded-2xl border text-left transition-all duration-150 flex flex-col justify-between h-22 cursor-pointer ${
                         reportType === item.type
-                          ? 'border-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:border-blue-500 shadow-2xs'
-                          : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/40 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                          ? 'border-[#008779] bg-[#E8F6F4] text-[#008779] shadow-xs'
+                          : 'border-[#E6ECEB] bg-white text-slate-700 hover:bg-[#E8F6F4]/30'
                       }`}
                     >
-                      <span className={`text-xs font-bold ${reportType === item.type ? 'text-blue-700 dark:text-blue-300' : 'text-slate-800 dark:text-slate-200'}`}>
+                      <span className={`text-xs font-bold ${reportType === item.type ? 'text-[#008779]' : 'text-slate-800'}`}>
                         {item.type}
                       </span>
-                      <span className="text-[9px] text-slate-500 dark:text-slate-400 font-medium leading-tight">
+                      <span className={`text-[10px] font-medium leading-tight ${reportType === item.type ? 'text-[#008779]/80' : 'text-slate-400'}`}>
                         {item.desc}
                       </span>
                     </button>
@@ -548,7 +541,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 <select
                   value={hazardCategory}
                   onChange={(e) => setHazardCategory(e.target.value)}
-                  className="block w-full px-3.5 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl text-xs bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-white font-medium focus:ring-1 focus:ring-blue-600"
+                  className="block w-full px-4 py-2.5 border border-[#E6ECEB] rounded-xl text-xs bg-white text-slate-800 font-medium focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] shadow-xs"
                 >
                   {hazardCategories.map(hc => (
                     <option key={hc} value={hc}>{hc}</option>
@@ -560,8 +553,8 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
             {/* SECTION 2: LOCATION DETAILS */}
             <div className="space-y-4 pt-2">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                <MapPin className="h-4 w-4 text-[#1F5EAA]" />
-                <h3 className="text-xs font-extrabold text-[#0B2A56] uppercase tracking-wider">
+                <MapPin className="h-4 w-4 text-[#008779]" />
+                <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
                   2. Operational Location Details
                 </h3>
               </div>
@@ -572,7 +565,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                   <select
                     value={site}
                     onChange={(e) => setSite(e.target.value)}
-                    className="block w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 text-slate-800 font-medium"
+                    className="block w-full px-4 py-2.5 border border-[#E6ECEB] rounded-xl text-xs bg-white text-slate-800 font-medium focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] shadow-xs"
                   >
                     {sites.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
@@ -583,7 +576,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                   <select
                     value={unit}
                     onChange={(e) => setUnit(e.target.value)}
-                    className="block w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 text-slate-800 font-medium"
+                    className="block w-full px-4 py-2.5 border border-[#E6ECEB] rounded-xl text-xs bg-white text-slate-800 font-medium focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] shadow-xs"
                   >
                     {units.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
@@ -597,7 +590,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                   value={locationDetail}
                   onChange={(e) => setLocationDetail(e.target.value)}
                   placeholder="e.g. Substructure Platform Level 2, Near Valve V-102"
-                  className="block w-full px-3.5 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50/30 text-slate-800 placeholder-slate-400"
+                  className="block w-full px-4 py-2.5 border border-[#E6ECEB] rounded-xl text-xs bg-white text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] shadow-xs"
                 />
               </div>
             </div>
@@ -605,8 +598,8 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
             {/* SECTION 3: TIMING & SHIFT */}
             <div className="space-y-4 pt-2">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                <Clock3 className="h-4 w-4 text-[#1F5EAA]" />
-                <h3 className="text-xs font-extrabold text-[#0B2A56] uppercase tracking-wider">
+                <Clock3 className="h-4 w-4 text-[#008779]" />
+                <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
                   3. Incident Timing & Operational Shift
                 </h3>
               </div>
@@ -615,12 +608,12 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Date & Time of Observation</label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                    <Calendar className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
                     <input
                       type="datetime-local"
                       value={dateTime}
                       onChange={(e) => setDateTime(e.target.value)}
-                      className="block w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 text-slate-800"
+                      className="block w-full pl-10 pr-3 py-2.5 border border-[#E6ECEB] rounded-xl text-xs bg-white text-slate-800 focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] shadow-xs"
                     />
                   </div>
                 </div>
@@ -630,7 +623,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                   <select
                     value={shiftTiming}
                     onChange={(e) => setShiftTiming(e.target.value)}
-                    className="block w-full px-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 text-slate-800 font-medium"
+                    className="block w-full px-4 py-2.5 border border-[#E6ECEB] rounded-xl text-xs bg-white text-slate-800 font-medium focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] shadow-xs"
                   >
                     {shiftTimings.map(st => <option key={st} value={st}>{st}</option>)}
                   </select>
@@ -644,17 +637,17 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   4. Voice & Narrative Details
                 </label>
-                <span className="text-[9px] text-[#E57A20] font-bold bg-amber-50 px-2 py-0.5 rounded border border-amber-100 flex items-center gap-1">
-                  <Sparkles className="h-2.5 w-2.5" />
+                <span className="text-[9px] text-[#008779] font-bold bg-[#E8F6F4] px-2.5 py-0.5 rounded-full border border-[#008779]/20 flex items-center gap-1">
+                  <Sparkles className="h-3 w-3" />
                   <span>Whisper-v3 Speech AI Active</span>
                 </span>
               </div>
 
               {/* Voice recorder widget */}
-              <div className="border border-[#1F5EAA]/20 bg-slate-50/50 rounded-xl p-4 space-y-3">
+              <div className="border border-[#008779]/20 bg-[#E8F6F4]/30 rounded-2xl p-4 space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                    <Mic className="h-3.5 w-3.5 text-[#1F5EAA]" />
+                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
+                    <Mic className="h-3.5 w-3.5 text-[#008779]" />
                     <span>Interactive Voice Report</span>
                   </span>
                   {isRecording && (
@@ -669,7 +662,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                     ref={canvasRef} 
                     width={240} 
                     height={40} 
-                    className="bg-white border border-slate-200 rounded-lg w-full md:w-60 h-10 shadow-2xs"
+                    className="bg-white border border-[#E6ECEB] rounded-xl w-full md:w-60 h-10 shadow-2xs"
                   />
                   
                   <div className="flex gap-2">
@@ -677,7 +670,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                       <button
                         type="button"
                         onClick={handleStartRecording}
-                        className="px-4 py-2 bg-[#1F5EAA] hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs"
+                        className="px-4 py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                       >
                         <Mic className="h-4 w-4" />
                         <span>Record Audio</span>
@@ -686,7 +679,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                       <button
                         type="button"
                         onClick={handleStopRecording}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs animate-pulse"
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs animate-pulse cursor-pointer"
                       >
                         <MicOff className="h-4 w-4" />
                         <span>Transcribe Speech</span>
@@ -696,8 +689,8 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 </div>
 
                 {voiceTranscript && (
-                  <div className="p-3 bg-blue-50/50 border border-[#1F5EAA]/15 text-[11px] text-slate-700 rounded-lg">
-                    <div className="font-bold text-[#1F5EAA] uppercase text-[9px] tracking-wide mb-1">Transcribed Text</div>
+                  <div className="p-3 bg-white border border-[#008779]/20 text-xs text-slate-700 rounded-xl shadow-2xs">
+                    <div className="font-bold text-[#008779] uppercase text-[9px] tracking-wide mb-1">Transcribed Text</div>
                     <p className="italic leading-normal">"{voiceTranscript}"</p>
                   </div>
                 )}
@@ -709,7 +702,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe what occurred. Include: 1) What task was being done? 2) What was the immediate hazard? 3) Which safety barrier or Life-Saving Rule was bypassed?"
                 rows={4}
-                className="block w-full px-3.5 py-3 border border-slate-300 rounded-xl text-xs bg-slate-50/20 text-slate-800 placeholder-slate-400 focus:ring-1 focus:ring-[#1F5EAA]"
+                className="block w-full px-4 py-3 border border-[#E6ECEB] rounded-2xl text-xs bg-white text-slate-800 placeholder-slate-400 focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] shadow-xs"
               />
             </div>
 
@@ -718,11 +711,11 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Associated Equipment</label>
                 <div className="relative">
-                  <Wrench className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <Wrench className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
                   <select
                     value={equipment}
                     onChange={(e) => setEquipment(e.target.value)}
-                    className="block w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 text-slate-800"
+                    className="block w-full pl-10 pr-3 py-2.5 border border-[#E6ECEB] rounded-xl text-xs bg-white text-slate-800 focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] shadow-xs"
                   >
                     {equipments.map(eq => <option key={eq} value={eq}>{eq}</option>)}
                   </select>
@@ -732,11 +725,11 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Energy Source Involved</label>
                 <div className="relative">
-                  <Zap className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <Zap className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
                   <select
                     value={energySource}
                     onChange={(e) => setEnergySource(e.target.value)}
-                    className="block w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs bg-slate-50 text-slate-800"
+                    className="block w-full pl-10 pr-3 py-2.5 border border-[#E6ECEB] rounded-xl text-xs bg-white text-slate-800 focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] shadow-xs"
                   >
                     {energySources.map(es => <option key={es} value={es}>{es}</option>)}
                   </select>
@@ -746,21 +739,21 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">People Exposed</label>
                 <div className="relative">
-                  <Users className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <Users className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
                   <input
                     type="number"
                     min={1}
                     max={20}
                     value={peopleInvolved}
                     onChange={(e) => setPeopleInvolved(parseInt(e.target.value) || 1)}
-                    className="block w-full pl-9 pr-3 py-1.5 border border-slate-300 rounded-xl text-xs bg-slate-50 text-slate-800"
+                    className="block w-full pl-10 pr-3 py-2 border border-[#E6ECEB] rounded-xl text-xs bg-white text-slate-800 focus:ring-2 focus:ring-[#008779]/20 focus:border-[#008779] shadow-xs"
                   />
                 </div>
               </div>
             </div>
 
             {/* Attachment */}
-            <div className="border-2 border-dashed border-slate-200 hover:border-slate-300 rounded-xl p-4 text-center cursor-pointer transition relative">
+            <div className="border-2 border-dashed border-[#E6ECEB] hover:border-[#008779]/50 rounded-2xl p-5 text-center cursor-pointer transition relative bg-[#F4F7F6]/50">
               <input
                 type="file"
                 accept="image/*"
@@ -769,7 +762,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
               />
               {!photoPreview ? (
                 <div className="flex flex-col items-center">
-                  <Upload className="h-6 w-6 text-slate-400 mb-2" />
+                  <Upload className="h-6 w-6 text-[#008779] mb-2" />
                   <span className="text-xs font-bold text-slate-700">Attach Photo/Video Snapshot</span>
                   <span className="text-[10px] text-slate-400 mt-1">Upload an image to attach evidence to your report</span>
                 </div>
@@ -778,7 +771,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                   <img 
                     src={photoPreview} 
                     alt="Upload Preview" 
-                    className="h-28 rounded-lg object-cover mb-2 border border-slate-200 shadow-xs" 
+                    className="h-28 rounded-xl object-cover mb-2 border border-[#E6ECEB] shadow-xs" 
                   />
                   <button
                     type="button"
@@ -796,7 +789,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3 bg-[#0B2A56] hover:bg-slate-900 text-white rounded-xl text-xs font-extrabold tracking-wide uppercase transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                className="w-full py-3.5 bg-[#008779] hover:bg-[#007064] text-white rounded-full text-xs font-extrabold tracking-wide uppercase transition-all flex items-center justify-center gap-2 shadow-md shadow-[#008779]/25 disabled:opacity-50 cursor-pointer"
               >
                 {submitting ? (
                   <>
@@ -805,7 +798,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                    <CheckCircle className="h-4 w-4 text-emerald-200" />
                     <span>Submit & Process Safety Observation</span>
                   </>
                 )}
@@ -821,15 +814,15 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
           
           {/* Submission Receipt Card */}
           {receipt ? (
-            <div className="bg-white border-2 border-emerald-500 rounded-xl p-5 shadow-md space-y-4 animate-fadeIn">
+            <div className="bg-white border-2 border-[#008779] rounded-3xl p-6 shadow-sm space-y-4 animate-fadeIn">
               <div className="flex justify-between items-start pb-3 border-b border-slate-100">
                 <div>
-                  <span className="text-[9px] font-bold text-emerald-700 uppercase bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
+                  <span className="text-[9px] font-bold text-[#008779] uppercase bg-[#E8F6F4] px-2.5 py-0.5 rounded-full border border-[#008779]/20">
                     Submission Confirmation Receipt
                   </span>
                   <h3 className="text-sm font-extrabold text-slate-900 mt-1.5">{receipt.report_code}</h3>
                 </div>
-                <div className="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-xs shadow-2xs">
+                <div className="h-8 w-8 rounded-full bg-[#E8F6F4] text-[#008779] flex items-center justify-center font-bold text-xs shadow-2xs">
                   ✓
                 </div>
               </div>
@@ -842,13 +835,13 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
 
                 <div className="flex justify-between py-1 border-b border-slate-50">
                   <span className="text-slate-400 font-medium">Hazard Type:</span>
-                  <span className="font-bold text-[#1F5EAA]">{hazardCategory}</span>
+                  <span className="font-bold text-[#008779]">{hazardCategory}</span>
                 </div>
                 
                 <div className="flex justify-between py-1 border-b border-slate-50">
                   <span className="text-slate-400 font-medium">Initial Risk Level:</span>
                   <span className={`font-bold uppercase ${
-                    receipt.risk_level === 'CRITICAL' ? 'text-red-700' : receipt.risk_level === 'HIGH' ? 'text-orange-600' : 'text-slate-700'
+                    receipt.risk_level === 'CRITICAL' ? 'text-red-700' : receipt.risk_level === 'HIGH' ? 'text-[#FF7A1A]' : 'text-slate-700'
                   }`}>
                     {receipt.risk_level}
                   </span>
@@ -862,19 +855,19 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 </div>
               </div>
 
-              <div className="pt-2 text-[10px] leading-normal bg-slate-50 p-2.5 border border-slate-200 rounded-lg text-slate-500 italic">
-                <div className="font-bold text-slate-700 not-italic flex items-center gap-1 mb-1">
-                  <ShieldAlert className="h-3 w-3 text-[#E57A20]" />
+              <div className="pt-2 text-[10px] leading-normal bg-[#F4F7F6] p-3 border border-[#E6ECEB] rounded-2xl text-slate-600 italic">
+                <div className="font-bold text-slate-800 not-italic flex items-center gap-1 mb-1">
+                  <ShieldAlert className="h-3.5 w-3.5 text-[#FF7A1A]" />
                   <span>AI Automated Scan Result</span>
                 </div>
                 "{receipt.analysis.explanation}"
               </div>
             </div>
           ) : (
-            <div className="bg-white dark:bg-[#151D2A] border border-slate-200 dark:border-slate-800 rounded-xl p-6 text-center shadow-xs">
-              <Sparkles className="h-7 w-7 mx-auto mb-2 text-slate-400 dark:text-slate-500" />
-              <h4 className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider">No Active Submission Receipt</h4>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-medium">Submit your observation report to generate a real-time verification receipt.</p>
+            <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 text-center shadow-xs">
+              <Sparkles className="h-8 w-8 mx-auto mb-2 text-[#008779]" />
+              <h4 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">No Active Submission Receipt</h4>
+              <p className="text-[10px] text-slate-400 mt-1 font-medium">Submit your observation report to generate a real-time verification receipt.</p>
             </div>
           )}
 
@@ -883,33 +876,33 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
       </div>
 
       {/* MY SUBMITTED REPORTS TRACKER */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs">
+      <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm">
         <div className="mb-4 pb-3 border-b border-slate-100 flex justify-between items-center">
           <div>
             <div className="flex items-center gap-2">
-              <Clock className="h-4.5 w-4.5 text-[#1F5EAA]" />
+              <Clock className="h-4.5 w-4.5 text-[#008779]" />
               <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">My Submitted Reports Tracker</h3>
             </div>
-            <p className="text-[10px] text-slate-500 mt-0.5">Track the resolution stage of observations personally submitted by <strong>{userEmail}</strong>.</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Track the resolution stage of observations personally submitted by <strong>{userEmail}</strong>.</p>
           </div>
-          <span className="text-[10px] font-bold text-[#1F5EAA] bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg">
+          <span className="text-[10px] font-bold text-[#008779] bg-[#E8F6F4] border border-[#008779]/20 px-3 py-1 rounded-full">
             Personal Scope Filter Active
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-left">
-            <thead className="bg-slate-50 text-slate-400 uppercase tracking-wider text-[9px] font-bold">
+          <table className="min-w-full divide-y divide-slate-100 text-left">
+            <thead className="bg-[#F4F7F6] text-slate-400 uppercase tracking-wider text-[9px] font-bold">
               <tr>
-                <th className="px-4 py-2.5">Report Code</th>
-                <th className="px-4 py-2.5">Category & Hazard</th>
-                <th className="px-4 py-2.5">Location & Shift</th>
-                <th className="px-4 py-2.5">Observation Summary</th>
-                <th className="px-4 py-2.5">Submission Time</th>
-                <th className="px-4 py-2.5 text-center">Status Stepper Badge</th>
+                <th className="px-4 py-3 rounded-l-xl">Report Code</th>
+                <th className="px-4 py-3">Category & Hazard</th>
+                <th className="px-4 py-3">Location & Shift</th>
+                <th className="px-4 py-3">Observation Summary</th>
+                <th className="px-4 py-3">Submission Time</th>
+                <th className="px-4 py-3 text-center rounded-r-xl">Status Stepper Badge</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+            <tbody className="divide-y divide-slate-50 text-xs text-slate-700">
               {myReports.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-6 text-slate-400 text-xs">
@@ -918,13 +911,13 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 </tr>
               ) : (
                 myReports.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-50/60 transition">
+                  <tr key={r.id} className="hover:bg-[#E8F6F4]/30 transition">
                     <td className="px-4 py-3 font-extrabold text-slate-900">
                       {r.report_code || r.id}
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-bold text-slate-800">{r.report_type || 'Unsafe Condition'}</div>
-                      <div className="text-[10px] text-[#1F5EAA] font-semibold">{r.hazard_category || r.life_saving_rule || 'General Safety'}</div>
+                      <div className="text-[10px] text-[#008779] font-semibold">{r.hazard_category || r.life_saving_rule || 'General Safety'}</div>
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-slate-800">{r.site} • {r.unit}</div>
@@ -946,7 +939,6 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
           </table>
         </div>
       </div>
-
     </div>
   );
 };

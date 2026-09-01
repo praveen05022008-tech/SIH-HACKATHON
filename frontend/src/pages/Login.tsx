@@ -123,11 +123,11 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 <Activity className="h-5 w-5" />
               </div>
               <span className="text-2xl font-black tracking-tight text-white">
-                SIF-SHIELD AI
+                RAKSHA AI
               </span>
             </div>
-            <p className="text-xs font-bold text-amber-400 uppercase tracking-widest mt-2">
-              SIF Precursor Intelligence Engine
+            <p className="text-xs font-bold text-teal-400 uppercase tracking-widest mt-2">
+              Enterprise SIF Precursor Intelligence Platform
             </p>
           </div>
 
@@ -172,8 +172,8 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               <Activity className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight">SIF-SHIELD AI</h1>
-              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">SIF Intelligence Engine</p>
+              <h1 className="text-2xl font-black text-slate-900 tracking-tight">RAKSHA AI</h1>
+              <p className="text-[10px] font-bold text-[#008779] uppercase tracking-widest">SIF Precursor Intelligence Platform</p>
             </div>
           </div>
 
@@ -273,7 +273,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
           </div>
 
           <div className="mt-6 text-center text-[10px] text-slate-400 font-semibold uppercase tracking-wider">
-            SIF-SHIELD AI Precursor Intelligence Engine
+            RAKSHA AI Precursor Intelligence Platform
           </div>
         </div>
       </div>

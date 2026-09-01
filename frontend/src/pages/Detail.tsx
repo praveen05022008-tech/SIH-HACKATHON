@@ -212,20 +212,20 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
     <div className="space-y-6">
       
       {/* Back Header */}
-      <div className="flex items-center justify-between bg-white dark:bg-[#151D2A] border border-slate-200 dark:border-slate-800 p-4 rounded-xl shadow-xs">
+      <div className="flex items-center justify-between bg-white border border-[#E6ECEB] p-4 rounded-3xl shadow-sm">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-xs interactive-element"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#008779] hover:bg-[#007064] text-white text-xs font-extrabold rounded-full transition shadow-md shadow-[#008779]/20 cursor-pointer"
         >
           <ArrowLeft className="h-4 w-4" />
           <span>Back to Safety Alerts</span>
         </button>
 
         <div className="flex items-center gap-2.5">
-          <span className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-mono font-bold text-slate-800 dark:text-slate-200">
+          <span className="px-3.5 py-1.5 bg-[#E8F6F4] border border-[#008779]/20 rounded-full text-xs font-mono font-bold text-[#008779]">
             {currentEvent.id}
           </span>
-          <span className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-300">
+          <span className="px-3.5 py-1.5 bg-slate-50 border border-[#E6ECEB] rounded-full text-xs font-semibold text-slate-600">
             {new Date(currentEvent.timestamp).toLocaleString()}
           </span>
         </div>

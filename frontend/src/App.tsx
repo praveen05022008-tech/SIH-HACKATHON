@@ -172,7 +172,7 @@ function App() {
       'take-action': 'Take Action',
       'track-actions': 'Track Actions'
     };
-    return titles[currentPage] || 'SIF-SHIELD AI Platform';
+    return titles[currentPage] || 'RAKSHA AI Platform';
   };
 
   // Field Worker route guard enforcement
@@ -216,13 +216,15 @@ function App() {
         />
 
         {/* Scrollable Page Body */}
-        <main className="flex-1 mt-16 p-8 overflow-y-auto">
+        <main className="flex-1 pt-20 px-8 pb-12 overflow-y-auto">
           {currentPage === 'dashboard' && user.role !== 'Field Worker' && (
             <Dashboard 
               onViewEvent={handleViewEvent} 
               triggerNotification={triggerNotification} 
               triggerStateRefresh={triggerStateRefresh} 
               onNavigateTo={setCurrentPage}
+              userRole={user.role}
+              userName={user.name}
             />
           )}
 
@@ -276,20 +278,14 @@ function App() {
           )}
 
           {currentPage === 'settings' && (
-            <>
-              <AdminConsole
-                onResetDb={handleRefreshApp}
-                triggerNotification={triggerNotification}
-                onNavigateTo={(page) => {
-                  setSelectedEvent(null);
-                  setCurrentPage(page);
-                }}
-              />
-              <Settings
-                onResetDb={handleRefreshApp}
-                triggerNotification={triggerNotification}
-              />
-            </>
+            <AdminConsole
+              onResetDb={handleRefreshApp}
+              triggerNotification={triggerNotification}
+              onNavigateTo={(page) => {
+                setSelectedEvent(null);
+                setCurrentPage(page);
+              }}
+            />
           )}
 
           {currentPage === 'worker-portal' && (

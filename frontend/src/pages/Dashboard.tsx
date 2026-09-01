@@ -1,17 +1,36 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { SafetyEvent } from '../types';
 import { 
-  Inbox, 
   ShieldAlert, 
-  ClipboardCheck, 
   Clock, 
   Eye, 
   RefreshCcw,
-  FileText,
   ChevronRight,
-  CheckCircle,
-  FileCheck,
-  Calendar
+  Zap,
+  Activity,
+  Award,
+  Layers,
+  Wrench,
+  Flame,
+  HardHat,
+  CheckCircle2,
+  AlertCircle,
+  AlertTriangle,
+  AlertOctagon,
+  Calendar,
+  CalendarDays,
+  Search,
+  FileText,
+  ShieldCheck,
+  MapPin,
+  Tag,
+  X,
+  ExternalLink,
+  Table as TableIcon,
+  LayoutGrid,
+  Sparkles,
+  Info,
+  Radio
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -19,16 +38,230 @@ interface DashboardProps {
   triggerNotification: (msg: string) => void;
   triggerStateRefresh: boolean;
   onNavigateTo?: (page: string) => void;
+  userRole?: string;
+  userName?: string;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
   onViewEvent, 
   triggerNotification, 
   triggerStateRefresh,
-  onNavigateTo
+  onNavigateTo,
+  userRole = 'Safety Officer',
+  userName = 'Safety Officer Lead'
 }) => {
   const [events, setEvents] = useState<SafetyEvent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterStatus, setFilterStatus] = useState<string>('ALL');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [selectedSiteFilter, setSelectedSiteFilter] = useState<string>('ALL');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+  
+  // Selected issue for the View Popup Modal
+  const [popupEvent, setPopupEvent] = useState<SafetyEvent | null>(null);
+
+  // Baseline mock events to display if backend has 0 events or is offline
+  const fallbackEvents: SafetyEvent[] = [
+    {
+      id: 'EVT-10105',
+      report_code: '#SIF26165-001',
+      report_type: 'Unsafe Condition',
+      timestamp: new Date().toISOString(),
+      site: 'Drilling Site B',
+      unit: 'Utility Block Section 02',
+      location: 'Utility Block - Section 02',
+      activity: 'Energy Isolation / Valve Work',
+      description: 'Technician was observed servicing a pressurized line before independently verifying mechanical energy isolation LOTO tags.',
+      hazard: 'Unverified Mechanical Energy Isolation & Line Depressurization',
+      energy_source: 'Pressurized Fluid / Gas',
+      barrier: 'Lockout/Tagout (LOTO)',
+      barrier_failure: 'Zero energy verification bypass',
+      exposure: 'Crew within valve flange spray trajectory',
+      consequence: 'Severe pressurized fluid / gas release',
+      sif_probability: 72.0,
+      confidence: 88.0,
+      life_saving_rule: 'Energy Isolation',
+      status: 'Needs Review',
+      reviewer: null,
+      evidence: 'Worker field submission',
+      l1_milestone: 'OIL Annual Rig Operations 2026',
+      l2_unit: 'Rig Floor 01 Section',
+      l3_discipline: 'Mechanical Maintenance',
+      l4_work_package: 'Valve service',
+      l5_activity: 'Energy Isolation',
+      l6_job: 'Inspect block valves',
+      sif_risk_score: 7.8,
+      risk_level: 'HIGH',
+      action_id: 'ACT-1001',
+      action_status: 'In Progress'
+    },
+    {
+      id: 'EVT-10028',
+      report_code: '#SIF26165-002',
+      report_type: 'Unsafe Act',
+      timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
+      site: 'Drilling Site B',
+      unit: 'FCCU - Section 01',
+      location: 'FCCU - Section 01',
+      activity: 'Working at Height',
+      description: 'Contractor climbed the derrick mast at Drilling Site B without securing their safety harness lanyard to the structural anchor point.',
+      hazard: 'Working at Elevated Height Without Fall Protection Anchor',
+      energy_source: 'Gravitational Potential',
+      barrier: 'Harness Tie-Off Lifelines',
+      barrier_failure: 'Harness lanyard not anchored to lifeline',
+      exposure: 'Worker climbing upper mast scaffolding',
+      consequence: 'Fatal fall from elevated structure',
+      sif_probability: 84.0,
+      confidence: 92.0,
+      life_saving_rule: 'Working at Height',
+      status: 'Needs Review',
+      reviewer: null,
+      evidence: 'CCTV AI detection feed',
+      l1_milestone: 'OIL Annual Rig Operations 2026',
+      l2_unit: 'Derrick Mast Scaffold',
+      l3_discipline: 'Rig Operations',
+      l4_work_package: 'Platform inspection',
+      l5_activity: 'Working at Height',
+      l6_job: 'Climb mast platform',
+      sif_risk_score: 8.4,
+      risk_level: 'CRITICAL',
+      action_id: 'ACT-1002',
+      action_status: 'Overdue'
+    },
+    {
+      id: 'EVT-10102',
+      report_code: '#SIF26165-003',
+      report_type: 'Near Miss',
+      timestamp: new Date(Date.now() - 3600000 * 8).toISOString(),
+      site: 'Drilling Site A',
+      unit: 'Mud Pump Section',
+      location: 'Mud Pump Area Unit 01',
+      activity: 'Routine Maintenance',
+      description: 'Observed intermittent electrical sparks near the primary mud pump motor terminal box housing during shift startup.',
+      hazard: 'Exposed Live Terminal Contacts in Mud Pump Housing',
+      energy_source: 'Electrical Energy (415V)',
+      barrier: 'Insulated housing covers & IP65 enclosure',
+      barrier_failure: 'Missing gasket seal & loose cover',
+      exposure: 'Technician working in wet washdown zone',
+      consequence: 'Severe shock / occupational arc flash',
+      sif_probability: 68.0,
+      confidence: 85.0,
+      life_saving_rule: 'Energy Isolation',
+      status: 'Action Dispatched',
+      reviewer: 'Safety Officer Lead',
+      evidence: 'Shift supervisor log',
+      l1_milestone: 'Standard Operations',
+      l2_unit: 'Mud Pump Area Unit',
+      l3_discipline: 'Electrical Maintenance',
+      l4_work_package: 'Motor inspection',
+      l5_activity: 'Routine Maintenance',
+      l6_job: 'Check motor terminals',
+      sif_risk_score: 6.8,
+      risk_level: 'HIGH',
+      action_id: 'ACT-1003',
+      action_status: 'In Progress'
+    },
+    {
+      id: 'EVT-10084',
+      report_code: '#SIF26165-004',
+      report_type: 'Unsafe Condition',
+      timestamp: new Date(Date.now() - 86400000 * 1).toISOString(),
+      site: 'Refinery Unit 1',
+      unit: 'Tank Farm - Section 02',
+      location: 'Tank Farm Storage Sector 3',
+      activity: 'Confined Space Entry',
+      description: 'Continuous atmospheric gas detector alarm was muted during tank TK-201 internal inspection due to false alarm presumption.',
+      hazard: 'Gas Detector Alarm Override in Confined Storage Tank',
+      energy_source: 'Toxic Hydrocarbon Vapors',
+      barrier: 'Continuous Gas Monitoring & Permit to Work',
+      barrier_failure: 'Audio visual alarm silenced without evacuation',
+      exposure: 'Inspection team inside sealed vessel',
+      consequence: 'Asphyxiation / acute toxic inhalation',
+      sif_probability: 91.0,
+      confidence: 94.0,
+      life_saving_rule: 'Confined Space',
+      status: 'Confirmed',
+      reviewer: 'HSE Manager Lead',
+      evidence: 'Gas monitor telemetry log',
+      l1_milestone: 'Turnaround Operations',
+      l2_unit: 'Storage Tank Sector',
+      l3_discipline: 'Process Safety',
+      l4_work_package: 'Internal vessel wash',
+      l5_activity: 'Confined Space',
+      l6_job: 'Atmosphere check',
+      sif_risk_score: 9.1,
+      risk_level: 'CRITICAL',
+      action_id: 'ACT-1004',
+      action_status: 'Completed'
+    },
+    {
+      id: 'EVT-10067',
+      report_code: '#SIF26165-005',
+      report_type: 'Unsafe Act',
+      timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
+      site: 'Drilling Site C',
+      unit: 'Rig Floor 01',
+      location: 'Substructure Wellhead Pad',
+      activity: 'Lifting Operations',
+      description: 'Crane rigger positioned body directly underneath the suspended 3.5-ton blowout preventer spool during rigging reposition.',
+      hazard: 'Personnel in Direct Line of Fire Under Suspended Heavy Load',
+      energy_source: 'Suspended Gravity Load (3.5T)',
+      barrier: 'Exclusion Zone Barricades & Taglines',
+      barrier_failure: 'Personnel entered drop perimeter',
+      exposure: 'Rigger standing in load trajectory',
+      consequence: 'Crush fatality due to sling failure',
+      sif_probability: 88.0,
+      confidence: 95.0,
+      life_saving_rule: 'Line of Fire',
+      status: 'Resolved',
+      reviewer: 'Safety Officer Lead',
+      evidence: 'Stop Work Authority Form',
+      l1_milestone: 'Well Spudding Ops',
+      l2_unit: 'Substructure Area',
+      l3_discipline: 'Rig Floor Operations',
+      l4_work_package: 'BOP installation',
+      l5_activity: 'Lifting Operations',
+      l6_job: 'Position crane sling',
+      sif_risk_score: 8.8,
+      risk_level: 'CRITICAL',
+      action_id: 'ACT-1005',
+      action_status: 'Completed'
+    },
+    {
+      id: 'EVT-10055',
+      report_code: '#SIF26165-006',
+      report_type: 'Unsafe Condition',
+      timestamp: new Date(Date.now() - 86400000 * 3).toISOString(),
+      site: 'Refinery Unit 2',
+      unit: 'Utility Block Section 02',
+      location: 'Boiler Feed Water Pump House',
+      activity: 'Hot Work',
+      description: 'Hot work welding permit expired 3 hours prior but torch cutting was continuing without fire watch presence.',
+      hazard: 'Hot Work Operations With Expired Permit & Missing Fire Watch',
+      energy_source: 'Thermal / Open Flame',
+      barrier: 'Hot Work Permit & Certified Fire Watch',
+      barrier_failure: 'Work continued past authorized permit validity',
+      exposure: 'Welder cutting flange near diesel day tank',
+      consequence: 'Flash fire & hydrocarbon ignition',
+      sif_probability: 76.0,
+      confidence: 89.0,
+      life_saving_rule: 'Hot Work',
+      status: 'Confirmed',
+      reviewer: 'Safety Officer Lead',
+      evidence: 'Permit audit inspection',
+      l1_milestone: 'Boiler House Overhaul',
+      l2_unit: 'Feed Pump Station',
+      l3_discipline: 'Welding & Fabrication',
+      l4_work_package: 'Piping retrofit',
+      l5_activity: 'Hot Work',
+      l6_job: 'Torch cut support beam',
+      sif_risk_score: 7.6,
+      risk_level: 'HIGH',
+      action_id: 'ACT-1006',
+      action_status: 'Completed'
+    }
+  ];
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -36,104 +269,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
       const res = await fetch('http://localhost:8000/api/events');
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setEvents(data);
+      if (Array.isArray(data) && data.length > 0) {
+        setEvents(data);
+      } else {
+        setEvents(fallbackEvents);
+      }
     } catch (err) {
-      console.warn("FastAPI offline, using mock dashboard events list.");
-      setEvents([
-        {
-          id: 'EVT-10105',
-          timestamp: new Date().toISOString(),
-          site: 'Drilling Site B',
-          unit: 'Utility Block Section 02',
-          location: 'Utility Block - Section 02',
-          activity: 'Energy Isolation / Valve Work',
-          description: 'Technician was seen servicing a valve line before independently verifying mechanical energy isolation LOTO tags.',
-          hazard: 'Suspended structural lift hazard',
-          energy_source: 'Pressurized Fluid / Gas',
-          barrier: 'Lockout/Tagout (LOTO)',
-          barrier_failure: 'Zero energy verification bypass',
-          exposure: 'Crew near valve flange trajectory',
-          consequence: 'Fatal pressurized fluid release',
-          sif_probability: 72.0,
-          confidence: 88.0,
-          life_saving_rule: 'Lifting Operations',
-          status: 'Needs Review',
-          reviewer: null,
-          evidence: 'Worker portal submission',
-          l1_milestone: 'OIL Annual Rig Operations 2026',
-          l2_unit: 'Rig Floor 01 Section',
-          l3_discipline: 'Mechanical Maintenance',
-          l4_work_package: 'Valve service',
-          l5_activity: 'Energy Isolation',
-          l6_job: 'Inspect block valves',
-          sif_risk_score: 7.2,
-          risk_level: 'HIGH',
-          action_id: null,
-          action_status: null
-        },
-        {
-          id: 'EVT-10028',
-          timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
-          site: 'Drilling Site B',
-          unit: 'FCCU - Section 01',
-          location: 'FCCU - Section 01',
-          activity: 'Working at Height',
-          description: 'Contractor climbed the derrick mast at Drilling Site B without securing their safety harness lanyard to the anchor points.',
-          hazard: 'Catastrophic fall from elevated scaffold',
-          energy_source: 'Gravitational Potential',
-          barrier: 'Harness Tie-Off Lifelines',
-          barrier_failure: 'Harness lanyard not anchored',
-          exposure: 'Worker climbing deck scaffolding',
-          consequence: 'Fatal fall from height',
-          sif_probability: 69.0,
-          confidence: 90.0,
-          life_saving_rule: 'Working at Height',
-          status: 'Needs Review',
-          reviewer: null,
-          evidence: 'CCTV detection feed',
-          l1_milestone: 'OIL Annual Rig Operations 2026',
-          l2_unit: 'Derrick Mast Scaffold',
-          l3_discipline: 'Rig Operations',
-          l4_work_package: 'Platform inspection',
-          l5_activity: 'Working at Height',
-          l6_job: 'Climb mast platform',
-          sif_risk_score: 6.9,
-          risk_level: 'HIGH',
-          action_id: 'ACT-1002',
-          action_status: 'In Progress'
-        },
-        {
-          id: 'EVT-10102',
-          timestamp: new Date(Date.now() - 3600000 * 5).toISOString(),
-          site: 'Drilling Site B',
-          unit: 'Tank Farm - Section 02',
-          location: 'Tank Farm - Section 02',
-          activity: 'Routine Maintenance',
-          description: 'Observed electrical sparks near the primary mud pump motor terminal box housing during shift startup.',
-          hazard: 'Occupational safety breach',
-          energy_source: 'Electrical Energy',
-          barrier: 'Insulated housing covers',
-          barrier_failure: 'Exposed live contacts',
-          exposure: 'Technician working within boundaries',
-          consequence: 'Severe shock / flash burn',
-          sif_probability: 68.0,
-          confidence: 82.0,
-          life_saving_rule: 'Confined Space',
-          status: 'Needs Review',
-          reviewer: 'Safety Officer Lead',
-          evidence: 'Observation form',
-          l1_milestone: 'Standard Operations',
-          l2_unit: 'Mud Pump Area Unit',
-          l3_discipline: 'Electrical Maintenance',
-          l4_work_package: 'Motor inspection',
-          l5_activity: 'Routine Maintenance',
-          l6_job: 'Check motor terminals',
-          sif_risk_score: 6.8,
-          risk_level: 'HIGH',
-          action_id: 'ACT-1003',
-          action_status: 'Overdue'
-        }
-      ]);
+      console.warn("FastAPI offline or empty, utilizing baseline events dataset.");
+      setEvents(fallbackEvents);
     } finally {
       setLoading(false);
     }
@@ -143,321 +286,1130 @@ export const Dashboard: React.FC<DashboardProps> = ({
     fetchDashboardData();
   }, [triggerStateRefresh]);
 
-  // Derived metrics
-  const newAlertsCount = events.filter(e => e.status === 'Needs Review').length;
-  const highRiskCount = events.filter(e => (e.sif_risk_score ?? (e.sif_probability / 10)) >= 6.5).length;
-  const pendingActionsCount = events.filter(e => e.action_status === 'In Progress' || e.status === 'Confirmed').length;
-  const overdueActionsCount = events.filter(e => e.action_status === 'Overdue').length;
+  // Helper to determine status category for an issue
+  const isCompleted = (evt: SafetyEvent) => {
+    return evt.status === 'Resolved' || 
+           evt.status === 'Confirmed' || 
+           evt.action_status === 'Completed' || 
+           evt.action_status === 'Verified';
+  };
 
-  // Filter lists
-  const highPriorityAlerts = [...events]
-    .filter(e => e.status === 'Needs Review')
-    .sort((a, b) => (b.sif_risk_score ?? b.sif_probability) - (a.sif_risk_score ?? a.sif_probability));
+  const isOverdue = (evt: SafetyEvent) => {
+    if (evt.action_status === 'Overdue') return true;
+    const ageHours = (Date.now() - new Date(evt.timestamp).getTime()) / 3600000;
+    return (evt.status === 'Needs Review' || evt.action_status === 'Pending') && ageHours > 24;
+  };
 
-  // Score distribution counts
-  const criticalCount = 8;
-  const highCount = 7;
-  const mediumCount = 42;
-  const lowCount = 50;
+  const isIncompleted = (evt: SafetyEvent) => {
+    return !isCompleted(evt);
+  };
+
+  // 4 Main Metric Box Calculations
+  const metrics = useMemo(() => {
+    const total = events.length;
+    const completed = events.filter(isCompleted).length;
+    const overdue = events.filter(isOverdue).length;
+    const incompleted = events.filter(isIncompleted).length;
+
+    const completedRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+    const incompletedRate = total > 0 ? Math.round((incompleted / total) * 100) : 0;
+    const overdueRate = total > 0 ? Math.round((overdue / total) * 100) : 0;
+
+    return {
+      total,
+      completed,
+      incompleted,
+      overdue,
+      completedRate,
+      incompletedRate,
+      overdueRate
+    };
+  }, [events]);
+
+  // Filtered and Sorted Date-wise Issues
+  const filteredEvents = useMemo(() => {
+    return events.filter(evt => {
+      // Status filter
+      if (filterStatus === 'COMPLETED' && !isCompleted(evt)) return false;
+      if (filterStatus === 'INCOMPLETED' && !isIncompleted(evt)) return false;
+      if (filterStatus === 'OVERDUE' && !isOverdue(evt)) return false;
+      if (filterStatus === 'NEEDS_REVIEW' && evt.status !== 'Needs Review') return false;
+
+      // Site filter
+      if (selectedSiteFilter !== 'ALL' && evt.site !== selectedSiteFilter) return false;
+
+      // Search Query filter
+      if (searchQuery.trim() !== '') {
+        const query = searchQuery.toLowerCase();
+        const matchesHazard = evt.hazard?.toLowerCase().includes(query);
+        const matchesDesc = evt.description?.toLowerCase().includes(query);
+        const matchesSite = evt.site?.toLowerCase().includes(query);
+        const matchesUnit = evt.unit?.toLowerCase().includes(query);
+        const matchesRule = evt.life_saving_rule?.toLowerCase().includes(query);
+        const matchesId = evt.id?.toLowerCase().includes(query);
+        const matchesCode = evt.report_code?.toLowerCase().includes(query);
+
+        if (!matchesHazard && !matchesDesc && !matchesSite && !matchesUnit && !matchesRule && !matchesId && !matchesCode) {
+          return false;
+        }
+      }
+
+      return true;
+    }).sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      return sortOrder === 'desc' ? timeB - timeA : timeA - timeB;
+    });
+  }, [events, filterStatus, searchQuery, sortOrder, selectedSiteFilter]);
+
+  // Unique sites for filter dropdown
+  const uniqueSites = useMemo(() => {
+    const siteSet = new Set<string>();
+    events.forEach(e => {
+      if (e.site) siteSet.add(e.site);
+    });
+    return Array.from(siteSet);
+  }, [events]);
+
+  // Helper date formatter
+  const formatDate = (dateStr: string) => {
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return { formattedDate: dateStr || 'N/A', formattedTime: '', relative: '' };
+      
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = d.toLocaleString('en-US', { month: 'short' });
+      const year = d.getFullYear();
+      const time = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+      return {
+        formattedDate: `${day} ${month} ${year}`,
+        formattedTime: time,
+        relative: getRelativeTime(d)
+      };
+    } catch {
+      return { formattedDate: dateStr || 'N/A', formattedTime: '', relative: '' };
+    }
+  };
+
+  const getRelativeTime = (d: Date) => {
+    const diffMs = Date.now() - d.getTime();
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    return `${diffDays} days ago`;
+  };
+
+  // Status Badge Component
+  const getStatusBadge = (evt: SafetyEvent) => {
+    if (isOverdue(evt)) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-rose-50 text-rose-700 border border-rose-200 shadow-2xs whitespace-nowrap">
+          <AlertOctagon className="h-3 w-3 text-rose-600" />
+          Overdue
+        </span>
+      );
+    }
+    if (isCompleted(evt)) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs whitespace-nowrap">
+          <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+          Completed
+        </span>
+      );
+    }
+    if (evt.status === 'Needs Review') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs whitespace-nowrap">
+          <Clock className="h-3 w-3 text-amber-600" />
+          Needs Review
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs whitespace-nowrap">
+        <Activity className="h-3 w-3 text-blue-600" />
+        In Progress
+      </span>
+    );
+  };
+
+  const getRiskBadge = (riskLevel?: string, score?: number) => {
+    const level = riskLevel || 'HIGH';
+    const displayScore = score !== undefined ? score.toFixed(1) : '7.0';
+
+    if (level === 'CRITICAL') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-black bg-rose-100 text-rose-800 whitespace-nowrap">
+          <span className="h-1.5 w-1.5 rounded-full bg-rose-600 animate-pulse"></span>
+          CRITICAL {displayScore}
+        </span>
+      );
+    }
+    if (level === 'HIGH') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 whitespace-nowrap">
+          HIGH {displayScore}
+        </span>
+      );
+    }
+    if (level === 'MEDIUM') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800 whitespace-nowrap">
+          MED {displayScore}
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 whitespace-nowrap">
+        LOW {displayScore}
+      </span>
+    );
+  };
+
+  // Quick categories for LSR
+  const quickCategories = [
+    { title: 'Energy Isolation', count: '12 Precursors', icon: Wrench, color: 'bg-[#E8F6F4] text-[#008779]' },
+    { title: 'Working at Height', count: '24 Precursors', icon: Layers, color: 'bg-blue-50 text-blue-600' },
+    { title: 'Confined Space', count: '15 Precursors', icon: Flame, color: 'bg-amber-50 text-[#FF7A1A]' }
+  ];
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center h-[calc(100vh-8rem)] text-slate-500">
-        <RefreshCcw className="h-8 w-8 animate-spin text-blue-600 mb-3" />
-        <p className="text-sm font-semibold">Compiling Safety Dashboard...</p>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-10rem)] text-slate-500">
+        <RefreshCcw className="h-8 w-8 animate-spin text-[#008779] mb-3" />
+        <p className="text-sm font-semibold">Compiling Safety Officer Dashboard...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 bg-slate-50/50 p-1 rounded-xl">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
       
-      {/* Top Summary Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">New Alerts</span>
-            <div className="text-2xl font-extrabold mt-1 text-slate-800">{newAlertsCount + 23}</div>
-            <p className="text-[9px] text-slate-400 mt-1">Observations needing review</p>
-          </div>
-          <div className="h-10 w-10 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
-            <Inbox className="h-5 w-5" />
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">High-Risk Cases</span>
-            <div className="text-2xl font-extrabold mt-1 text-slate-800">{highRiskCount + 12}</div>
-            <p className="text-[9px] text-slate-400 mt-1">SIF composite score ≥ 6.5</p>
-          </div>
-          <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-600">
-            <ShieldAlert className="h-5 w-5" />
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pending Actions</span>
-            <div className="text-2xl font-extrabold mt-1 text-slate-800">{pendingActionsCount + 6}</div>
-            <p className="text-[9px] text-slate-400 mt-1">Corrective tasks in progress</p>
-          </div>
-          <div className="h-10 w-10 rounded-lg bg-amber-50 border border-amber-100 flex items-center justify-center text-amber-500">
-            <ClipboardCheck className="h-5 w-5" />
-          </div>
-        </div>
-
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex items-center justify-between">
-          <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Overdue Actions</span>
-            <div className="text-2xl font-extrabold mt-1 text-slate-800">{overdueActionsCount}</div>
-            <p className="text-[9px] text-slate-400 mt-1">Passed dispatch deadline</p>
-          </div>
-          <div className="h-10 w-10 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-600">
-            <Clock className="h-5 w-5" />
-          </div>
-        </div>
-
-      </div>
-
-      {/* Main Grid: Left column (High priority alerts), Right column (Risk chart, Active Actions) */}
+      {/* 2-Column Main Layout: Left Main Area + Right Progress & Tasks Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left Column */}
+        {/* Left Column (2/3 width) - Contains Welcome Box -> 4 Boxes -> Date-wise Issue Table */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* High-Priority Alerts Section */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between h-full">
-            <div>
-              <div className="mb-4 pb-2 border-b border-slate-100 flex justify-between items-center">
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">High-Priority SIF Precursors</h3>
-                <span className="px-2 py-0.5 bg-red-50 border border-red-200 rounded text-[9px] font-bold text-red-700 uppercase tracking-wide">
-                  Action Required
-                </span>
+          {/* 1. HERO WELCOME BOX */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#007A78] via-[#008779] to-[#00A389] text-white p-7 shadow-lg shadow-[#008779]/20">
+            
+            {/* Watermark Trophy / Shield Icon in Background */}
+            <div className="absolute right-6 -bottom-6 opacity-15 pointer-events-none">
+              <Award className="h-48 w-48 text-white stroke-1" />
+            </div>
+
+            <div className="relative z-10 max-w-xl">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-[11px] font-bold text-emerald-100 mb-2 border border-white/20">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
+                <span>Safety Officer Command Dashboard</span>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-100 text-left">
-                  <thead className="bg-slate-50 text-[9px] font-bold uppercase text-slate-400 tracking-wider">
-                    <tr>
-                      <th className="px-4 py-2">ID</th>
-                      <th className="px-4 py-2">Location</th>
-                      <th className="px-4 py-2">Hazard Issue</th>
-                      <th className="px-4 py-2 text-center">SIF Risk</th>
-                      <th className="px-4 py-2">Status</th>
-                      <th className="px-4 py-2 text-right">Review</th>
+              <h1 className="text-2xl font-black tracking-tight text-white">
+                Welcome Back, {userRole === 'Safety Officer' ? 'Safety Officer!' : `${userName}!`}
+              </h1>
+              <p className="text-sm text-emerald-50/90 italic mt-1 font-medium leading-relaxed">
+                Let’s Upgrade Your Precursor Prevention & SIF Shield Now
+              </p>
+              
+              <div className="mt-5 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={() => onNavigateTo?.('take-action')}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
+                >
+                  <span>Take Action Now</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+
+                <button
+                  onClick={() => onNavigateTo?.('track-actions')}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
+                >
+                  <Activity className="h-3.5 w-3.5 text-emerald-100" />
+                  <span>Track Actions ({metrics.incompleted} Open)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. FOUR STAT BOXES DIRECTLY UNDER THE WELCOME BOX */}
+          {/* Total Issues | Completed Issues | Incompleted Issues | Overdue Issues */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
+            
+            {/* Box 1: Total Issues */}
+            <div 
+              onClick={() => setFilterStatus('ALL')}
+              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${
+                filterStatus === 'ALL' ? 'border-[#008779] ring-2 ring-[#008779]/20' : 'border-[#E6ECEB] hover:border-[#008779]/40'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+                  Total Issue
+                </span>
+                <div className="h-8 w-8 rounded-xl bg-[#E8F6F4] text-[#008779] flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <FileText className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-black text-slate-900 font-mono-numbers">
+                  {metrics.total}
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
+                  <span>Total logged issues</span>
+                </div>
+              </div>
+              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-[#008779]">
+                <span>All Sites</span>
+                <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition" />
+              </div>
+            </div>
+
+            {/* Box 2: Completed Issues */}
+            <div 
+              onClick={() => setFilterStatus('COMPLETED')}
+              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${
+                filterStatus === 'COMPLETED' ? 'border-emerald-600 ring-2 ring-emerald-500/20' : 'border-[#E6ECEB] hover:border-emerald-500/40'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+                  Completed
+                </span>
+                <div className="h-8 w-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <CheckCircle2 className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-black text-emerald-600 font-mono-numbers">
+                  {metrics.completed}
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
+                  <span className="text-emerald-600 font-bold">{metrics.completedRate}%</span>
+                  <span>resolved</span>
+                </div>
+              </div>
+              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-emerald-600">
+                <span>Verified</span>
+                <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition" />
+              </div>
+            </div>
+
+            {/* Box 3: Incompleted Issues */}
+            <div 
+              onClick={() => setFilterStatus('INCOMPLETED')}
+              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${
+                filterStatus === 'INCOMPLETED' ? 'border-[#FF7A1A] ring-2 ring-[#FF7A1A]/20' : 'border-[#E6ECEB] hover:border-[#FF7A1A]/40'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+                  Incompleted
+                </span>
+                <div className="h-8 w-8 rounded-xl bg-amber-50 text-[#FF7A1A] flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Clock className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-black text-[#FF7A1A] font-mono-numbers">
+                  {metrics.incompleted}
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
+                  <span className="text-[#FF7A1A] font-bold">{metrics.incompletedRate}%</span>
+                  <span>pending/active</span>
+                </div>
+              </div>
+              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-[#FF7A1A]">
+                <span>Requires Action</span>
+                <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition" />
+              </div>
+            </div>
+
+            {/* Box 4: Overdue Issues */}
+            <div 
+              onClick={() => setFilterStatus('OVERDUE')}
+              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${
+                filterStatus === 'OVERDUE' ? 'border-rose-600 ring-2 ring-rose-500/20' : 'border-[#E6ECEB] hover:border-rose-500/40'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+                  Overdue
+                </span>
+                <div className="h-8 w-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <AlertOctagon className="h-4 w-4" />
+                </div>
+              </div>
+              <div className="mt-2">
+                <div className="text-2xl font-black text-rose-600 font-mono-numbers">
+                  {metrics.overdue}
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
+                  <span className="text-rose-600 font-bold">Past SLA</span>
+                  <span>resolution date</span>
+                </div>
+              </div>
+              <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] font-bold text-rose-600">
+                <span>Critical Attention</span>
+                <ChevronRight className="h-3 w-3 group-hover:translate-x-0.5 transition" />
+              </div>
+            </div>
+
+          </div>
+
+          {/* 3. DATE-WISE ISSUE REGISTER / TABLE WITH ACTION COLUMN & VIEW POPUP */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-5">
+            
+            {/* Header & Controls */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-[#E8F6F4] text-[#008779] flex items-center justify-center">
+                    <CalendarDays className="h-4 w-4" />
+                  </div>
+                  <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+                    Date-wise Safety Issues Register
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-400 font-medium mt-0.5 pl-9">
+                  Chronological records of safety observations, unsafe conditions, and precursor alerts
+                </p>
+              </div>
+
+              {/* View Mode Toggle & Status Filter Badges */}
+              <div className="flex flex-wrap items-center gap-1.5 pl-9 sm:pl-0">
+                <div className="flex items-center bg-slate-100 p-0.5 rounded-lg mr-1 border border-slate-200">
+                  <button
+                    onClick={() => setViewMode('table')}
+                    className={`p-1.5 rounded-md text-xs font-bold transition cursor-pointer ${
+                      viewMode === 'table' ? 'bg-white text-[#008779] shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                    title="Table View"
+                  >
+                    <TableIcon className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('cards')}
+                    className={`p-1.5 rounded-md text-xs font-bold transition cursor-pointer ${
+                      viewMode === 'cards' ? 'bg-white text-[#008779] shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                    title="Card View"
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setFilterStatus('ALL')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${
+                    filterStatus === 'ALL'
+                      ? 'bg-[#008779] text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  All ({metrics.total})
+                </button>
+                <button
+                  onClick={() => setFilterStatus('INCOMPLETED')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${
+                    filterStatus === 'INCOMPLETED'
+                      ? 'bg-[#FF7A1A] text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Incompleted ({metrics.incompleted})
+                </button>
+                <button
+                  onClick={() => setFilterStatus('COMPLETED')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${
+                    filterStatus === 'COMPLETED'
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Completed ({metrics.completed})
+                </button>
+                <button
+                  onClick={() => setFilterStatus('OVERDUE')}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${
+                    filterStatus === 'OVERDUE'
+                      ? 'bg-rose-600 text-white shadow-2xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Overdue ({metrics.overdue})
+                </button>
+              </div>
+            </div>
+
+            {/* Search & Site Filter Bar */}
+            <div className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search by hazard, ID (#SIF...), site, rule, description..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9.5 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#008779] focus:bg-white transition"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {uniqueSites.length > 0 && (
+                  <select
+                    value={selectedSiteFilter}
+                    onChange={(e) => setSelectedSiteFilter(e.target.value)}
+                    className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-hidden focus:border-[#008779] cursor-pointer"
+                  >
+                    <option value="ALL">All Sites ({uniqueSites.length})</option>
+                    {uniqueSites.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                )}
+
+                <button
+                  onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition cursor-pointer shrink-0"
+                  title="Toggle Sort Order"
+                >
+                  <Clock className="h-3.5 w-3.5 text-slate-500" />
+                  <span>{sortOrder === 'desc' ? 'Newest Date' : 'Oldest Date'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* TABLE VIEW (Default: Full Table with 'Action' Column and 'View' Button) */}
+            {viewMode === 'table' ? (
+              <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-2xs">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">
+                      <th className="py-3 px-4">Date & Time</th>
+                      <th className="py-3 px-3">Issue ID</th>
+                      <th className="py-3 px-4 min-w-[200px]">Hazard & Description</th>
+                      <th className="py-3 px-3">Site / Unit</th>
+                      <th className="py-3 px-3">Life-Saving Rule</th>
+                      <th className="py-3 px-3">SIF Risk</th>
+                      <th className="py-3 px-3">Status</th>
+                      <th className="py-3 px-4 text-center font-black text-[#008779]">Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                    {highPriorityAlerts.slice(0, 3).map((evt) => (
-                      <tr key={evt.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-2.5 font-bold text-slate-900">{evt.id}</td>
-                        <td className="px-4 py-2.5">
-                          <div className="font-semibold text-slate-800">{evt.site}</div>
-                          <div className="text-[9px] text-slate-400">{evt.location}</div>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <div className="font-medium text-slate-800 line-clamp-1">{evt.hazard}</div>
-                          <div className="text-[9px] text-slate-400">Rule: {evt.life_saving_rule}</div>
-                        </td>
-                        <td className="px-4 py-2.5 text-center">
-                          <span className="px-2 py-0.5 bg-red-50 border border-red-200 text-red-700 rounded font-bold text-[10px]">
-                            {evt.sif_risk_score ?? (evt.sif_probability / 10).toFixed(1)} / 10
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5">
-                          <span className="px-1.5 py-0.5 rounded bg-amber-50 border border-amber-200 text-[9px] font-bold text-amber-600 uppercase">
-                            {evt.status === 'Needs Review' ? 'Needs Review' : 'Triage Required'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <button
-                            onClick={() => onViewEvent(evt)}
-                            className="px-2 py-1 bg-slate-100 hover:bg-[#0B2A56] hover:text-white border border-slate-200 rounded-lg text-[10px] font-bold transition flex items-center gap-1 ml-auto"
-                          >
-                            <Eye className="h-3 w-3" />
-                            <span>Review</span>
-                          </button>
+                  <tbody className="divide-y divide-slate-100 text-xs">
+                    {filteredEvents.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="py-10 text-center text-slate-400 font-medium">
+                          No matching safety issues found.
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredEvents.map((evt) => {
+                        const dateInfo = formatDate(evt.timestamp);
+                        return (
+                          <tr 
+                            key={evt.id} 
+                            className="hover:bg-[#E8F6F4]/30 transition-colors duration-150 group"
+                          >
+                            {/* 1. Date & Time */}
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <div className="flex items-center gap-2">
+                                <div className="h-7 w-7 rounded-lg bg-[#E8F6F4] text-[#008779] flex items-center justify-center shrink-0">
+                                  <Calendar className="h-3.5 w-3.5" />
+                                </div>
+                                <div>
+                                  <div className="font-extrabold text-slate-800 text-[11px]">
+                                    {dateInfo.formattedDate}
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                                    <span>{dateInfo.formattedTime}</span>
+                                    <span className="text-[#008779] font-bold">({dateInfo.relative})</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* 2. Issue ID / Code */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <span className="font-mono font-black text-[11px] text-[#008779] bg-[#E8F6F4] px-2 py-1 rounded-md border border-teal-100">
+                                {evt.report_code || evt.id}
+                              </span>
+                            </td>
+
+                            {/* 3. Hazard & Description */}
+                            <td className="py-3 px-4 max-w-xs">
+                              <div className="font-bold text-slate-900 group-hover:text-[#008779] transition leading-snug line-clamp-1">
+                                {evt.hazard || evt.activity}
+                              </div>
+                              <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
+                                {evt.description}
+                              </p>
+                            </td>
+
+                            {/* 4. Site / Unit */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-700">
+                                <MapPin className="h-3 w-3 text-slate-400 shrink-0" />
+                                <span>{evt.site}</span>
+                              </div>
+                              {evt.unit && (
+                                <div className="text-[10px] text-slate-400 pl-4 truncate max-w-[120px]">
+                                  {evt.unit}
+                                </div>
+                              )}
+                            </td>
+
+                            {/* 5. Life-Saving Rule */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              {evt.life_saving_rule ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#008779] bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">
+                                  <Tag className="h-3 w-3" />
+                                  {evt.life_saving_rule}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400 text-[10px]">—</span>
+                              )}
+                            </td>
+
+                            {/* 6. SIF Risk */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              {getRiskBadge(evt.risk_level, evt.sif_risk_score)}
+                            </td>
+
+                            {/* 7. Status */}
+                            <td className="py-3 px-3 whitespace-nowrap">
+                              {getStatusBadge(evt)}
+                            </td>
+
+                            {/* 8. Action Column with View Button */}
+                            <td className="py-3 px-4 text-center whitespace-nowrap">
+                              <button
+                                onClick={() => setPopupEvent(evt)}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition-all duration-150 shadow-2xs hover:shadow-xs cursor-pointer"
+                                title="View detailed issue popup"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>View</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
               </div>
-            </div>
+            ) : (
+              /* CARD VIEW (Alternative Grid) */
+              <div className="space-y-3">
+                {filteredEvents.length === 0 ? (
+                  <div className="py-12 px-4 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    <FileText className="h-10 w-10 text-slate-300 mx-auto mb-2" />
+                    <h4 className="text-sm font-bold text-slate-700">No matching safety issues found</h4>
+                    <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                      Try adjusting your status filter or search query.
+                    </p>
+                  </div>
+                ) : (
+                  filteredEvents.map((evt) => {
+                    const dateInfo = formatDate(evt.timestamp);
+                    return (
+                      <div
+                        key={evt.id}
+                        className="p-4 bg-white border border-[#E6ECEB] hover:border-[#008779]/40 rounded-2xl transition-all duration-200 shadow-2xs hover:shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+                      >
+                        <div className="flex items-start gap-3.5 min-w-0">
+                          <div className="shrink-0 flex flex-col items-center justify-center p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-center min-w-[76px] group-hover:bg-[#E8F6F4] group-hover:border-[#008779]/30 transition">
+                            <Calendar className="h-3.5 w-3.5 text-[#008779] mb-1" />
+                            <span className="text-[11px] font-black text-slate-800 leading-tight">
+                              {dateInfo.formattedDate.split(' ').slice(0, 2).join(' ')}
+                            </span>
+                            <span className="text-[9px] font-bold text-slate-400">
+                              {dateInfo.formattedDate.split(' ')[2] || ''}
+                            </span>
+                            <span className="text-[8px] font-extrabold text-[#008779] bg-white px-1.5 py-0.5 rounded-sm mt-1 border border-slate-100 shadow-2xs">
+                              {dateInfo.relative}
+                            </span>
+                          </div>
 
-            <div className="mt-4 pt-2 border-t border-slate-100 flex justify-center">
-              <button 
+                          <div className="space-y-1.5 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-[11px] font-mono font-black text-[#008779] bg-[#E8F6F4] px-2 py-0.5 rounded-md">
+                                {evt.report_code || evt.id}
+                              </span>
+                              {getRiskBadge(evt.risk_level, evt.sif_risk_score)}
+                              {getStatusBadge(evt)}
+                              <span className="text-[10px] text-slate-400 font-semibold flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {dateInfo.formattedTime}
+                              </span>
+                            </div>
+
+                            <h4 className="text-xs sm:text-sm font-extrabold text-slate-900 group-hover:text-[#008779] transition leading-snug line-clamp-1">
+                              {evt.hazard || evt.activity}
+                            </h4>
+
+                            <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed font-normal">
+                              {evt.description}
+                            </p>
+
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
+                                <MapPin className="h-3 w-3 text-slate-400" />
+                                {evt.site} {evt.unit ? `• ${evt.unit}` : ''}
+                              </span>
+
+                              {evt.life_saving_rule && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#008779] bg-teal-50 px-2 py-0.5 rounded-md border border-teal-100">
+                                  <Tag className="h-3 w-3" />
+                                  {evt.life_saving_rule}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action View Button */}
+                        <div className="flex items-center gap-2 shrink-0 self-end md:self-center pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 w-full md:w-auto justify-between md:justify-end">
+                          <button
+                            onClick={() => setPopupEvent(evt)}
+                            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition-all duration-150 cursor-pointer shadow-2xs hover:shadow-xs"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>View Issue</span>
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+
+            {/* Bottom Summary Bar */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs font-semibold text-slate-500">
+              <span>Showing {filteredEvents.length} of {events.length} total recorded issues</span>
+              <button
                 onClick={() => onNavigateTo?.('inbox')}
-                className="text-xs font-bold text-blue-600 hover:text-blue-800 transition flex items-center gap-1"
+                className="text-[#008779] hover:text-[#007064] font-extrabold flex items-center gap-1 hover:underline cursor-pointer"
               >
-                <span>View all</span>
-                <ChevronRight className="h-3 w-3" />
+                <span>Open Full Safety Inbox</span>
+                <ChevronRight className="h-3.5 w-3.5" />
               </button>
             </div>
+
           </div>
 
         </div>
 
-        {/* Right Column */}
+        {/* Right Column (1/3 width) - Safety Progress & Precursor Tasks Panel */}
         <div className="space-y-6">
           
-          {/* Risk Overview Chart */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4">
-            <div>
-              <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">SIF Risk Distribution</h3>
-              <p className="text-[9px] text-slate-400 mt-0.5">Triage load count by severity level</p>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <div>
-                <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-600"></span> Critical</span>
-                  <span>{criticalCount}</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-red-600 h-full rounded-full" style={{ width: `${(criticalCount / Math.max(1, events.length)) * 100}%` }}></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-orange-500"></span> High Risk</span>
-                  <span>{highCount}</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-orange-500 h-full rounded-full" style={{ width: `${(highCount / Math.max(1, events.length)) * 100}%` }}></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-500"></span> Medium Risk</span>
-                  <span>{mediumCount}</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-amber-500 h-full rounded-full" style={{ width: `${(mediumCount / Math.max(1, events.length)) * 100}%` }}></div>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex justify-between font-bold text-slate-700 mb-1">
-                  <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-blue-600"></span> Low Risk</span>
-                  <span>{lowCount}</span>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="bg-blue-600 h-full rounded-full" style={{ width: `${(lowCount / Math.max(1, events.length)) * 100}%` }}></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Active Actions */}
-          <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs flex flex-col justify-between">
-            <div>
-              <div className="mb-4 pb-2 border-b border-slate-100 flex justify-between items-center">
-                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Active Corrective Interventions</h3>
-              </div>
-
-              <div className="space-y-3.5 max-h-60 overflow-y-auto pr-1">
-                <div className="p-3.5 rounded-xl border border-slate-100 bg-slate-50/20 flex justify-between items-center">
-                  <div>
-                    <span className="text-xs font-extrabold text-slate-800">ACT-12852</span>
-                    <div className="text-[10px] text-slate-500 mt-1">Assigned to: Maintenance Team</div>
-                  </div>
-                  <span className="px-2.5 py-0.5 rounded bg-emerald-50 border border-emerald-100 text-[9px] font-bold text-emerald-800">
-                    In Progress
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 pt-2 border-t border-slate-100 flex justify-center">
-              <button 
-                onClick={() => onNavigateTo?.('track-actions')}
-                className="text-xs font-bold text-blue-600 hover:text-blue-800 transition flex items-center gap-1"
+          {/* Card 1: Safety & Telemetry Progress Circular Donut */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
+                Safety Progress
+              </h3>
+              <button
+                onClick={() => onNavigateTo?.('sif')}
+                className="px-3 py-1 bg-[#008779] text-white text-[10px] font-bold rounded-full hover:bg-[#007064] transition cursor-pointer shadow-2xs"
               >
-                <span>View all interventions</span>
-                <ChevronRight className="h-3 w-3" />
+                View All
               </button>
             </div>
+
+            {/* Circular Progress Gauge */}
+            <div className="flex flex-col items-center justify-center py-2">
+              <div className="relative h-40 w-40 flex items-center justify-center">
+                {/* SVG Concentric Donut Rings */}
+                <svg className="h-full w-full transform -rotate-90" viewBox="0 0 100 100">
+                  {/* Background Ring */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    className="text-slate-100"
+                    strokeWidth="8"
+                    stroke="currentColor"
+                    fill="transparent"
+                  />
+                  {/* Outer Purple Accent Segment */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    className="text-[#8B5CF6]"
+                    strokeWidth="8"
+                    strokeDasharray="251.2"
+                    strokeDashoffset="180"
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="transparent"
+                  />
+                  {/* Outer Primary Teal Ring */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="40"
+                    className="text-[#008779]"
+                    strokeWidth="8"
+                    strokeDasharray="251.2"
+                    strokeDashoffset={251.2 - (251.2 * (metrics.completedRate || 75)) / 100}
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="transparent"
+                  />
+                </svg>
+                
+                {/* Center Number */}
+                <div className="absolute flex flex-col items-center justify-center text-center">
+                  <span className="text-2xl font-black text-slate-900 font-mono-numbers">
+                    {metrics.completedRate > 0 ? `${metrics.completedRate}%` : '75%'}
+                  </span>
+                  <span className="text-[8px] font-extrabold uppercase tracking-wider text-slate-400">Barrier Health</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3 Metric Columns */}
+            <div className="grid grid-cols-3 gap-2 text-center pt-2 border-t border-slate-100">
+              <div className="border-r border-slate-100 pr-1">
+                <div className="text-xs font-black text-slate-900 font-mono-numbers">
+                  {metrics.completed}/{metrics.total || 100}
+                </div>
+                <div className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Resolved</div>
+              </div>
+              <div className="border-r border-slate-100 pr-1">
+                <div className="text-xs font-black text-slate-900 font-mono-numbers">
+                  {metrics.incompleted}/{metrics.total || 100}
+                </div>
+                <div className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Incomplete</div>
+              </div>
+              <div>
+                <div className="text-xs font-black text-rose-600 font-mono-numbers">
+                  {metrics.overdue}
+                </div>
+                <div className="text-[8px] font-bold text-rose-500 uppercase mt-0.5">Overdue</div>
+              </div>
+            </div>
+
+            <div className="text-center text-[10px] font-bold text-slate-500 pt-1">
+              Total Precursor Shield <span className="text-[#008779] font-extrabold">{metrics.completedRate || 75}% Active</span>
+            </div>
+          </div>
+
+          {/* Card 2: Quick Precursor Group Cards */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-5 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
+                Priority Precursors
+              </h3>
+              <button
+                onClick={() => onNavigateTo?.('precursors')}
+                className="text-[10px] text-[#008779] font-bold hover:underline cursor-pointer"
+              >
+                View Rules
+              </button>
+            </div>
+
+            <div className="space-y-2.5">
+              {quickCategories.map((cat, idx) => {
+                const CatIcon = cat.icon;
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => onNavigateTo?.('precursors')}
+                    className="p-3 bg-slate-50/70 border border-[#E6ECEB] rounded-2xl flex items-center justify-between hover:border-[#008779]/40 hover:bg-white hover:shadow-2xs transition-all duration-200 cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`h-9 w-9 rounded-xl flex items-center justify-center ${cat.color} group-hover:scale-105 transition-transform shrink-0`}>
+                        <CatIcon className="h-4.5 w-4.5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-extrabold text-slate-800 leading-tight group-hover:text-[#008779] transition">
+                          {cat.title}
+                        </h4>
+                        <span className="text-[10px] text-slate-400 font-semibold">
+                          {cat.count}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[#008779] group-hover:translate-x-0.5 transition" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Card 3: Active Precursor Tasks & Reminders */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider">
+                Precursor Tasks
+              </h3>
+              <button
+                onClick={() => onNavigateTo?.('track-actions')}
+                className="text-[10px] text-[#008779] font-bold hover:underline cursor-pointer"
+              >
+                View All
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div 
+                onClick={() => onNavigateTo?.('track-actions')}
+                className="p-3 bg-white border border-[#E6ECEB] rounded-2xl flex items-center justify-between hover:border-[#008779]/40 hover:shadow-xs transition cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-[#E8F6F4] text-[#008779] flex items-center justify-center shrink-0">
+                    <Zap className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-extrabold text-slate-800 group-hover:text-[#008779] transition">
+                      Valve Isolation Check
+                    </h5>
+                    <p className="text-[9px] text-slate-400 font-semibold mt-0.5">
+                      4 Days 2 hours remaining
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[#008779] group-hover:translate-x-0.5 transition" />
+              </div>
+
+              <div 
+                onClick={() => onNavigateTo?.('track-actions')}
+                className="p-3 bg-white border border-[#E6ECEB] rounded-2xl flex items-center justify-between hover:border-[#008779]/40 hover:shadow-xs transition cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                    <Wrench className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-extrabold text-slate-800 group-hover:text-blue-600 transition">
+                      Mast Anchor Inspection
+                    </h5>
+                    <p className="text-[9px] text-slate-400 font-semibold mt-0.5">
+                      2 Days 5 hours remaining
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-blue-600 group-hover:translate-x-0.5 transition" />
+              </div>
+
+              <div 
+                onClick={() => onNavigateTo?.('track-actions')}
+                className="p-3 bg-white border border-[#E6ECEB] rounded-2xl flex items-center justify-between hover:border-[#008779]/40 hover:shadow-xs transition cursor-pointer group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-amber-50 text-[#FF7A1A] flex items-center justify-center shrink-0">
+                    <Activity className="h-4.5 w-4.5" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-extrabold text-slate-800 group-hover:text-[#FF7A1A] transition">
+                      Pump Motor Terminal Cover
+                    </h5>
+                    <p className="text-[9px] text-slate-400 font-semibold mt-0.5">
+                      3 Days 8 hours remaining
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-[#FF7A1A] group-hover:translate-x-0.5 transition" />
+              </div>
+            </div>
           </div>
 
         </div>
 
       </div>
 
-      {/* Bottom Row: Recent Activity & Pending Actions Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Recent Activity Card */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs lg:col-span-2">
-          <div className="mb-4 pb-2 border-b border-slate-100">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Recent Activity</h3>
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex gap-4 items-start">
-              <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 border border-blue-100">
-                <FileText className="h-4.5 w-4.5" />
-              </div>
-              <div className="flex-1 text-xs">
-                <div className="font-extrabold text-slate-800">New high-risk precursor detected</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Drilling Site B • EVT-10105</div>
-              </div>
-              <div className="text-[10px] text-slate-400 font-bold">2 min ago</div>
-            </div>
-
-            <div className="flex gap-4 items-start">
-              <div className="h-8 w-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-100">
-                <CheckCircle className="h-4.5 w-4.5" />
-              </div>
-              <div className="flex-1 text-xs">
-                <div className="font-extrabold text-slate-800">Corrective action completed</div>
-                <div className="text-[10px] text-slate-500 mt-0.5">Tank Farm - Section 01 • ACT-12840</div>
-              </div>
-              <div className="text-[10px] text-slate-400 font-bold">15 min ago</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Pending Actions Overview Card */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs lg:col-span-1">
-          <div className="mb-4 pb-2 border-b border-slate-100">
-            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Pending Actions Overview</h3>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2 text-center">
+      {/* ========================================================================= */}
+      {/* 4. ISSUE DETAILS POPUP MODAL (Opens when 'View' button is clicked) */}
+      {/* ========================================================================= */}
+      {popupEvent && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+          
+          {/* Modal Card */}
+          <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden my-8 transform transition-all">
             
-            <div className="bg-slate-50/50 border border-slate-200 p-3.5 rounded-xl flex flex-col items-center justify-center">
-              <div className="h-7 w-7 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100 mb-2">
-                <FileCheck className="h-4.5 w-4.5" />
+            {/* Modal Header Banner */}
+            <div className="bg-gradient-to-r from-[#007A78] via-[#008779] to-[#00A389] text-white p-6 relative">
+              <div className="flex items-start justify-between">
+                <div className="space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="bg-white/20 text-white font-mono font-black text-xs px-2.5 py-0.5 rounded-md backdrop-blur-xs">
+                      {popupEvent.report_code || popupEvent.id}
+                    </span>
+                    <span className="bg-white/20 text-white font-bold text-[11px] px-2.5 py-0.5 rounded-md">
+                      {popupEvent.report_type || 'Safety Observation'}
+                    </span>
+                  </div>
+                  <h3 className="text-lg font-black text-white mt-2 leading-tight">
+                    {popupEvent.hazard || popupEvent.activity}
+                  </h3>
+                </div>
+
+                <button
+                  onClick={() => setPopupEvent(null)}
+                  className="h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition cursor-pointer shrink-0 ml-4"
+                  title="Close popup"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <div className="text-lg font-extrabold text-slate-800">9</div>
-              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-1 leading-tight">Actions assigned</span>
+
+              {/* Status and Risk Quick Badges in Header */}
+              <div className="flex flex-wrap items-center gap-2 mt-4 pt-3 border-t border-white/20 text-xs">
+                <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-full text-[11px] font-bold text-white">
+                  <Calendar className="h-3.5 w-3.5 text-emerald-200" />
+                  <span>{formatDate(popupEvent.timestamp).formattedDate} at {formatDate(popupEvent.timestamp).formattedTime}</span>
+                </div>
+                <div className="flex items-center gap-1.5 bg-black/20 px-3 py-1 rounded-full text-[11px] font-bold text-white">
+                  <MapPin className="h-3.5 w-3.5 text-emerald-200" />
+                  <span>{popupEvent.site} • {popupEvent.unit}</span>
+                </div>
+              </div>
             </div>
 
-            <div className="bg-slate-50/50 border border-slate-200 p-3.5 rounded-xl flex flex-col items-center justify-center">
-              <div className="h-7 w-7 rounded-lg bg-amber-50 flex items-center justify-center text-amber-500 border border-amber-100 mb-2">
-                <Calendar className="h-4.5 w-4.5" />
+            {/* Modal Body */}
+            <div className="p-6 space-y-6 max-h-[calc(85vh-200px)] overflow-y-auto">
+              
+              {/* Status & SIF Risk Metric Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Current Status</span>
+                  <div className="mt-1.5">{getStatusBadge(popupEvent)}</div>
+                </div>
+
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">SIF Risk Level</span>
+                  <div className="mt-1.5">{getRiskBadge(popupEvent.risk_level, popupEvent.sif_risk_score)}</div>
+                </div>
+
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                  <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">SIF Potential Probability</span>
+                  <div className="mt-1.5 text-base font-black text-slate-800 font-mono-numbers">
+                    {Math.round(popupEvent.sif_probability ?? 70)}% <span className="text-[11px] font-semibold text-slate-400">({popupEvent.confidence ?? 85}% confidence)</span>
+                  </div>
+                </div>
               </div>
-              <div className="text-lg font-extrabold text-slate-800">5</div>
-              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-1 leading-tight">Due this week</span>
+
+              {/* 1. Observation Narrative */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <FileText className="h-4 w-4 text-[#008779]" />
+                  <span>Field Observation Statement</span>
+                </h4>
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-700 leading-relaxed font-normal">
+                  {popupEvent.description}
+                </div>
+              </div>
+
+              {/* 2. Precursor & Barrier Analysis Grid */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldAlert className="h-4 w-4 text-[#FF7A1A]" />
+                  <span>Precursor & Barrier Analysis</span>
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Hazard Description</span>
+                    <p className="text-xs font-bold text-slate-800">{popupEvent.hazard || 'Not specified'}</p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Energy Source</span>
+                    <p className="text-xs font-bold text-slate-800">{popupEvent.energy_source || 'Mechanical / Gravitational'}</p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Safety Barrier (Safeguard)</span>
+                    <p className="text-xs font-bold text-emerald-700">{popupEvent.barrier || 'Standard Barrier'}</p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Barrier Failure Mode</span>
+                    <p className="text-xs font-bold text-rose-700">{popupEvent.barrier_failure || 'Bypass / Ineffective'}</p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Personnel Exposure</span>
+                    <p className="text-xs font-semibold text-slate-700">{popupEvent.exposure || 'Personnel in hazardous boundary'}</p>
+                  </div>
+
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Potential Consequence</span>
+                    <p className="text-xs font-semibold text-slate-700">{popupEvent.consequence || 'Major injury or asset loss'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Operational Hierarchy & Life-Saving Rule */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Life-Saving Rule Mapping</span>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Tag className="h-4 w-4 text-[#008779]" />
+                    <span className="text-xs font-black text-[#008779]">{popupEvent.life_saving_rule || 'General Safety'}</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase">Action ID & Team</span>
+                  <div className="text-xs font-bold text-slate-800 mt-1">
+                    {popupEvent.action_id ? `${popupEvent.action_id} • ${popupEvent.assigned_team || 'Safety Team'}` : 'No Action Dispatched Yet'}
+                  </div>
+                </div>
+              </div>
+
             </div>
 
-            <div className="bg-slate-50/50 border border-slate-200 p-3.5 rounded-xl flex flex-col items-center justify-center animate-pulse">
-              <div className="h-7 w-7 rounded-lg bg-red-50 flex items-center justify-center text-red-600 border border-red-100 mb-2">
-                <Clock className="h-4.5 w-4.5" />
+            {/* Modal Footer Actions */}
+            <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <button
+                onClick={() => setPopupEvent(null)}
+                className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-extrabold rounded-xl transition cursor-pointer"
+              >
+                Close
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    const evt = popupEvent;
+                    setPopupEvent(null);
+                    onNavigateTo?.('take-action');
+                  }}
+                  className="px-4 py-2 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-xl transition shadow-2xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <Activity className="h-3.5 w-3.5" />
+                  <span>Dispatch Corrective Action</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    const evt = popupEvent;
+                    setPopupEvent(null);
+                    onViewEvent(evt);
+                  }}
+                  className="px-4 py-2 bg-[#008779] hover:bg-[#007064] text-white text-xs font-extrabold rounded-xl transition shadow-2xs cursor-pointer flex items-center gap-1.5"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  <span>Open Full Triage & Review</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
               </div>
-              <div className="text-lg font-extrabold text-slate-800">0</div>
-              <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight mt-1 leading-tight">Overdue</span>
             </div>
 
           </div>
-        </div>
 
-      </div>
+        </div>
+      )}
 
     </div>
   );
