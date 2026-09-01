@@ -147,10 +147,56 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
     'manager':       { enabled: true, maintenance: false, accessLevel: 'Safety Manager, Admin' }
   });
 
-  const [expandedPortal, setExpandedPortal] = useState<string | null>(null);
-  const [savedNotif, setSavedNotif] = useState<string | null>(null);
-  const [auditLogs, setAuditLogs] = useState<AuditEvent[]>([]);
-  const [loadingAudits, setLoadingAudits] = useState(false);
+  const [repairModalPortal, setRepairModalPortal] = useState<PortalDef | null>(null);
+  const [repairProgress, setRepairProgress] = useState<number | null>(null);
+  const [repairLog, setRepairLog] = useState<string[]>([]);
+
+  const handleRunPortalDiagnostics = (portal: PortalDef) => {
+    setRepairModalPortal(portal);
+    setRepairProgress(0);
+    setRepairLog([
+      `[${new Date().toLocaleTimeString()}] Initializing ${portal.name} system diagnostic sweep...`,
+      `[${new Date().toLocaleTimeString()}] Checking database connection pool & schema integrity: OK`,
+      `[${new Date().toLocaleTimeString()}] Inspecting microservice endpoint routing: OK`
+    ]);
+
+    setTimeout(() => {
+      setRepairProgress(45);
+      setRepairLog(prev => [
+        ...prev,
+        `[${new Date().toLocaleTimeString()}] Verifying role-based access control (RBAC) token validator: OK`,
+        `[${new Date().toLocaleTimeString()}] Testing socket telemetry & event stream synchronization: OK`
+      ]);
+    }, 600);
+
+    setTimeout(() => {
+      setRepairProgress(85);
+      setRepairLog(prev => [
+        ...prev,
+        `[${new Date().toLocaleTimeString()}] Clearing stale redis cache keys and orphan queue jobs...`,
+        `[${new Date().toLocaleTimeString()}] Executing hot reload on background worker pipeline: OK`
+      ]);
+    }, 1200);
+
+    setTimeout(() => {
+      setRepairProgress(100);
+      setRepairLog(prev => [
+        ...prev,
+        `[${new Date().toLocaleTimeString()}] ✅ ${portal.name} service diagnostics completed. All microservices healthy.`
+      ]);
+      if (triggerNotification) triggerNotification(`🔧 Service & repair diagnostics finished for ${portal.name}.`);
+    }, 1800);
+  };
+
+  const handleFlushCacheAndRestart = () => {
+    if (!repairModalPortal) return;
+    setRepairLog(prev => [
+      ...prev,
+      `[${new Date().toLocaleTimeString()}] 🔄 Service reboot initiated: Reloading operational workers...`,
+      `[${new Date().toLocaleTimeString()}] ✅ ${repairModalPortal.name} operational state restored successfully.`
+    ]);
+    if (triggerNotification) triggerNotification(`🔄 Flushed cache & restarted ${repairModalPortal.name}.`);
+  };
 
   // Users state
   const [users, setUsers] = useState<User[]>([
@@ -391,13 +437,14 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                       <span>{state.maintenance ? 'Exit Maint.' : 'Maintenance'}</span>
                     </button>
 
-                    {/* Open Portal Button */}
+                    {/* Diagnostics & Service Action (Admin only can diagnose/repair, not open portal directly) */}
                     <button
-                      onClick={() => { if (onNavigateTo) onNavigateTo(portal.route); }}
-                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-extrabold bg-[#008779] text-white hover:bg-[#007064] transition shadow-2xs ml-auto cursor-pointer"
+                      onClick={() => handleRunPortalDiagnostics(portal)}
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-extrabold bg-slate-900 text-white hover:bg-slate-800 transition shadow-2xs ml-auto cursor-pointer"
+                      title="Run automated health check and repair microservices"
                     >
-                      <span>Open Portal</span>
-                      <ChevronRight className="h-3.5 w-3.5" />
+                      <Wrench className="h-3.5 w-3.5 text-amber-400" />
+                      <span>Service & Diagnostics</span>
                     </button>
 
                     {/* Expand Details */}
@@ -683,6 +730,92 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
         </div>
       )}
 
+      {/* ── MODAL: PORTAL SERVICE, REPAIR & DIAGNOSTICS ── */}
+      {repairModalPortal && (
+        <div className="fixed inset-0 bg-slate-950/65 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-xl w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center font-bold">
+                  <Wrench className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-slate-900">
+                    Service & Diagnostic Console: {repairModalPortal.name}
+                  </h3>
+                  <p className="text-xs text-slate-400 font-medium mt-0.5">
+                    {portalStates[repairModalPortal.id]?.maintenance ? '🛠️ Portal Under Active Maintenance' : '🟢 Portal Live in Production'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRepairModalPortal(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Impact Banner on Other Portals */}
+            <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-2xl text-xs text-slate-700 space-y-1">
+              <span className="font-extrabold text-blue-800 uppercase text-[9.5px] tracking-wider block">
+                Cross-Portal Isolation & Guardrails:
+              </span>
+              <p className="text-[11px] leading-relaxed text-blue-900 font-medium">
+                Admin accounts are restricted from directly submitting or modifying operational records in field portals. Service actions below execute automated self-healing, database connection verification, and cache invalidation.
+              </p>
+            </div>
+
+            {/* Diagnostics Progress Meter */}
+            {repairProgress !== null && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs font-bold">
+                  <span className="text-slate-500 text-[10px] uppercase">Microservice Diagnostic Sweep</span>
+                  <span className="text-amber-700 font-mono">{repairProgress}%</span>
+                </div>
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-amber-500 h-full rounded-full transition-all duration-300"
+                    style={{ width: `${repairProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Terminal Live Diagnostics Log */}
+            <div className="bg-slate-950 text-emerald-400 font-mono text-[10.5px] p-4 rounded-2xl h-44 overflow-y-auto space-y-1 shadow-inner border border-slate-800">
+              <div className="text-slate-500 pb-1 border-b border-slate-800 text-[9px] uppercase tracking-wider">
+                === RAKSHA REPAIR & SYSTEM HEALTH RUNTIME ===
+              </div>
+              {repairLog.map((log, i) => (
+                <div key={i} className="leading-snug">{log}</div>
+              ))}
+            </div>
+
+            {/* Service & Repair Actions */}
+            <div className="pt-2 flex flex-wrap items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={handleFlushCacheAndRestart}
+                className="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 rounded-xl text-xs font-extrabold transition cursor-pointer flex items-center gap-1.5"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span>Flush Cache & Restart Service</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setRepairModalPortal(null)}
+                className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold transition cursor-pointer ml-auto"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
+

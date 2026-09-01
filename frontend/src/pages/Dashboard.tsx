@@ -616,11 +616,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
 
                   <button
-                    onClick={() => onNavigateTo?.('worker-portal')}
-                    className="w-full py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    onClick={() => onNavigateTo?.('settings')}
+                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    title="Admins cannot directly modify field logs; click to run system diagnostics & microservice repairs"
                   >
-                    <span>Open Field Portal</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
+                    <Wrench className="h-3.5 w-3.5 text-amber-400" />
+                    <span>Service & Diagnostics</span>
                   </button>
                 </div>
 
@@ -659,11 +660,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
 
                   <button
-                    onClick={() => onNavigateTo?.('analysis')}
-                    className="w-full py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    onClick={() => onNavigateTo?.('settings')}
+                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    title="Admins cannot directly modify field logs; click to run system diagnostics & microservice repairs"
                   >
-                    <span>Open AI Diagnostics</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
+                    <Wrench className="h-3.5 w-3.5 text-amber-400" />
+                    <span>Service & Diagnostics</span>
                   </button>
                 </div>
 
@@ -702,11 +704,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
 
                   <button
-                    onClick={() => onNavigateTo?.('inbox')}
-                    className="w-full py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    onClick={() => onNavigateTo?.('settings')}
+                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    title="Admins cannot directly modify field logs; click to run system diagnostics & microservice repairs"
                   >
-                    <span>Open Review Center</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
+                    <Wrench className="h-3.5 w-3.5 text-amber-400" />
+                    <span>Service & Diagnostics</span>
                   </button>
                 </div>
 
@@ -745,11 +748,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
 
                   <button
-                    onClick={() => onNavigateTo?.('manager-portal')}
-                    className="w-full py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    onClick={() => onNavigateTo?.('settings')}
+                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    title="Admins cannot directly modify field logs; click to run system diagnostics & microservice repairs"
                   >
-                    <span>Open Manager Suite</span>
-                    <ChevronRight className="h-3.5 w-3.5" />
+                    <Wrench className="h-3.5 w-3.5 text-amber-400" />
+                    <span>Service & Diagnostics</span>
                   </button>
                 </div>
               </div>
