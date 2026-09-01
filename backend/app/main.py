@@ -1014,27 +1014,43 @@ def create_manager_task(payload: schemas.OfficerTaskCreatePayload, db: Session =
 # PUT /api/manager/tasks/{task_id}
 @app.put("/api/manager/tasks/{task_id}")
 def update_manager_task(task_id: str, payload: schemas.OfficerTaskUpdatePayload, db: Session = Depends(get_db)):
-    task = db.query(models.OfficerTask).filter(models.OfficerTask.task_id == task_id).first()
+    task = db.query(models.OfficerTask).filter(
+        (models.OfficerTask.task_id == task_id) | (models.OfficerTask.id == task_id)
+    ).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
         
+    old_status = task.status
     if payload.status:
         task.status = payload.status
-        if payload.status == "Completed":
+        if payload.status == "Completed" and old_status != "Completed":
             task.completed_at = datetime.datetime.utcnow()
-    if payload.findings:
+
+    if payload.findings is not None:
         task.findings = payload.findings
+        
     if payload.assigned_officer_id:
         officer = db.query(models.OfficerProfile).filter(models.OfficerProfile.id == payload.assigned_officer_id).first()
         if officer:
             task.assigned_officer_id = officer.id
             task.assigned_officer_name = officer.officer_name
-            
+
+    audit = models.AuditEvent(
+        event_id=task.task_id,
+        action="Task Progress Updated",
+        details=f"Safety Inspection '{task.title}' updated to '{task.status}' by {task.assigned_officer_name}. Findings: {task.findings or 'Pending physical verification'}",
+        user_email="officer@refinery.safe"
+    )
+    db.add(audit)
     db.commit()
     
     return {
         "success": True,
-        "message": f"Task {task_id} updated successfully."
+        "task_id": task.task_id,
+        "status": task.status,
+        "findings": task.findings,
+        "assigned_officer_name": task.assigned_officer_name,
+        "message": f"Task {task.task_id} updated successfully to '{task.status}'."
     }
 
 # POST /api/manager/broadcast

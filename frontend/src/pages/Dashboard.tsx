@@ -546,16 +546,28 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <div className="relative z-10 max-w-xl">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-[11px] font-bold text-emerald-100 mb-2 border border-white/20">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
-                <span>{userRole === 'Admin' ? 'System Administrator & Governance Hub' : 'Safety Officer Command Dashboard'}</span>
+                <span>
+                  {userRole === 'Admin' 
+                    ? 'System Administrator & Governance Hub'
+                    : userRole === 'Safety Manager'
+                      ? '👔 HSE Executive Fleet Command Hub'
+                      : '🦺 Safety Officer Active Console • IN FIELD'}
+                </span>
               </div>
 
               <h1 className="text-2xl font-black tracking-tight text-white">
-                Welcome Back, {userRole === 'Admin' ? 'System Administrator' : userRole === 'Safety Officer' ? 'Safety Officer!' : `${userName}!`}
+                {userRole === 'Admin' 
+                  ? 'Welcome Back, System Administrator' 
+                  : userRole === 'Safety Manager'
+                    ? 'Welcome Back, Dr. Vikram Roy (Head of HSE)'
+                    : 'Welcome Back, Safety Officer Lead!'}
               </h1>
               <p className="text-sm text-emerald-50/90 italic mt-1 font-medium leading-relaxed">
                 {userRole === 'Admin' 
                   ? 'Enterprise Portal Operations, System Health, and AI Precursor Governance'
-                  : 'Let’s Upgrade Your Precursor Prevention & SIF Shield Now'}
+                  : userRole === 'Safety Manager'
+                    ? 'Macro Safety Governance: 5 Operational Sites, 4 Active Officers, 94.2% SIF Prevention Rate'
+                    : 'Active Shift: Drilling Site A (Rig Floor 01). Review precursor hazard reports & execute assigned barrier audits.'}
               </p>
               
               <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -576,8 +588,42 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <span>Open Manager Suite</span>
                     </button>
                   </>
+                ) : userRole === 'Safety Manager' ? (
+                  <>
+                    <button
+                      onClick={() => onNavigateTo?.('manager-portal')}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
+                    >
+                      <span>Open Command Center</span>
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+
+                    <button
+                      onClick={() => onNavigateTo?.('sif')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
+                    >
+                      <ShieldAlert className="h-3.5 w-3.5 text-emerald-100" />
+                      <span>Strategic SIF Intelligence</span>
+                    </button>
+
+                    <button
+                      onClick={() => onNavigateTo?.('sites')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
+                    >
+                      <MapPin className="h-3.5 w-3.5 text-emerald-100" />
+                      <span>Sites Overview</span>
+                    </button>
+                  </>
                 ) : (
                   <>
+                    <button
+                      onClick={() => onNavigateTo?.('review')}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#008779] hover:bg-emerald-50 text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
+                    >
+                      <ClipboardCheck className="h-3.5 w-3.5 text-[#008779]" />
+                      <span>Assurance & Assigned Audits</span>
+                    </button>
+
                     <button
                       onClick={() => onNavigateTo?.('take-action')}
                       className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
