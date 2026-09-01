@@ -50,7 +50,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           { id: 'review', label: 'Assurance & Field Audits', icon: ClipboardCheck },
           { id: 'inbox', label: 'Safety Alert Ingest', icon: Inbox },
           { id: 'take-action', label: 'Execute Action', icon: Zap },
-          { id: 'track-actions', label: 'Track Remediations', icon: Activity }
+          { id: 'track-actions', label: 'Track Remediations', icon: Activity },
+          { id: 'sif', label: 'SIF Intelligence', icon: ShieldAlert },
+          { id: 'lsr', label: 'Life-Saving Rules', icon: FileCheck2 },
+          { id: 'precursors', label: 'Precursor Patterns', icon: Network },
+          { id: 'sites', label: 'Sites & Units', icon: MapPin },
+          { id: 'learning', label: 'GATI Learning Hub', icon: GraduationCap },
+          { id: 'reports', label: 'Compliance Reports', icon: FileBarChart2 }
         ];
       case 'Safety Manager':
         return [

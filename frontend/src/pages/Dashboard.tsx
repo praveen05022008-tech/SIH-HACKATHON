@@ -574,7 +574,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <span>Configure AI Thresholds & Security</span>
                     </button>
                     <button
-                      onClick={() => onNavigateTo?.('manager-portal')}
+                      onClick={() => onNavigateTo?.('manager')}
                       className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
                     >
                       <BarChart3 className="h-3.5 w-3.5 text-emerald-100" />
@@ -584,7 +584,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 ) : userRole === 'Safety Manager' ? (
                   <>
                     <button
-                      onClick={() => onNavigateTo?.('manager-portal')}
+                      onClick={() => onNavigateTo?.('manager')}
                       className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
                     >
                       <span>Open Command Center</span>
@@ -824,7 +824,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
 
                   <button
-                    onClick={() => onNavigateTo?.('manager-portal')}
+                    onClick={() => onNavigateTo?.('manager')}
                     className="w-full py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     <span>Open Manager Suite</span>
