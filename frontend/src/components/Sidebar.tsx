@@ -64,12 +64,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ];
       case 'Admin':
         return [
-          { id: 'settings', label: 'Admin Console', icon: SettingsIcon },
-          { id: 'manager', label: 'Workforce Allotment', icon: Users }
+          { id: 'settings', label: 'Admin Console', icon: SettingsIcon }
         ];
       default:
         return [
-          { id: 'manager', label: 'Command Center', icon: Users },
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { id: 'inbox', label: 'Safety Alerts', icon: Inbox },
           { id: 'sif', label: 'SIF Intelligence', icon: ShieldAlert },
