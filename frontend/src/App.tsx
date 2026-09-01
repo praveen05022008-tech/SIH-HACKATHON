@@ -18,7 +18,6 @@ import { Detail } from './pages/Detail';
 import { WorkerPortal } from './pages/WorkerPortal';
 import { TakeAction } from './pages/TakeAction';
 import { TrackActions } from './pages/TrackActions';
-import { SafetyManager } from './pages/SafetyManager';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -72,8 +71,6 @@ function App() {
       defaultPage = 'worker-portal';
     } else if (loggedInUser.role === 'Safety Officer') {
       defaultPage = 'dashboard';
-    } else if (loggedInUser.role === 'Safety Manager') {
-      defaultPage = 'manager';
     } else if (loggedInUser.role === 'Admin') {
       defaultPage = 'settings';
     }
@@ -102,15 +99,11 @@ function App() {
     } else if (email === 'manager@refinery.safe' || email === 'manager@sifdemo.com') {
       name = 'HSE Manager / Lead';
       role = 'Safety Manager';
-      defaultPage = 'manager';
+      defaultPage = 'dashboard';
     } else if (email === 'admin@refinery.safe' || email === 'admin@sifdemo.com') {
       name = 'System Administrator';
       role = 'Admin';
       defaultPage = 'settings';
-    } else if (email === 'ai.pipeline@sifdemo.com') {
-      name = 'AI Ingestion Pipeline';
-      role = 'AI Pipeline Viewer';
-      defaultPage = 'dashboard';
     }
 
     const updatedUser = {
@@ -156,8 +149,8 @@ function App() {
     if (user?.role === 'Safety Officer' && currentPage === 'inbox') {
       return 'Safety Officer Intelligence Console';
     }
-    if (user?.role === 'Safety Manager' && currentPage === 'manager') {
-      return 'HSE Manager Command Center';
+    if (user?.role === 'Safety Manager' && currentPage === 'dashboard') {
+      return 'Safety Manager Compliance Suite';
     }
     if (user?.role === 'Admin' && currentPage === 'settings') {
       return 'System Administration Console';
@@ -166,7 +159,7 @@ function App() {
     const titles: Record<string, string> = {
       dashboard: user?.role === 'Safety Officer' ? 'Safety Officer Dashboard' : 'Executive Safety Dashboard',
       inbox: 'Safety Alerts',
-      manager: 'HSE Manager Command Center',
+      analysis: 'Report Analysis Engine',
       sif: 'SIF Risk Intelligence',
       lsr: 'Life-Saving Rules Conformance',
       precursors: 'Recurring Precursor Patterns',
@@ -179,7 +172,7 @@ function App() {
       'take-action': 'Take Action',
       'track-actions': 'Track Actions'
     };
-    return titles[currentPage] || 'SIF-SHIELD AI Platform';
+    return titles[currentPage] || 'RAKSHA AI Platform';
   };
 
   // Field Worker route guard enforcement
@@ -277,17 +270,6 @@ function App() {
           {currentPage === 'learning' && user.role !== 'Field Worker' && (
             <Learning 
               triggerStateRefresh={triggerStateRefresh} 
-            />
-          )}
-
-          {currentPage === 'manager' && (
-            <SafetyManager 
-              triggerNotification={triggerNotification}
-              triggerStateRefresh={triggerStateRefresh}
-              onNavigateTo={(page) => {
-                setSelectedEvent(null);
-                setCurrentPage(page);
-              }}
             />
           )}
 
