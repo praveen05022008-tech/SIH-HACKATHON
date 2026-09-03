@@ -1,41 +1,54 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Settings as SettingsIcon,
   Users,
   ShieldCheck,
-  Cpu,
-  Database,
   FileText,
-  Save,
   RefreshCw,
   CheckCircle2,
   AlertCircle,
-  LayoutDashboard,
   HardHat,
-  ClipboardCheck,
   BarChart3,
-  Power,
+  Search,
+  Check,
+  X,
+  Clock,
+  Briefcase,
+  Shield,
+  Layers,
+  Activity,
+  Calendar,
+  Filter,
+  Eye,
+  ChevronRight,
+  TrendingUp,
+  AlertTriangle,
+  Flame,
+  Radio,
+  UserCheck,
+  UserX,
+  History,
   Lock,
   Unlock,
-  Eye,
-  EyeOff,
-  Globe,
-  Activity,
-  BrainCircuit,
-  ChevronRight,
-  Info,
-  Wrench,
-  Shield,
-  Award,
-  Sparkles,
-  Search,
-  Sliders,
-  Check,
-  Server,
-  KeyRound,
-  UserPlus
+  Building2,
+  MapPin,
+  FileCheck2,
+  Info
 } from 'lucide-react';
-import { User, AuditEvent } from '../types';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  ResponsiveContainer, 
+  PieChart, 
+  Pie, 
+  Cell, 
+  CartesianGrid, 
+  Legend 
+} from 'recharts';
+import { AdminUser, AdminDashboardData, AdminReport, AuditLogEntry } from '../types';
 
 interface AdminConsoleProps {
   onResetDb?: () => void;
@@ -43,642 +56,1635 @@ interface AdminConsoleProps {
   onNavigateTo?: (page: string) => void;
 }
 
-// ── Portal Definitions ────────────────────────────────────────────────────────
-interface PortalDef {
-  id: string;
-  name: string;
-  persona: string;
-  icon: React.FC<{ className?: string }>;
-  color: string;
-  bgColor: string;
-  borderColor: string;
-  badgeColor: string;
-  description: string;
-  route: string;
-  capabilities: string[];
-  stats: { label: string; value: string }[];
-}
-
-const PORTALS: PortalDef[] = [
-  {
-    id: 'worker-portal',
-    name: 'Field Worker Portal',
-    persona: 'Persona 1 — Field Operations',
-    icon: HardHat,
-    color: 'text-emerald-700',
-    bgColor: 'bg-emerald-50/70',
-    borderColor: 'border-emerald-200',
-    badgeColor: 'bg-emerald-100 text-emerald-800',
-    description: 'Allows field employees to submit safety observations (Unsafe Act, Unsafe Condition, Near-Miss) via text, voice dictation, or photo evidence. Reports are immediately queued for AI analysis.',
-    route: 'worker-portal',
-    capabilities: ['Submit safety reports', 'Voice transcription', 'Photo attachment', 'Track own submissions', 'Receive feedback'],
-    stats: [
-      { label: 'Active Users', value: '24' },
-      { label: 'Reports Today', value: '8' },
-      { label: 'Avg. Submit Time', value: '2.3 min' }
-    ]
-  },
-  {
-    id: 'ai-engine',
-    name: 'AI Engine & Analysis',
-    persona: 'Persona 2 — AI Processing',
-    icon: BrainCircuit,
-    color: 'text-purple-700',
-    bgColor: 'bg-purple-50/70',
-    borderColor: 'border-purple-200',
-    badgeColor: 'bg-purple-100 text-purple-800',
-    description: 'Automated 6-step NLP pipeline (M1–M6) processes every report. Extracts hazards, energy sources, barrier failures, assigns 0–10 multi-factor SIF risk scores, and classifies LSR violations.',
-    route: 'analysis',
-    capabilities: ['NLP entity extraction', 'Multi-factor risk scoring (0–10)', 'LSR classification', 'SIF precursor detection', 'GATI learning feedback'],
-    stats: [
-      { label: 'Model', value: 'GATI v1.3' },
-      { label: 'Accuracy', value: '94.8%' },
-      { label: 'Avg. Process', value: '1.4 sec' }
-    ]
-  },
-  {
-    id: 'review',
-    name: 'Safety Officer Center',
-    persona: 'Persona 3 — Safety Lead',
-    icon: ClipboardCheck,
-    color: 'text-blue-700',
-    bgColor: 'bg-blue-50/70',
-    borderColor: 'border-blue-200',
-    badgeColor: 'bg-blue-100 text-blue-800',
-    description: 'Safety Officers review AI-scored reports, verify SIF precursor classification, issue Stop Work Orders, dispatch corrective actions (ACT-XXXX), and provide worker feedback.',
-    route: 'dashboard',
-    capabilities: ['Review AI-scored reports', 'Issue Stop Work Orders', 'Dispatch corrective actions', 'Override AI classification', 'Provide worker feedback'],
-    stats: [
-      { label: 'Pending Review', value: '12' },
-      { label: 'Actions Active', value: '6' },
-      { label: 'Avg. SLA Turnaround', value: '4.2 hrs' }
-    ]
-  },
-  {
-    id: 'manager',
-    name: 'HSE Manager Suite',
-    persona: 'Persona 4 — HSE Leadership',
-    icon: BarChart3,
-    color: 'text-[#008779]',
-    bgColor: 'bg-[#E8F6F4]/70',
-    borderColor: 'border-teal-200',
-    badgeColor: 'bg-teal-100 text-[#008779]',
-    description: 'Executive dashboards, SIF precursor intelligence heatmaps, Life-Saving Rules compliance analytics, and continuous learning feedback monitoring for operational leadership.',
-    route: 'dashboard',
-    capabilities: ['Executive KPI telemetry', 'Precursor bubble clusters', 'LSR compliance matrix', 'Export regulatory reports', 'Continuous model fine-tuning'],
-    stats: [
-      { label: 'Monitored Sites', value: '5' },
-      { label: 'LSR Rules Active', value: '10' },
-      { label: 'SIF Prevention Rate', value: '94.2%' }
-    ]
-  }
-];
-
 export const AdminConsole: React.FC<AdminConsoleProps> = ({
   onResetDb,
   triggerNotification,
   onNavigateTo
 }) => {
-  const [activeTab, setActiveTab] = useState<'portals' | 'users' | 'ai' | 'audit' | 'data'>('portals');
-  const [portalStates, setPortalStates] = useState<Record<string, { enabled: boolean; maintenance: boolean; accessLevel: string }>>({
-    'worker-portal': { enabled: true, maintenance: false, accessLevel: 'Field Worker, All Authenticated' },
-    'ai-engine':     { enabled: true, maintenance: false, accessLevel: 'All Roles (Background Pipeline)' },
-    'review':        { enabled: true, maintenance: false, accessLevel: 'Safety Officer, Safety Manager, Admin' },
-    'manager':       { enabled: true, maintenance: false, accessLevel: 'Safety Manager, Admin' }
-  });
+  // Top-level 5 Admin Tabs
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'roles' | 'reports' | 'audit'>('dashboard');
 
-  const [expandedPortal, setExpandedPortal] = useState<string | null>(null);
-  const [savedNotif, setSavedNotif] = useState<string | null>(null);
-  const [auditLogs, setAuditLogs] = useState<AuditEvent[]>([]);
+  // ==========================================
+  // 1. DASHBOARD STATE
+  // ==========================================
+  const [dashboardData, setDashboardData] = useState<AdminDashboardData | null>(null);
+  const [loadingDashboard, setLoadingDashboard] = useState(false);
+
+  // ==========================================
+  // 2. USER MANAGEMENT STATE
+  // ==========================================
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [userRoleFilter, setUserRoleFilter] = useState<string>('All');
+  const [userStatusFilter, setUserStatusFilter] = useState<string>('All');
+  const [userSearchQuery, setUserSearchQuery] = useState<string>('');
+  const [selectedUserDetail, setSelectedUserDetail] = useState<AdminUser | null>(null);
+  const [userActionMessage, setUserActionMessage] = useState<string | null>(null);
+
+  // ==========================================
+  // 3. ROLE MANAGEMENT STATE
+  // ==========================================
+  const [roleChangeUserId, setRoleChangeUserId] = useState<number | null>(null);
+  const [newSelectedRole, setNewSelectedRole] = useState<string>('Employee');
+  const [roleUpdating, setRoleUpdating] = useState(false);
+
+  // ==========================================
+  // 4. ALL REPORTS STATE
+  // ==========================================
+  const [reports, setReports] = useState<AdminReport[]>([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [reportEmployeeFilter, setReportEmployeeFilter] = useState<string>('All');
+  const [reportManagerFilter, setReportManagerFilter] = useState<string>('All');
+  const [reportOfficerFilter, setReportOfficerFilter] = useState<string>('All');
+  const [reportIssueTypeFilter, setReportIssueTypeFilter] = useState<string>('All');
+  const [reportStatusFilter, setReportStatusFilter] = useState<string>('All');
+  const [reportDateFilter, setReportDateFilter] = useState<string>('All');
+  const [reportSearchQuery, setReportSearchQuery] = useState<string>('');
+  const [selectedReportDetail, setSelectedReportDetail] = useState<AdminReport | null>(null);
+
+  // ==========================================
+  // 5. AUDIT LOG STATE
+  // ==========================================
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loadingAudits, setLoadingAudits] = useState(false);
+  const [auditActionFilter, setAuditActionFilter] = useState<string>('All');
+  const [auditIssueIdFilter, setAuditIssueIdFilter] = useState<string>('');
+  const [auditSearchQuery, setAuditSearchQuery] = useState<string>('');
 
-  // Users state
-  const [users, setUsers] = useState<User[]>([
-    { email: 'worker@refinery.safe',  name: 'Ramesh Kumar (Drilling Tech)',     role: 'Field Worker' },
-    { email: 'officer@refinery.safe', name: 'Capt. Arvind Sen (Safety Lead)',    role: 'Safety Officer' },
-    { email: 'reviewer@refinery.safe',name: 'Priya Sharma (HSE Inspector)',     role: 'Safety Officer' },
-    { email: 'manager@refinery.safe', name: 'Dr. Vikram Roy (Head of HSE)',     role: 'Safety Manager' },
-    { email: 'admin@refinery.safe',   name: 'DevOps System Admin',              role: 'Admin' },
-  ]);
+  // ── Fetch Dashboard Data ───────────────────────────────────────────────────
+  const fetchDashboardData = () => {
+    setLoadingDashboard(true);
+    fetch('http://localhost:8000/api/admin/dashboard')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) setDashboardData(data);
+      })
+      .catch(err => console.error('Error fetching admin dashboard:', err))
+      .finally(() => setLoadingDashboard(false));
+  };
 
-  // AI Threshold State
-  const [criticalThreshold, setCriticalThreshold] = useState(8.0);
-  const [highThreshold, setHighThreshold] = useState(6.0);
-  const [autoStopWork, setAutoStopWork] = useState(true);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  // ── Fetch Users List ───────────────────────────────────────────────────────
+  const fetchUsers = () => {
+    setLoadingUsers(true);
+    fetch('http://localhost:8000/api/admin/users')
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setUsers(data))
+      .catch(err => console.error('Error fetching users:', err))
+      .finally(() => setLoadingUsers(false));
+  };
 
+  // ── Fetch All Reports ──────────────────────────────────────────────────────
+  const fetchReports = () => {
+    setLoadingReports(true);
+    fetch('http://localhost:8000/api/admin/reports?limit=200')
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setReports(data))
+      .catch(err => console.error('Error fetching reports:', err))
+      .finally(() => setLoadingReports(false));
+  };
+
+  // ── Fetch Audit Logs ───────────────────────────────────────────────────────
+  const fetchAuditLogs = () => {
+    setLoadingAudits(true);
+    fetch('http://localhost:8000/api/admin/audit-logs?limit=300')
+      .then(res => res.ok ? res.json() : [])
+      .then(data => setAuditLogs(data))
+      .catch(err => console.error('Error fetching audit logs:', err))
+      .finally(() => setLoadingAudits(false));
+  };
+
+  // Load initial data
   useEffect(() => {
-    if (activeTab === 'audit') {
-      setLoadingAudits(true);
-      fetch('http://localhost:8000/api/audit')
-        .then(r => r.ok ? r.json() : [])
-        .then(d => setAuditLogs(d))
-        .catch(() => {})
-        .finally(() => setLoadingAudits(false));
-    }
+    fetchDashboardData();
+    fetchUsers();
+    fetchReports();
+    fetchAuditLogs();
+  }, []);
+
+  // Reload tab-specific data when tab changes
+  useEffect(() => {
+    if (activeTab === 'dashboard') fetchDashboardData();
+    if (activeTab === 'users' || activeTab === 'roles') fetchUsers();
+    if (activeTab === 'reports') fetchReports();
+    if (activeTab === 'audit') fetchAuditLogs();
   }, [activeTab]);
 
-  const togglePortalEnabled = (id: string) => {
-    setPortalStates(prev => {
-      const next = { ...prev, [id]: { ...prev[id], enabled: !prev[id].enabled } };
-      const portal = PORTALS.find(p => p.id === id)!;
-      const state = next[id].enabled ? 'ENABLED' : 'DISABLED';
-      if (triggerNotification) triggerNotification(`Admin: ${portal.name} portal ${state}.`);
-      setSavedNotif(`${portal.name} portal is now ${state}.`);
-      setTimeout(() => setSavedNotif(null), 3000);
-      return next;
+  // ── User Actions: Approve, Reject, Toggle Active, Change Role ──────────────
+  const handleApproveUser = async (userId: number, userName: string) => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/admin/users/${userId}/approve`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUserActionMessage(`User "${userName}" has been approved. They can now log in.`);
+        triggerNotification?.(`User Approved: ${userName}`);
+        fetchUsers();
+        fetchDashboardData();
+        fetchAuditLogs();
+        setTimeout(() => setUserActionMessage(null), 4000);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleRejectUser = async (userId: number, userName: string) => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/admin/users/${userId}/reject`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUserActionMessage(`User "${userName}" registration rejected.`);
+        triggerNotification?.(`User Rejected: ${userName}`);
+        fetchUsers();
+        fetchDashboardData();
+        fetchAuditLogs();
+        setTimeout(() => setUserActionMessage(null), 4000);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleToggleActiveUser = async (userId: number, userName: string) => {
+    try {
+      const res = await fetch(`http://localhost:8000/api/admin/users/${userId}/toggle-active`, {
+        method: 'POST'
+      });
+      const data = await res.json();
+      if (res.ok) {
+        const action = data.is_active ? 'Activated' : 'Deactivated';
+        setUserActionMessage(`User "${userName}" account is now ${action}.`);
+        triggerNotification?.(`User ${action}: ${userName}`);
+        fetchUsers();
+        fetchDashboardData();
+        fetchAuditLogs();
+        setTimeout(() => setUserActionMessage(null), 4000);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleChangeRole = async (userId: number, newRole: string) => {
+    setRoleUpdating(true);
+    try {
+      const res = await fetch(`http://localhost:8000/api/admin/users/${userId}/change-role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole })
+      });
+      if (res.ok) {
+        setUserActionMessage(`Role successfully updated to ${newRole}.`);
+        triggerNotification?.(`Role Updated: Changed to ${newRole}`);
+        setRoleChangeUserId(null);
+        fetchUsers();
+        fetchDashboardData();
+        fetchAuditLogs();
+        setTimeout(() => setUserActionMessage(null), 4000);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setRoleUpdating(false);
+    }
+  };
+
+  // ── Filtered Users ─────────────────────────────────────────────────────────
+  const filteredUsers = useMemo(() => {
+    return users.filter(u => {
+      // Role filter
+      if (userRoleFilter !== 'All' && u.role.toLowerCase() !== userRoleFilter.toLowerCase()) {
+        return false;
+      }
+      // Status filter
+      if (userStatusFilter === 'Pending' && u.approval_status !== 'Pending') return false;
+      if (userStatusFilter === 'Approved' && u.approval_status !== 'Approved') return false;
+      if (userStatusFilter === 'Rejected' && u.approval_status !== 'Rejected') return false;
+      if (userStatusFilter === 'Active' && !u.is_active) return false;
+      if (userStatusFilter === 'Deactivated' && u.is_active) return false;
+
+      // Search query
+      if (userSearchQuery) {
+        const q = userSearchQuery.toLowerCase();
+        const matchesName = u.name.toLowerCase().includes(q);
+        const matchesEmail = u.email.toLowerCase().includes(q);
+        const matchesId = u.id_number.toLowerCase().includes(q);
+        const matchesPhone = u.phone?.toLowerCase().includes(q);
+        if (!matchesName && !matchesEmail && !matchesId && !matchesPhone) return false;
+      }
+      return true;
     });
-  };
+  }, [users, userRoleFilter, userStatusFilter, userSearchQuery]);
 
-  const togglePortalMaintenance = (id: string) => {
-    setPortalStates(prev => {
-      const next = { ...prev, [id]: { ...prev[id], maintenance: !prev[id].maintenance } };
-      const portal = PORTALS.find(p => p.id === id)!;
-      const mode = next[id].maintenance ? 'MAINTENANCE MODE' : 'NORMAL OPERATION';
-      if (triggerNotification) triggerNotification(`Admin: ${portal.name} set to ${mode}.`);
-      setSavedNotif(`${portal.name} switched to ${mode}.`);
-      setTimeout(() => setSavedNotif(null), 3000);
-      return next;
+  // ── Filtered Reports ───────────────────────────────────────────────────────
+  const filteredReports = useMemo(() => {
+    return reports.filter(r => {
+      // Employee filter
+      if (reportEmployeeFilter !== 'All' && !r.reporter_email.toLowerCase().includes(reportEmployeeFilter.toLowerCase())) {
+        return false;
+      }
+      // Officer filter
+      if (reportOfficerFilter !== 'All' && !r.reviewer.toLowerCase().includes(reportOfficerFilter.toLowerCase())) {
+        return false;
+      }
+      // Issue Type filter
+      if (reportIssueTypeFilter !== 'All') {
+        const matchesType = r.report_type.toLowerCase() === reportIssueTypeFilter.toLowerCase();
+        const matchesRule = r.life_saving_rule.toLowerCase().includes(reportIssueTypeFilter.toLowerCase());
+        if (!matchesType && !matchesRule) return false;
+      }
+      // Status filter
+      if (reportStatusFilter !== 'All') {
+        const matchesStatus = r.status.toLowerCase().includes(reportStatusFilter.toLowerCase());
+        const matchesActionStatus = r.action_status.toLowerCase().includes(reportStatusFilter.toLowerCase());
+        if (!matchesStatus && !matchesActionStatus) return false;
+      }
+      // Date filter
+      if (reportDateFilter !== 'All') {
+        const eventDate = new Date(r.timestamp);
+        const now = new Date();
+        if (reportDateFilter === '24h') {
+          const diffHours = (now.getTime() - eventDate.getTime()) / (1000 * 3600);
+          if (diffHours > 24) return false;
+        } else if (reportDateFilter === '7d') {
+          const diffDays = (now.getTime() - eventDate.getTime()) / (1000 * 3600 * 24);
+          if (diffDays > 7) return false;
+        } else if (reportDateFilter === '30d') {
+          const diffDays = (now.getTime() - eventDate.getTime()) / (1000 * 3600 * 24);
+          if (diffDays > 30) return false;
+        }
+      }
+      // Search
+      if (reportSearchQuery) {
+        const q = reportSearchQuery.toLowerCase();
+        const matchesCode = r.report_code.toLowerCase().includes(q);
+        const matchesDesc = r.description.toLowerCase().includes(q);
+        const matchesSite = r.site.toLowerCase().includes(q);
+        const matchesHazard = r.hazard.toLowerCase().includes(q);
+        if (!matchesCode && !matchesDesc && !matchesSite && !matchesHazard) return false;
+      }
+      return true;
     });
-  };
+  }, [reports, reportEmployeeFilter, reportOfficerFilter, reportIssueTypeFilter, reportStatusFilter, reportDateFilter, reportSearchQuery]);
 
-  const handleSaveAIConfig = (e: React.FormEvent) => {
-    e.preventDefault();
-    setSaveSuccess('AI thresholds and neural parameters saved successfully.');
-    if (triggerNotification) triggerNotification(`⚙️ AI weights updated. Critical threshold: ${criticalThreshold}/10, High: ${highThreshold}/10.`);
-    setTimeout(() => setSaveSuccess(null), 3000);
-  };
+  // Unique lists for report filters
+  const uniqueReporters = useMemo(() => {
+    return Array.from(new Set(reports.map(r => r.reporter_email))).filter(Boolean);
+  }, [reports]);
 
-  const tabs = [
-    { id: 'portals', label: 'Portal Management', icon: Globe },
-    { id: 'users', label: 'Users & Roles', icon: Users },
-    { id: 'ai', label: 'AI Thresholds', icon: Cpu },
-    { id: 'audit', label: 'Audit Logs', icon: FileText },
-    { id: 'data', label: 'Data & Backup', icon: Database },
-  ];
+  const uniqueOfficers = useMemo(() => {
+    return Array.from(new Set(reports.map(r => r.reviewer))).filter(r => r && r !== 'Unassigned');
+  }, [reports]);
+
+  // ── Filtered Audit Logs ────────────────────────────────────────────────────
+  const filteredAuditLogs = useMemo(() => {
+    return auditLogs.filter(a => {
+      // Action filter
+      if (auditActionFilter !== 'All' && !a.action.toLowerCase().includes(auditActionFilter.toLowerCase())) {
+        return false;
+      }
+      // Specific issue / event history filter
+      if (auditIssueIdFilter && !a.event_id.toLowerCase().includes(auditIssueIdFilter.toLowerCase())) {
+        return false;
+      }
+      // Search query
+      if (auditSearchQuery) {
+        const q = auditSearchQuery.toLowerCase();
+        const matchesEvent = a.event_id.toLowerCase().includes(q);
+        const matchesActor = a.actor_name.toLowerCase().includes(q);
+        const matchesDetails = a.details.toLowerCase().includes(q);
+        const matchesAction = a.action.toLowerCase().includes(q);
+        if (!matchesEvent && !matchesActor && !matchesDetails && !matchesAction) return false;
+      }
+      return true;
+    });
+  }, [auditLogs, auditActionFilter, auditIssueIdFilter, auditSearchQuery]);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+    <div className="max-w-7xl mx-auto space-y-6 pb-12 font-sans antialiased">
 
-      {/* 1. HERO HEADER BANNER (Consistent with RAKSHA Design System) */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#007A78] via-[#008779] to-[#00A389] text-white p-7 shadow-lg shadow-[#008779]/20">
-        
-        {/* Background Watermark Icon */}
-        <div className="absolute right-6 -bottom-6 opacity-15 pointer-events-none">
-          <Award className="h-48 w-48 text-white stroke-1" />
-        </div>
-
-        <div className="relative z-10 max-w-2xl">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-[11px] font-bold text-emerald-100 mb-2 border border-white/20">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
-            <span>Persona 5 — System Administrator & Governance</span>
+      {/* Global Notification Banner */}
+      {userActionMessage && (
+        <div className="p-4 bg-emerald-50 border border-emerald-300 text-emerald-900 text-xs font-extrabold rounded-2xl flex items-center justify-between shadow-sm animate-fade-in">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            <span>{userActionMessage}</span>
           </div>
-
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            Portal Management & Control Center
-          </h1>
-          <p className="text-sm text-emerald-50/90 italic mt-1 font-medium leading-relaxed">
-            Oversee, configure, and govern all RAKSHA AI enterprise portals, roles, AI thresholds, and system health.
-          </p>
-
-          {/* System Health Status Badges */}
-          <div className="mt-5 flex flex-wrap gap-2.5">
-            {[
-              { label: 'AI Engine', status: 'Online', color: 'bg-emerald-400' },
-              { label: 'GATI Model', status: 'v1.3 Active', color: 'bg-teal-300' },
-              { label: 'Database', status: 'Healthy', color: 'bg-emerald-400' },
-              { label: 'All Portals', status: `${Object.values(portalStates).filter(s => s.enabled).length}/4 Online`, color: 'bg-amber-300' }
-            ].map(item => (
-              <div key={item.label} className="flex items-center gap-2 bg-white/15 backdrop-blur-xs border border-white/20 px-3 py-1.5 rounded-full text-xs font-bold text-white shadow-2xs">
-                <span className={`h-2 w-2 rounded-full ${item.color} animate-pulse`} />
-                <span className="text-emerald-100 font-semibold">{item.label}:</span>
-                <span>{item.status}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Saved Notification Toast */}
-      {savedNotif && (
-        <div className="flex items-center gap-2 p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-bold shadow-xs animate-fadeIn">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-          <span>{savedNotif}</span>
+          <button 
+            onClick={() => setUserActionMessage(null)}
+            className="text-emerald-700 hover:text-emerald-900 cursor-pointer text-xs"
+          >
+            ✕
+          </button>
         </div>
       )}
 
-      {/* 2. TAB NAVIGATION PILLS */}
-      <div className="flex flex-wrap gap-2 bg-white p-2 rounded-2xl border border-[#E6ECEB] shadow-2xs">
-        {tabs.map(tab => {
-          const Icon = tab.icon;
-          const active = activeTab === tab.id;
-          return (
+      {/* ── 1. MASTER HEADER & TOP-LEVEL NAVIGATION ────────────────────────── */}
+      <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200">
+                Master Administrator
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                ● Live Fleet Control
+              </span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+              <span>Admin Master Management Center</span>
+            </h1>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Centralized authority for user onboarding approvals, role governance, fleet reporting intelligence, and audit traceability.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-150 cursor-pointer ${
-                active
-                  ? 'bg-[#008779] text-white shadow-md shadow-[#008779]/25 scale-[1.01]'
-                  : 'bg-transparent text-slate-600 hover:bg-[#E8F6F4]/60 hover:text-[#008779]'
-              }`}
+              onClick={() => {
+                fetchDashboardData();
+                fetchUsers();
+                fetchReports();
+                fetchAuditLogs();
+                triggerNotification?.('Admin: Synchronized all fleet data.');
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
             >
-              <Icon className={`h-4 w-4 ${active ? 'text-white' : 'text-slate-400'}`} />
-              <span>{tab.label}</span>
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>Sync All</span>
             </button>
-          );
-        })}
+            {onResetDb && (
+              <button
+                onClick={onResetDb}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                <span>Reset Database</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 5 Core Admin Tabs */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-5">
+          {[
+            { id: 'dashboard', label: 'Dashboard', icon: BarChart3, count: null },
+            { id: 'users', label: 'User Management', icon: Users, count: dashboardData?.kpis.pending_approvals || users.filter(u => u.approval_status === 'Pending').length },
+            { id: 'roles', label: 'Role Management', icon: Shield, count: null },
+            { id: 'reports', label: 'All Reports', icon: FileText, count: reports.length },
+            { id: 'audit', label: 'Audit Log', icon: History, count: auditLogs.length },
+          ].map(tab => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`py-3 px-3.5 rounded-2xl font-extrabold text-xs transition flex items-center justify-between cursor-pointer border ${
+                  isActive
+                    ? 'bg-[#008779] text-white border-[#008779] shadow-md shadow-[#008779]/20'
+                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200/70'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-500'}`} />
+                  <span>{tab.label}</span>
+                </div>
+                {tab.count !== null && tab.count > 0 && (
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
+                    tab.id === 'users' && tab.count > 0
+                      ? (isActive ? 'bg-amber-400 text-slate-900' : 'bg-amber-100 text-amber-900')
+                      : (isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700')
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* ── TAB 1: PORTAL MANAGEMENT ── */}
-      {activeTab === 'portals' && (
+      {/* ===================================================================== */}
+      {/* ── TAB 1: ADMIN DASHBOARD ─────────────────────────────────────────── */}
+      {/* ===================================================================== */}
+      {activeTab === 'dashboard' && (
         <div className="space-y-6">
-          <div className="bg-white rounded-3xl p-6 border border-[#E6ECEB] shadow-sm">
-            <div className="flex items-center gap-2.5 mb-1">
-              <div className="h-8 w-8 rounded-xl bg-[#E8F6F4] text-[#008779] flex items-center justify-center">
-                <Globe className="h-4.5 w-4.5" />
+
+          {/* 1. WELCOME BOX */}
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#005B54] via-[#008779] to-[#00A389] text-white p-7 shadow-lg shadow-[#008779]/15">
+            <div className="relative z-10 max-w-2xl space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md text-emerald-100 text-xs font-bold border border-white/20">
+                <ShieldCheck className="h-3.5 w-3.5" />
+                <span>Master Operations & Safety Command</span>
               </div>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">
+                Welcome, System Administrator
+              </h2>
+              <p className="text-xs sm:text-sm text-emerald-50 leading-relaxed font-normal">
+                You have master authority over the SIF-SHIELD AI platform. Oversee registered users, verify onboarding applications, govern the four operational roles, examine fleet-wide reports, and track real-time audit event logs.
+              </p>
+              
+              <div className="flex flex-wrap gap-2.5 pt-2">
+                <button
+                  onClick={() => setActiveTab('users')}
+                  className="px-4 py-2 bg-white text-[#008779] hover:bg-emerald-50 text-xs font-extrabold rounded-xl shadow-sm transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  <span>Review Pending Users ({dashboardData?.kpis.pending_approvals ?? 0})</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('reports')}
+                  className="px-4 py-2 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-xl shadow-sm transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>Inspect All Reports</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. STATS BOXES (TOTAL EMPLOYEE, TOTAL OFFICER, TOTAL MANAGER, PENDING) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* Box 1: Total Employee */}
+            <div className="bg-white border border-[#E6ECEB] rounded-3xl p-5 shadow-sm hover:shadow-md transition">
+              <div className="flex items-center justify-between">
+                <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500">
+                  Total Employees
+                </span>
+                <div className="h-9 w-9 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                  <HardHat className="h-4.5 w-4.5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-3xl font-black text-slate-900 tracking-tight">
+                  {dashboardData?.kpis.total_employee ?? 0}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1 font-medium">
+                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span>Field Workers & Frontline Techs</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Box 2: Total Officer */}
+            <div className="bg-white border border-[#E6ECEB] rounded-3xl p-5 shadow-sm hover:shadow-md transition">
+              <div className="flex items-center justify-between">
+                <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500">
+                  Total Officers
+                </span>
+                <div className="h-9 w-9 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
+                  <ShieldCheck className="h-4.5 w-4.5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-3xl font-black text-slate-900 tracking-tight">
+                  {dashboardData?.kpis.total_officer ?? 0}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1 font-medium">
+                  <span className="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
+                  <span>Safety Leads & Field Auditors</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Box 3: Total Manager */}
+            <div className="bg-white border border-[#E6ECEB] rounded-3xl p-5 shadow-sm hover:shadow-md transition">
+              <div className="flex items-center justify-between">
+                <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500">
+                  Total Managers
+                </span>
+                <div className="h-9 w-9 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                  <Briefcase className="h-4.5 w-4.5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-3xl font-black text-slate-900 tracking-tight">
+                  {dashboardData?.kpis.total_manager ?? 0}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1 font-medium">
+                  <span className="inline-block w-2 h-2 rounded-full bg-amber-500"></span>
+                  <span>HSE Leads & Incident Commanders</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Box 4: Pending Onboarding Approvals */}
+            <div className="bg-white border border-[#E6ECEB] rounded-3xl p-5 shadow-sm hover:shadow-md transition relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-[10.5px] font-extrabold uppercase tracking-wider text-slate-500">
+                  Pending Approvals
+                </span>
+                <div className="h-9 w-9 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold">
+                  <Clock className="h-4.5 w-4.5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-3xl font-black text-amber-600 tracking-tight flex items-center gap-2">
+                  <span>{dashboardData?.kpis.pending_approvals ?? 0}</span>
+                  {(dashboardData?.kpis.pending_approvals ?? 0) > 0 && (
+                    <span className="text-[10px] font-extrabold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full uppercase">
+                      Action Needed
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-slate-500 mt-1 font-medium">
+                  <span>Awaiting Admin verification</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* 3. GRAPHS SECTION */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            {/* Graph 1: User Distribution by Role */}
+            <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">User Distribution by Role</h3>
+                  <p className="text-xs text-slate-400">Total authorized accounts across 4 platform roles</p>
+                </div>
+                <span className="text-xs font-black text-slate-600 bg-slate-100 px-2.5 py-1 rounded-xl">
+                  {dashboardData?.kpis.total_users ?? 0} Total
+                </span>
+              </div>
+
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dashboardData?.charts.role_distribution ?? []}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis dataKey="role" stroke="#64748b" fontSize={11} />
+                    <YAxis stroke="#64748b" fontSize={11} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
+                    />
+                    <Bar dataKey="count" fill="#008779" radius={[8, 8, 0, 0]}>
+                      {(dashboardData?.charts.role_distribution ?? []).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color || '#008779'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Graph 2: Reports by Severity / Risk */}
+            <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">Fleet Safety Reports by Risk Level</h3>
+                  <p className="text-xs text-slate-400">Multi-factor composite 0–10 risk categorization</p>
+                </div>
+                <span className="text-xs font-black text-slate-600 bg-slate-100 px-2.5 py-1 rounded-xl">
+                  {dashboardData?.kpis.total_reports ?? 0} Reports
+                </span>
+              </div>
+
+              <div className="h-64 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dashboardData?.charts.severity_distribution ?? []} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                    <XAxis type="number" stroke="#64748b" fontSize={11} />
+                    <YAxis dataKey="severity" type="category" stroke="#64748b" fontSize={11} width={70} />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
+                    />
+                    <Bar dataKey="count" radius={[0, 8, 8, 0]}>
+                      {(dashboardData?.charts.severity_distribution ?? []).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color || '#008779'} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* ── TAB 2: USER MANAGEMENT ─────────────────────────────────────────── */}
+      {/* ===================================================================== */}
+      {activeTab === 'users' && (
+        <div className="space-y-6">
+
+          {/* User Management Toolbar & Filters */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-5 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-extrabold text-slate-900 tracking-tight">
-                  All RAKSHA AI Portals
+                <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <Users className="h-4.5 w-4.5 text-[#008779]" />
+                  <span>User Onboarding & Account Management</span>
                 </h2>
                 <p className="text-xs text-slate-500 font-medium">
-                  Control access permissions, toggle maintenance modes, and navigate into each operational portal.
+                  Review new registered users (shown as Pending), approve or reject requests, and manage active statuses.
+                </p>
+              </div>
+
+              <button
+                onClick={fetchUsers}
+                className="self-start md:self-auto px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span>Refresh Users</span>
+              </button>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
+              
+              {/* Search */}
+              <div className="relative">
+                <Search className="h-4 w-4 absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  placeholder="Search by name, email, ID..."
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-2 focus:ring-[#008779] text-slate-800"
+                />
+              </div>
+
+              {/* Role Filter */}
+              <div>
+                <select
+                  value={userRoleFilter}
+                  onChange={(e) => setUserRoleFilter(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 font-medium cursor-pointer"
+                >
+                  <option value="All">All Roles (Employee, Officer, Manager, Admin)</option>
+                  <option value="Employee">Employee</option>
+                  <option value="Officer">Officer</option>
+                  <option value="Manager">Manager</option>
+                  <option value="Admin">Admin</option>
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <select
+                  value={userStatusFilter}
+                  onChange={(e) => setUserStatusFilter(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 font-medium cursor-pointer"
+                >
+                  <option value="All">All Statuses (Pending, Approved, Rejected)</option>
+                  <option value="Pending">⏳ Pending Approval</option>
+                  <option value="Approved">✓ Approved</option>
+                  <option value="Rejected">✕ Rejected</option>
+                  <option value="Active">● Active Accounts</option>
+                  <option value="Deactivated">○ Deactivated Accounts</option>
+                </select>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Users Table */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 border-b border-slate-200/80 text-[10.5px] font-black uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th className="py-3.5 px-4">User & Contact</th>
+                    <th className="py-3.5 px-4">ID No.</th>
+                    <th className="py-3.5 px-4">Role</th>
+                    <th className="py-3.5 px-4">Approval Status</th>
+                    <th className="py-3.5 px-4">Active State</th>
+                    <th className="py-3.5 px-4 text-right">Admin Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {loadingUsers ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-slate-400">
+                        <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-[#008779]" />
+                        <span>Loading users from database...</span>
+                      </td>
+                    </tr>
+                  ) : filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="py-12 text-center text-slate-400">
+                        <Users className="h-8 w-8 mx-auto mb-2 text-slate-300 stroke-1" />
+                        <div className="font-bold text-slate-700">No users found</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">Try adjusting your filters or search query.</div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredUsers.map(user => {
+                      const isPending = user.approval_status === 'Pending';
+                      const isRejected = user.approval_status === 'Rejected';
+                      const isApproved = user.approval_status === 'Approved';
+
+                      return (
+                        <tr key={user.id} className="hover:bg-slate-50/70 transition">
+                          {/* Name & Email */}
+                          <td className="py-3.5 px-4">
+                            <div className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                              <span>{user.name}</span>
+                              {user.role === 'Admin' && (
+                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-purple-100 text-purple-800">
+                                  MASTER
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500 font-mono mt-0.5">{user.email}</div>
+                          </td>
+
+                          {/* ID No. */}
+                          <td className="py-3.5 px-4 font-mono font-bold text-slate-700">
+                            {user.id_number || '—'}
+                          </td>
+
+                          {/* Role Badge */}
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              user.role === 'Employee'
+                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                : user.role === 'Officer'
+                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                : user.role === 'Manager'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                : 'bg-purple-100 text-purple-800 border border-purple-200'
+                            }`}>
+                              {user.role}
+                            </span>
+                          </td>
+
+                          {/* Approval Status */}
+                          <td className="py-3.5 px-4">
+                            {isPending && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-extrabold bg-amber-50 text-amber-800 border border-amber-300 animate-pulse">
+                                <Clock className="h-3 w-3 text-amber-600" />
+                                <span>Pending Approval</span>
+                              </span>
+                            )}
+                            {isApproved && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-300">
+                                <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                                <span>Approved</span>
+                              </span>
+                            )}
+                            {isRejected && (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10.5px] font-extrabold bg-rose-50 text-rose-800 border border-rose-300">
+                                <X className="h-3 w-3 text-rose-600" />
+                                <span>Rejected</span>
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Active Toggle State */}
+                          <td className="py-3.5 px-4">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                              user.is_active
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${user.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
+                              <span>{user.is_active ? 'Active' : 'Deactivated'}</span>
+                            </span>
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              
+                              {/* If Pending: Approve & Reject buttons */}
+                              {isPending && (
+                                <>
+                                  <button
+                                    onClick={() => handleApproveUser(user.id, user.name)}
+                                    title="Approve User Registration"
+                                    className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
+                                  >
+                                    <Check className="h-3.5 w-3.5" />
+                                    <span>Approve</span>
+                                  </button>
+                                  <button
+                                    onClick={() => handleRejectUser(user.id, user.name)}
+                                    title="Reject User Registration"
+                                    className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                    <span>Reject</span>
+                                  </button>
+                                </>
+                              )}
+
+                              {/* Activate / Deactivate Toggle (for non-admin or approved users) */}
+                              {user.role !== 'Admin' && isApproved && (
+                                <button
+                                  onClick={() => handleToggleActiveUser(user.id, user.name)}
+                                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                                    user.is_active
+                                      ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                                      : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  }`}
+                                >
+                                  {user.is_active ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                                  <span>{user.is_active ? 'Deactivate' : 'Activate'}</span>
+                                </button>
+                              )}
+
+                              {/* View Details Button */}
+                              <button
+                                onClick={() => setSelectedUserDetail(user)}
+                                className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1"
+                              >
+                                <Eye className="h-3 w-3" />
+                                <span>Details</span>
+                              </button>
+
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* ── TAB 3: ROLE MANAGEMENT ─────────────────────────────────────────── */}
+      {/* ===================================================================== */}
+      {activeTab === 'roles' && (
+        <div className="space-y-6">
+
+          {/* Role Cards for the 4 Roles */}
+          <div>
+            <div className="mb-4">
+              <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                <Shield className="h-4.5 w-4.5 text-[#008779]" />
+                <span>The Four Platform Roles & Access Control</span>
+              </h2>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Each role accesses its own authorized portal. The System Administrator can assign or change roles for any user.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              
+              {/* Role 1: Employee */}
+              <div className="bg-white border-2 border-emerald-200/80 rounded-3xl p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="h-10 w-10 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                    <HardHat className="h-5 w-5" />
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-100 text-emerald-800">
+                    Frontline
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">1. Employee</h3>
+                  <div className="text-[11px] font-bold text-emerald-700 mt-0.5">Worker Safety Portal</div>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                  Reports unsafe acts, conditions, and near-misses with voice notes, photo evidence, and location context. Acknowledges safety directives.
+                </p>
+                <div className="pt-2 border-t border-slate-100 text-[10.5px] text-slate-500 space-y-1">
+                  <div>• Submit observations & voice memos</div>
+                  <div>• View personal reports & feedback</div>
+                  <div>• Confirm safety directive compliance</div>
+                </div>
+              </div>
+
+              {/* Role 2: Officer */}
+              <div className="bg-white border-2 border-blue-200/80 rounded-3xl p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="h-10 w-10 rounded-2xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-100 text-blue-800">
+                    Tactical Lead
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">2. Officer</h3>
+                  <div className="text-[11px] font-bold text-blue-700 mt-0.5">Tactical Safety Dashboard</div>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                  SIF precursor review, field audits, barrier verification, stop-work order issuance, and corrective action assignment to field teams.
+                </p>
+                <div className="pt-2 border-t border-slate-100 text-[10.5px] text-slate-500 space-y-1">
+                  <div>• SIF Precursor review & calibration</div>
+                  <div>• Issue Stop-Work authority</div>
+                  <div>• Dispatch and track corrective actions</div>
+                </div>
+              </div>
+
+              {/* Role 3: Manager */}
+              <div className="bg-white border-2 border-amber-200/80 rounded-3xl p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="h-10 w-10 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+                    <Briefcase className="h-5 w-5" />
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-100 text-amber-800">
+                    Executive
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">3. Manager</h3>
+                  <div className="text-[11px] font-bold text-amber-700 mt-0.5">HSE Command Center</div>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                  Fleet-wide oversight, allotting inspection tasks to safety officers, broadcasting mandatory safety directives, and refinery risk KPIs.
+                </p>
+                <div className="pt-2 border-t border-slate-100 text-[10.5px] text-slate-500 space-y-1">
+                  <div>• Allot inspection tasks to officers</div>
+                  <div>• Broadcast urgent safety directives</div>
+                  <div>• Strategic SIF precursor intelligence</div>
+                </div>
+              </div>
+
+              {/* Role 4: Admin */}
+              <div className="bg-white border-2 border-purple-200/80 rounded-3xl p-5 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="h-10 w-10 rounded-2xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold">
+                    <SettingsIcon className="h-5 w-5" />
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-purple-100 text-purple-800">
+                    Master Controller
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">4. Admin</h3>
+                  <div className="text-[11px] font-bold text-purple-700 mt-0.5">System Admin Console</div>
+                </div>
+                <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                  Full master access over all modules, user approval, role assignment, account activation, all reports inspection, and complete audit tracking.
+                </p>
+                <div className="pt-2 border-t border-slate-100 text-[10.5px] text-slate-500 space-y-1">
+                  <div>• Approve / Reject new users</div>
+                  <div>• Change user roles dynamically</div>
+                  <div>• View complete issue audit histories</div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* User Role Assignment Table */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">Assign or Change User Roles</h3>
+                <p className="text-xs text-slate-500">
+                  Select a user to modify their role. Role changes take effect immediately and are recorded in the audit log.
                 </p>
               </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            {PORTALS.map(portal => {
-              const Icon = portal.icon;
-              const state = portalStates[portal.id];
-              const isExpanded = expandedPortal === portal.id;
-
-              return (
-                <div
-                  key={portal.id}
-                  className={`bg-white rounded-3xl border shadow-xs hover:shadow-md transition-all duration-200 overflow-hidden ${
-                    state.enabled ? portal.borderColor : 'border-slate-200 opacity-75'
-                  }`}
-                >
-                  {/* Portal Card Header */}
-                  <div className={`p-6 ${state.enabled ? portal.bgColor : 'bg-slate-50'}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3.5">
-                        <div className={`h-12 w-12 rounded-2xl flex items-center justify-center ${state.enabled ? 'bg-white shadow-xs' : 'bg-slate-100'} border ${portal.borderColor}`}>
-                          <Icon className={`h-6 w-6 ${state.enabled ? portal.color : 'text-slate-400'}`} />
-                        </div>
-                        <div>
-                          <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">{portal.persona}</div>
-                          <div className={`text-base font-extrabold mt-0.5 ${state.enabled ? 'text-slate-900' : 'text-slate-500'}`}>{portal.name}</div>
-                        </div>
-                      </div>
-
-                      {/* Status Badge */}
-                      <div className="flex flex-col items-end gap-1 shrink-0">
-                        {state.maintenance ? (
-                          <span className="px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-[10px] font-black border border-amber-300 flex items-center gap-1 shadow-2xs">
-                            <Wrench className="h-3 w-3" /> Maintenance
-                          </span>
-                        ) : state.enabled ? (
-                          <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black border border-emerald-300 flex items-center gap-1 shadow-2xs">
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" /> Online
-                          </span>
-                        ) : (
-                          <span className="px-3 py-1 rounded-full bg-rose-100 text-rose-800 text-[10px] font-black border border-rose-300 flex items-center gap-1 shadow-2xs">
-                            <Power className="h-3 w-3" /> Disabled
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Quick Stats Strip */}
-                    <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-200/60 bg-white/60 p-3 rounded-2xl">
-                      {portal.stats.map(s => (
-                        <div key={s.label} className="text-center">
-                          <div className={`text-sm font-black font-mono-numbers ${state.enabled ? portal.color : 'text-slate-400'}`}>{s.value}</div>
-                          <div className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">{s.label}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Portal Action Bar */}
-                  <div className="px-6 py-3.5 bg-white border-t border-slate-100 flex flex-wrap items-center gap-2">
-                    {/* Enable / Disable Toggle */}
-                    <button
-                      onClick={() => togglePortalEnabled(portal.id)}
-                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${
-                        state.enabled
-                          ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
-                          : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                      }`}
-                    >
-                      <Power className="h-3.5 w-3.5" />
-                      <span>{state.enabled ? 'Disable' : 'Enable'}</span>
-                    </button>
-
-                    {/* Maintenance Mode */}
-                    <button
-                      onClick={() => togglePortalMaintenance(portal.id)}
-                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all border cursor-pointer ${
-                        state.maintenance
-                          ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
-                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-                      }`}
-                    >
-                      <Wrench className="h-3.5 w-3.5" />
-                      <span>{state.maintenance ? 'Exit Maint.' : 'Maintenance'}</span>
-                    </button>
-
-                    {/* Open Portal Button */}
-                    <button
-                      onClick={() => { if (onNavigateTo) onNavigateTo(portal.route); }}
-                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-extrabold bg-[#008779] text-white hover:bg-[#007064] transition shadow-2xs ml-auto cursor-pointer"
-                    >
-                      <span>Open Portal</span>
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-
-                    {/* Expand Details */}
-                    <button
-                      onClick={() => setExpandedPortal(isExpanded ? null : portal.id)}
-                      className="p-1.5 text-slate-400 hover:text-slate-700 transition cursor-pointer"
-                      title="Toggle details"
-                    >
-                      <Info className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  {/* Expanded Details */}
-                  {isExpanded && (
-                    <div className="px-6 py-4 bg-slate-50/80 border-t border-slate-100 text-xs space-y-3 animate-fadeIn">
-                      <p className="text-slate-600 leading-relaxed font-normal">{portal.description}</p>
-
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Capabilities</div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {portal.capabilities.map(cap => (
-                            <span key={cap} className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-[11px] text-slate-700 font-semibold shadow-2xs">
-                              {cap}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Access Authorization Level</div>
-                        <div className="flex items-center gap-1.5 text-slate-700 font-semibold text-[11px]">
-                          <Shield className="h-3.5 w-3.5 text-[#008779]" />
-                          {state.maintenance ? (
-                            <span className="text-amber-700 font-bold">⚠ Restricted — System Administrators Only</span>
-                          ) : state.enabled ? (
-                            <span>{portalStates[portal.id].accessLevel}</span>
-                          ) : (
-                            <span className="text-rose-600 font-bold">🔒 Portal Offline — Access Blocked</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Portal Health Overview Summary */}
-          <div className="bg-white rounded-3xl border border-[#E6ECEB] p-6 shadow-sm">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 mb-4 flex items-center gap-2">
-              <Activity className="h-4 w-4 text-[#008779]" />
-              <span>Real-Time Portal Status Matrix</span>
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-              {PORTALS.map(p => {
-                const state = portalStates[p.id];
-                const Icon = p.icon;
-                return (
-                  <div key={p.id} className={`p-4 rounded-2xl border text-center transition-all ${state.enabled && !state.maintenance ? p.bgColor + ' ' + p.borderColor : 'bg-slate-50 border-slate-200'}`}>
-                    <Icon className={`h-6 w-6 mx-auto mb-1.5 ${state.enabled ? p.color : 'text-slate-400'}`} />
-                    <div className="text-xs font-extrabold text-slate-800 leading-tight">{p.name}</div>
-                    <div className={`text-[10px] font-black mt-1.5 ${state.maintenance ? 'text-amber-600' : state.enabled ? 'text-emerald-600' : 'text-rose-600'}`}>
-                      {state.maintenance ? '⚠ Maintenance' : state.enabled ? '● Online' : '○ Disabled'}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── TAB 2: USERS & ROLES ── */}
-      {activeTab === 'users' && (
-        <div className="bg-white rounded-3xl p-6 border border-[#E6ECEB] shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
-            <div>
-              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Active Users & Role Governance</h3>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">Control access rights, role permissions, and user accounts across all 5 operational personas.</p>
-            </div>
-            <button
-              onClick={() => alert('Add User Modal')}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#008779] text-white rounded-xl text-xs font-extrabold hover:bg-[#007064] transition shadow-2xs cursor-pointer shrink-0"
-            >
-              <UserPlus className="h-3.5 w-3.5" />
-              <span>Add New User</span>
-            </button>
-          </div>
-
-          <div className="overflow-x-auto rounded-2xl border border-slate-200">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">
-                  <th className="py-3 px-4">User Details</th>
-                  <th className="py-3 px-4">Email Address</th>
-                  <th className="py-3 px-4">Assigned Role</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {users.map((u) => (
-                  <tr key={u.email} className="hover:bg-[#E8F6F4]/30 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 bg-[#E8F6F4] text-[#008779] font-black rounded-full flex items-center justify-center text-sm shrink-0 border border-teal-200">
-                          {u.name[0]}
-                        </div>
-                        <div className="font-bold text-slate-900">{u.name}</div>
-                      </div>
-                    </td>
-                    <td className="py-3.5 px-4 font-mono text-[11px] text-slate-500">
-                      {u.email}
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold border ${
-                        u.role === 'Admin' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                        u.role === 'Safety Manager' ? 'bg-teal-50 text-[#008779] border-teal-200' :
-                        u.role === 'Safety Officer' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                        'bg-amber-50 text-amber-700 border-amber-200'
-                      }`}>
-                        {u.role}
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4">
-                      <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                        Active
-                      </span>
-                    </td>
-                    <td className="py-3.5 px-4 text-center">
-                      <button className="text-xs font-bold text-[#008779] hover:underline cursor-pointer">
-                        Edit Role
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 border-b border-slate-200 text-[10.5px] font-black uppercase text-slate-500">
+                  <tr>
+                    <th className="py-3 px-4">User Name</th>
+                    <th className="py-3 px-4">Work Email</th>
+                    <th className="py-3 px-4">ID No.</th>
+                    <th className="py-3 px-4">Current Role</th>
+                    <th className="py-3 px-4 text-right">Assign New Role</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {users.map(u => (
+                    <tr key={u.id} className="hover:bg-slate-50/70 transition">
+                      <td className="py-3 px-4 font-extrabold text-slate-900">{u.name}</td>
+                      <td className="py-3 px-4 font-mono text-slate-600">{u.email}</td>
+                      <td className="py-3 px-4 font-mono font-bold text-slate-700">{u.id_number}</td>
+                      <td className="py-3 px-4">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                          u.role === 'Employee' ? 'bg-emerald-100 text-emerald-800'
+                          : u.role === 'Officer' ? 'bg-blue-100 text-blue-800'
+                          : u.role === 'Manager' ? 'bg-amber-100 text-amber-800'
+                          : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        {u.role === 'Admin' && u.email === 'admin@refinery.safe' ? (
+                          <span className="text-[10px] text-slate-400 italic">Master Seed Admin</span>
+                        ) : (
+                          <div className="inline-flex items-center gap-2">
+                            <select
+                              defaultValue={u.role}
+                              onChange={(e) => handleChangeRole(u.id, e.target.value)}
+                              className="px-2.5 py-1 text-xs rounded-lg border border-slate-200 bg-white font-bold text-slate-800 focus:ring-2 focus:ring-[#008779] cursor-pointer"
+                            >
+                              <option value="Employee">Set to Employee</option>
+                              <option value="Officer">Set to Officer</option>
+                              <option value="Manager">Set to Manager</option>
+                              <option value="Admin">Set to Admin</option>
+                            </select>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
+
         </div>
       )}
 
-      {/* ── TAB 3: AI THRESHOLDS ── */}
-      {activeTab === 'ai' && (
-        <div className="bg-white rounded-3xl p-6 border border-[#E6ECEB] shadow-sm">
-          <form onSubmit={handleSaveAIConfig} className="space-y-6">
-            <div className="pb-4 border-b border-slate-100">
-              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">AI Multi-Factor Risk Scoring Calibration</h3>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">Tune the SIF precursor scoring sensitivity boundaries that trigger immediate alerts, Stop Work recommendations, and management escalations.</p>
-            </div>
+      {/* ===================================================================== */}
+      {/* ── TAB 4: ALL REPORTS ─────────────────────────────────────────────── */}
+      {/* ===================================================================== */}
+      {activeTab === 'reports' && (
+        <div className="space-y-6">
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Critical Threshold Slider */}
-              <div className="p-5 bg-rose-50/70 border border-rose-200 rounded-2xl space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-extrabold text-slate-800">Critical SIF Threshold</label>
-                  <span className="text-xs font-black text-rose-600 font-mono-numbers bg-white px-2 py-0.5 rounded-md border border-rose-200">{criticalThreshold.toFixed(1)} / 10</span>
-                </div>
-                <input type="range" min="7.0" max="9.5" step="0.1" value={criticalThreshold}
-                  onChange={e => setCriticalThreshold(Number(e.target.value))}
-                  className="w-full h-2 bg-rose-200 rounded-lg appearance-none cursor-pointer accent-rose-600"
-                />
-                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Observations scoring above this automatically flag as CRITICAL, suggest Stop Work Orders, and push emergency notifications.</p>
+          {/* Filter Bar for Reports */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-5 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <FileText className="h-4.5 w-4.5 text-[#008779]" />
+                  <span>All Safety Reports & Incident Submissions</span>
+                </h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  View and filter all reports submitted by employees. Multi-dimensional filtering by reporter, officer, type, status, and date.
+                </p>
               </div>
 
-              {/* High Risk Threshold Slider */}
-              <div className="p-5 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="text-xs font-extrabold text-slate-800">High SIF Risk Threshold</label>
-                  <span className="text-xs font-black text-amber-600 font-mono-numbers bg-white px-2 py-0.5 rounded-md border border-amber-200">{highThreshold.toFixed(1)} / 10</span>
-                </div>
-                <input type="range" min="5.0" max="7.5" step="0.1" value={highThreshold}
-                  onChange={e => setHighThreshold(Number(e.target.value))}
-                  className="w-full h-2 bg-amber-200 rounded-lg appearance-none cursor-pointer accent-amber-500"
-                />
-                <p className="text-[11px] text-slate-500 font-medium leading-relaxed">Dispatches priority alert flags directly to the Safety Officer triage queue.</p>
+              <div className="text-xs font-bold text-slate-500">
+                Showing <span className="text-slate-900 font-black">{filteredReports.length}</span> of {reports.length} reports
               </div>
             </div>
 
-            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
-              <input type="checkbox" id="autoStopWork" checked={autoStopWork}
-                onChange={e => setAutoStopWork(e.target.checked)}
-                className="h-4 w-4 rounded accent-[#008779] cursor-pointer"
-              />
-              <label htmlFor="autoStopWork" className="text-xs font-bold text-slate-700 cursor-pointer">
-                Automatically suggest Stop Work Authority invocation when report crosses Critical SIF threshold
-              </label>
+            {/* 6 Filter Dropdowns + Search */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-2 border-t border-slate-100 text-xs">
+              
+              {/* Search */}
+              <div className="lg:col-span-2 relative">
+                <Search className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={reportSearchQuery}
+                  onChange={(e) => setReportSearchQuery(e.target.value)}
+                  placeholder="Search code, site, hazard..."
+                  className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs text-slate-800"
+                />
+              </div>
+
+              {/* Employee Filter */}
+              <div>
+                <select
+                  value={reportEmployeeFilter}
+                  onChange={(e) => setReportEmployeeFilter(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs text-slate-800 font-medium cursor-pointer"
+                >
+                  <option value="All">All Employees</option>
+                  {uniqueReporters.map(emp => (
+                    <option key={emp} value={emp}>{emp}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Officer Filter */}
+              <div>
+                <select
+                  value={reportOfficerFilter}
+                  onChange={(e) => setReportOfficerFilter(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs text-slate-800 font-medium cursor-pointer"
+                >
+                  <option value="All">All Officers</option>
+                  {uniqueOfficers.map(off => (
+                    <option key={off} value={off}>{off}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Issue Type Filter */}
+              <div>
+                <select
+                  value={reportIssueTypeFilter}
+                  onChange={(e) => setReportIssueTypeFilter(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs text-slate-800 font-medium cursor-pointer"
+                >
+                  <option value="All">All Issue Types</option>
+                  <option value="Unsafe Condition">Unsafe Condition</option>
+                  <option value="Unsafe Act">Unsafe Act</option>
+                  <option value="Near Miss">Near Miss</option>
+                  <option value="Energy Isolation">Energy Isolation</option>
+                  <option value="Working at Height">Working at Height</option>
+                  <option value="Confined Space">Confined Space</option>
+                  <option value="Line of Fire">Line of Fire</option>
+                  <option value="Hot Work">Hot Work</option>
+                  <option value="Lifting Operations">Lifting Operations</option>
+                </select>
+              </div>
+
+              {/* Status Filter */}
+              <div>
+                <select
+                  value={reportStatusFilter}
+                  onChange={(e) => setReportStatusFilter(e.target.value)}
+                  className="w-full px-2.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50/50 text-xs text-slate-800 font-medium cursor-pointer"
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Needs Review">Needs Review</option>
+                  <option value="Action Dispatched">Action Dispatched</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Confirmed">Confirmed</option>
+                  <option value="Resolved">Resolved</option>
+                </select>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Reports Table */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 border-b border-slate-200 text-[10.5px] font-black uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th className="py-3 px-4">Report Code & Date</th>
+                    <th className="py-3 px-4">Reporter (Employee)</th>
+                    <th className="py-3 px-4">Assigned Officer</th>
+                    <th className="py-3 px-4">Site & Unit</th>
+                    <th className="py-3 px-4">Issue Type / LSR</th>
+                    <th className="py-3 px-4">SIF Score</th>
+                    <th className="py-3 px-4">Status</th>
+                    <th className="py-3 px-4 text-right">View Detail</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {loadingReports ? (
+                    <tr>
+                      <td colSpan={8} className="py-8 text-center text-slate-400">
+                        <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-[#008779]" />
+                        <span>Loading fleet reports...</span>
+                      </td>
+                    </tr>
+                  ) : filteredReports.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                        <FileText className="h-8 w-8 mx-auto mb-2 text-slate-300 stroke-1" />
+                        <div className="font-bold text-slate-700">No reports matched your filters</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">Try resetting filter criteria.</div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredReports.map(report => (
+                      <tr key={report.id} className="hover:bg-slate-50/70 transition">
+                        
+                        {/* Report Code & Date */}
+                        <td className="py-3 px-4">
+                          <div className="font-extrabold text-slate-900 font-mono">{report.report_code}</div>
+                          <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                            <Clock className="h-2.5 w-2.5" />
+                            <span>{new Date(report.timestamp).toLocaleDateString()} {new Date(report.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+                        </td>
+
+                        {/* Employee (Reporter) */}
+                        <td className="py-3 px-4">
+                          <div className="font-extrabold text-slate-800 text-xs">
+                            {report.reporter_email.split('@')[0]}
+                          </div>
+                          <div className="text-[10px] text-slate-400 font-mono truncate max-w-[130px]">
+                            {report.reporter_email}
+                          </div>
+                        </td>
+
+                        {/* Officer */}
+                        <td className="py-3 px-4">
+                          <span className={`text-xs font-bold ${report.reviewer !== 'Unassigned' ? 'text-slate-800' : 'text-slate-400 italic'}`}>
+                            {report.reviewer}
+                          </span>
+                        </td>
+
+                        {/* Site & Unit */}
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-slate-800">{report.site}</div>
+                          <div className="text-[10px] text-slate-400 truncate max-w-[120px]">{report.unit}</div>
+                        </td>
+
+                        {/* Issue Type & LSR */}
+                        <td className="py-3 px-4">
+                          <div className="font-extrabold text-slate-800">{report.life_saving_rule}</div>
+                          <span className="text-[9.5px] font-bold text-slate-500 uppercase">
+                            {report.report_type}
+                          </span>
+                        </td>
+
+                        {/* SIF Score */}
+                        <td className="py-3 px-4">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                            report.sif_risk_score >= 8.0 ? 'bg-rose-100 text-rose-800'
+                            : report.sif_risk_score >= 6.5 ? 'bg-amber-100 text-amber-800'
+                            : 'bg-emerald-100 text-emerald-800'
+                          }`}>
+                            {report.sif_risk_score}/10 ({report.risk_level})
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="py-3 px-4">
+                          <span className="text-[10.5px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                            {report.status}
+                          </span>
+                        </td>
+
+                        {/* View Complete Details */}
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            onClick={() => setSelectedReportDetail(report)}
+                            className="px-2.5 py-1.5 bg-[#008779] hover:bg-[#007064] text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-2xs"
+                          >
+                            View
+                          </button>
+                        </td>
+
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* ── TAB 5: AUDIT LOG ───────────────────────────────────────────────── */}
+      {/* ===================================================================== */}
+      {activeTab === 'audit' && (
+        <div className="space-y-6">
+
+          {/* Audit Toolbar & Issue History Explorer */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-5 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <History className="h-4.5 w-4.5 text-[#008779]" />
+                  <span>Comprehensive System Activity & Audit Trail</span>
+                </h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Traceable log showing who created the report, who assigned the issue, who accepted it, who updated progress, and who completed or rejected it.
+                </p>
+              </div>
+
+              <button
+                onClick={fetchAuditLogs}
+                className="self-start md:self-auto px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                <span>Refresh Logs</span>
+              </button>
             </div>
 
-            {saveSuccess && (
-              <div className="flex items-center gap-2 p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl text-xs font-bold text-emerald-800 animate-fadeIn">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <span>{saveSuccess}</span>
+            {/* Filter and Issue Search Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 text-xs">
+              
+              {/* Search by Issue / Event ID for complete issue history */}
+              <div className="relative">
+                <Filter className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={auditIssueIdFilter}
+                  onChange={(e) => setAuditIssueIdFilter(e.target.value)}
+                  placeholder="Filter by Issue / Event ID (e.g. EVT-10101)..."
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 font-mono"
+                />
+              </div>
+
+              {/* Action Filter */}
+              <div>
+                <select
+                  value={auditActionFilter}
+                  onChange={(e) => setAuditActionFilter(e.target.value)}
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 font-medium cursor-pointer"
+                >
+                  <option value="All">All Audit Activities</option>
+                  <option value="Report Created">Report Created (Employee)</option>
+                  <option value="Issue Assigned">Issue Assigned (Manager / Officer)</option>
+                  <option value="Issue Accepted">Issue Accepted & Verified (Officer)</option>
+                  <option value="Progress Updated">Progress Updated</option>
+                  <option value="Issue Completed">Issue Completed / Verified</option>
+                  <option value="Issue Rejected">Issue Rejected</option>
+                  <option value="User Registered">User Registered (Pending)</option>
+                  <option value="User Approved">User Approved (Admin)</option>
+                  <option value="User Rejected">User Rejected (Admin)</option>
+                  <option value="User Role Changed">User Role Changed (Admin)</option>
+                  <option value="User Activated">User Activated / Deactivated</option>
+                </select>
+              </div>
+
+              {/* General Search */}
+              <div className="relative">
+                <Search className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={auditSearchQuery}
+                  onChange={(e) => setAuditSearchQuery(e.target.value)}
+                  placeholder="Search details, actor, email..."
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800"
+                />
+              </div>
+
+            </div>
+
+            {auditIssueIdFilter && (
+              <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-900 flex items-center justify-between">
+                <span>Showing complete historical audit timeline for issue: <strong>{auditIssueIdFilter}</strong></span>
+                <button
+                  onClick={() => setAuditIssueIdFilter('')}
+                  className="text-xs font-bold text-blue-700 hover:text-blue-900 cursor-pointer"
+                >
+                  Clear Filter
+                </button>
               </div>
             )}
+          </div>
 
-            <button type="submit"
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold transition shadow-sm cursor-pointer"
-            >
-              <Save className="h-4 w-4" />
-              <span>Save AI Thresholds</span>
-            </button>
-          </form>
+          {/* Audit Logs Chronological Timeline & Table */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 border-b border-slate-200 text-[10.5px] font-black uppercase tracking-wider text-slate-500">
+                  <tr>
+                    <th className="py-3 px-4">Date & Time</th>
+                    <th className="py-3 px-4">Activity / Action</th>
+                    <th className="py-3 px-4">Actor & Role</th>
+                    <th className="py-3 px-4">Event / Issue ID</th>
+                    <th className="py-3 px-4">Full Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {loadingAudits ? (
+                    <tr>
+                      <td colSpan={5} className="py-8 text-center text-slate-400">
+                        <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-[#008779]" />
+                        <span>Loading audit logs...</span>
+                      </td>
+                    </tr>
+                  ) : filteredAuditLogs.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-12 text-center text-slate-400">
+                        <History className="h-8 w-8 mx-auto mb-2 text-slate-300 stroke-1" />
+                        <div className="font-bold text-slate-700">No audit activity matched filter</div>
+                        <div className="text-[11px] text-slate-400 mt-0.5">Try clearing filters to see all events.</div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAuditLogs.map(audit => {
+                      const isCreation = audit.action.includes('Created');
+                      const isAssignment = audit.action.includes('Assigned') || audit.action.includes('Allotment');
+                      const isAcceptance = audit.action.includes('Accepted') || audit.action.includes('Verified');
+                      const isProgress = audit.action.includes('Progress');
+                      const isCompletion = audit.action.includes('Completed');
+                      const isRejection = audit.action.includes('Rejected');
+                      const isUserApproval = audit.action.includes('User Approved');
+
+                      return (
+                        <tr key={audit.id} className="hover:bg-slate-50/70 transition">
+                          
+                          {/* Date & Time */}
+                          <td className="py-3 px-4 font-mono whitespace-nowrap text-slate-600">
+                            <div className="font-bold text-slate-900">
+                              {new Date(audit.timestamp).toLocaleDateString()}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              {new Date(audit.timestamp).toLocaleTimeString()}
+                            </div>
+                          </td>
+
+                          {/* Activity / Action Badge */}
+                          <td className="py-3 px-4">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              isCreation ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : isAssignment ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : isAcceptance ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                              : isProgress ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : isCompletion ? 'bg-teal-100 text-teal-800 border border-teal-200'
+                              : isRejection ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                              : isUserApproval ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : 'bg-slate-100 text-slate-700 border border-slate-200'
+                            }`}>
+                              <span>{audit.action}</span>
+                            </span>
+                          </td>
+
+                          {/* Actor & Role */}
+                          <td className="py-3 px-4">
+                            <div className="font-extrabold text-slate-900">{audit.actor_name}</div>
+                            <span className="text-[9.5px] font-bold text-slate-500 uppercase">
+                              {audit.actor_role} ({audit.user_email.split('@')[0]})
+                            </span>
+                          </td>
+
+                          {/* Event / Issue ID with click to filter */}
+                          <td className="py-3 px-4 font-mono font-bold">
+                            <button
+                              onClick={() => setAuditIssueIdFilter(audit.event_id)}
+                              title="Click to view complete history for this issue"
+                              className="text-blue-600 hover:underline cursor-pointer"
+                            >
+                              {audit.event_id}
+                            </button>
+                          </td>
+
+                          {/* Details */}
+                          <td className="py-3 px-4 text-slate-600 max-w-md">
+                            <div className="line-clamp-2">{audit.details}</div>
+                          </td>
+
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
         </div>
       )}
 
-      {/* ── TAB 4: AUDIT LOGS ── */}
-      {activeTab === 'audit' && (
-        <div className="bg-white rounded-3xl p-6 border border-[#E6ECEB] shadow-sm space-y-5">
-          <div className="flex justify-between items-center pb-3 border-b border-slate-100">
-            <div>
-              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Tamper-Proof System Audit Logs</h3>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">Chronological immutable record of all safety submissions, AI scores, and officer verifications.</p>
-            </div>
-            <span className="text-xs text-[#008779] font-extrabold bg-[#E8F6F4] px-3 py-1 rounded-full border border-teal-100">{auditLogs.length} Records</span>
-          </div>
-
-          {loadingAudits ? (
-            <div className="py-12 text-center text-xs text-slate-400">Loading audit records...</div>
-          ) : auditLogs.length === 0 ? (
-            <div className="py-12 text-center text-xs text-slate-400">No audit records found.</div>
-          ) : (
-            <div className="max-h-[480px] overflow-y-auto divide-y divide-slate-100 text-xs">
-              {auditLogs.map(log => (
-                <div key={log.id} className="py-3.5 flex flex-col sm:flex-row sm:items-start justify-between gap-2 hover:bg-slate-50/80 px-3 rounded-2xl transition">
-                  <div className="space-y-0.5">
-                    <div className="font-extrabold text-slate-900 flex items-center gap-2">
-                      <span>{log.action}</span>
-                      <span className="text-[10px] font-mono text-[#008779] bg-[#E8F6F4] px-2 py-0.5 rounded-md">{log.event_id}</span>
-                    </div>
-                    {log.details && <p className="text-slate-500 text-[11px] leading-snug">{log.details}</p>}
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-[10px] text-slate-400 font-mono block">
-                      {new Date(log.timestamp).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                    </span>
-                    <span className="text-[11px] text-[#008779] font-bold">{log.user_email}</span>
-                  </div>
+      {/* ===================================================================== */}
+      {/* ── MODAL: USER DETAILS ────────────────────────────────────────────── */}
+      {/* ===================================================================== */}
+      {selectedUserDetail && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="h-11 w-11 rounded-2xl bg-[#E8F6F4] text-[#008779] flex items-center justify-center font-bold text-lg">
+                  {selectedUserDetail.name.charAt(0)}
                 </div>
-              ))}
+                <div>
+                  <h3 className="text-base font-black text-slate-900">{selectedUserDetail.name}</h3>
+                  <div className="text-xs text-slate-500 font-mono">{selectedUserDetail.email}</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedUserDetail(null)}
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-          )}
+
+            <div className="grid grid-cols-2 gap-4 text-xs">
+              <div className="p-3 bg-slate-50 rounded-2xl">
+                <div className="text-[10px] font-extrabold uppercase text-slate-400">ID Number</div>
+                <div className="text-sm font-bold text-slate-900 font-mono mt-0.5">{selectedUserDetail.id_number}</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-2xl">
+                <div className="text-[10px] font-extrabold uppercase text-slate-400">Platform Role</div>
+                <div className="text-sm font-bold text-slate-900 mt-0.5">{selectedUserDetail.role}</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-2xl">
+                <div className="text-[10px] font-extrabold uppercase text-slate-400">Phone Number</div>
+                <div className="text-sm font-bold text-slate-900 mt-0.5">{selectedUserDetail.phone || '—'}</div>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-2xl">
+                <div className="text-[10px] font-extrabold uppercase text-slate-400">Approval Status</div>
+                <div className="text-sm font-bold text-slate-900 mt-0.5">{selectedUserDetail.approval_status}</div>
+              </div>
+              <div className="col-span-2 p-3 bg-slate-50 rounded-2xl">
+                <div className="text-[10px] font-extrabold uppercase text-slate-400">Address / Location</div>
+                <div className="text-sm font-medium text-slate-900 mt-0.5">{selectedUserDetail.address || 'Refinery Complex, Operational Fleet'}</div>
+              </div>
+              <div className="col-span-2 p-3 bg-slate-50 rounded-2xl">
+                <div className="text-[10px] font-extrabold uppercase text-slate-400">Registration Date</div>
+                <div className="text-xs font-mono text-slate-700 mt-0.5">
+                  {new Date(selectedUserDetail.created_at).toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions from Modal */}
+            {selectedUserDetail.approval_status === 'Pending' && (
+              <div className="flex gap-2 pt-2 border-t border-slate-100">
+                <button
+                  onClick={() => {
+                    handleApproveUser(selectedUserDetail.id, selectedUserDetail.name);
+                    setSelectedUserDetail(null);
+                  }}
+                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Check className="h-4 w-4" />
+                  <span>Approve Registration</span>
+                </button>
+                <button
+                  onClick={() => {
+                    handleRejectUser(selectedUserDetail.id, selectedUserDetail.name);
+                    setSelectedUserDetail(null);
+                  }}
+                  className="flex-1 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <X className="h-4 w-4" />
+                  <span>Reject Registration</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* ── TAB 5: DATA & BACKUP ── */}
-      {activeTab === 'data' && (
-        <div className="bg-white rounded-3xl p-6 border border-[#E6ECEB] shadow-sm space-y-6">
-          <div className="pb-4 border-b border-slate-100">
-            <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Database Integrity & Maintenance</h3>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">Automated backups, database health metrics, and seed reset functions for the RAKSHA AI platform.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            {[
-              { label: 'Total Safety Records', value: '106+', color: 'text-[#008779]', bg: 'bg-[#E8F6F4]' },
-              { label: 'Active User Personas', value: '5', color: 'text-purple-700', bg: 'bg-purple-50' },
-              { label: 'Audit Log Entries', value: `${auditLogs.length || '12'}`, color: 'text-blue-700', bg: 'bg-blue-50' }
-            ].map(s => (
-              <div key={s.label} className={`p-4 ${s.bg} border border-slate-200/70 rounded-2xl text-center`}>
-                <div className={`text-2xl font-black font-mono-numbers ${s.color}`}>{s.value}</div>
-                <div className="text-[10px] text-slate-500 font-bold uppercase mt-1">{s.label}</div>
+      {/* ===================================================================== */}
+      {/* ── MODAL: REPORT COMPLETE DETAILS ─────────────────────────────────── */}
+      {/* ===================================================================== */}
+      {selectedReportDetail && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl space-y-5 border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs font-black text-[#008779] bg-[#E8F6F4] px-2 py-0.5 rounded">
+                    {selectedReportDetail.report_code}
+                  </span>
+                  <span className="text-[10.5px] font-bold text-slate-500 uppercase">
+                    {selectedReportDetail.report_type}
+                  </span>
+                </div>
+                <h3 className="text-base font-black text-slate-900 mt-1">
+                  {selectedReportDetail.life_saving_rule}
+                </h3>
               </div>
-            ))}
-          </div>
-
-          <div className="p-5 bg-rose-50/70 border border-rose-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <div className="text-xs font-extrabold text-slate-900">Purge & Re-Seed Demo Safety Dataset</div>
-              <div className="text-[11px] text-slate-500 mt-0.5">Replaces database with the comprehensive baseline RAKSHA AI dataset including all 5 personas and reference Life-Saving Rules catalog.</div>
+              <button
+                onClick={() => setSelectedReportDetail(null)}
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-500 cursor-pointer"
+              >
+                ✕
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={onResetDb}
-              className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition shrink-0 cursor-pointer"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              <span>Reset Database</span>
-            </button>
+
+            {/* Narrative */}
+            <div className="p-4 bg-slate-50 rounded-2xl space-y-1">
+              <div className="text-[10px] font-extrabold uppercase text-slate-400">Report Narrative</div>
+              <p className="text-xs text-slate-800 leading-relaxed font-medium">
+                {selectedReportDetail.description}
+              </p>
+            </div>
+
+            {/* Multi-Factor Scoring */}
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs">
+                <div className="text-[9.5px] font-extrabold text-amber-800 uppercase">SIF Score</div>
+                <div className="text-lg font-black text-amber-900 mt-0.5">{selectedReportDetail.sif_risk_score} / 10</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-blue-50 border border-blue-200 text-xs">
+                <div className="text-[9.5px] font-extrabold text-blue-800 uppercase">Risk Level</div>
+                <div className="text-lg font-black text-blue-900 mt-0.5">{selectedReportDetail.risk_level}</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-purple-50 border border-purple-200 text-xs">
+                <div className="text-[9.5px] font-extrabold text-purple-800 uppercase">Precursor</div>
+                <div className="text-lg font-black text-purple-900 mt-0.5">{selectedReportDetail.is_sif_precursor}</div>
+              </div>
+            </div>
+
+            {/* Location & Personnel */}
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-3 bg-slate-50 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Site & Unit</span>
+                <span className="font-bold text-slate-900">{selectedReportDetail.site} — {selectedReportDetail.unit}</span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Location Context</span>
+                <span className="font-bold text-slate-900">{selectedReportDetail.location}</span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Reporter (Employee)</span>
+                <span className="font-mono text-slate-800">{selectedReportDetail.reporter_email}</span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl">
+                <span className="text-[10px] font-bold text-slate-400 block uppercase">Reviewer / Officer</span>
+                <span className="font-bold text-slate-800">{selectedReportDetail.reviewer}</span>
+              </div>
+            </div>
+
+            {/* Quick Filter in Audit */}
+            <div className="pt-2 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => {
+                  setAuditIssueIdFilter(selectedReportDetail.id);
+                  setActiveTab('audit');
+                  setSelectedReportDetail(null);
+                }}
+                className="px-4 py-2 bg-[#008779] hover:bg-[#007064] text-white text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+              >
+                <History className="h-3.5 w-3.5" />
+                <span>View Complete Issue History in Audit Log →</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

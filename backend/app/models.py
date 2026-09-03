@@ -23,8 +23,13 @@ class User(Base):
     email = Column(String(100), unique=True, index=True, nullable=False)
     password_hash = Column(String(200), nullable=False)
     name = Column(String(100), nullable=False)
-    role = Column(String(50), nullable=False)  # Field Worker, Safety Officer, Safety Manager, Admin
+    role = Column(String(50), nullable=False)  # Employee, Officer, Manager, Admin
+    id_number = Column(String(50), nullable=True)  # Employee / Officer / Manager ID
+    phone = Column(String(50), nullable=True)
+    address = Column(String(255), nullable=True)
+    approval_status = Column(String(30), default="Pending")  # Pending, Approved, Rejected
     is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 class Site(Base):
     __tablename__ = "sites"
@@ -200,8 +205,10 @@ class AuditEvent(Base):
     __tablename__ = "audit_events"
     
     id = Column(Integer, primary_key=True, index=True)
-    event_id = Column(String(50))
-    action = Column(String(100), nullable=False)  # AI Classified, Officer Verified, Stop Work Issued, Action Dispatched, Resolved
+    event_id = Column(String(50), nullable=True)
+    action = Column(String(100), nullable=False)  # Report Created, Issue Assigned, Issue Accepted, Progress Updated, Completed, Rejected, User Registered, User Approved, User Rejected, User Role Changed, User Status Changed
+    actor_name = Column(String(100), nullable=True)
+    actor_role = Column(String(50), nullable=True)
     details = Column(Text)
     user_email = Column(String(100))
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)

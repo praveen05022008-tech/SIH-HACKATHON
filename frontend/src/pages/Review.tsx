@@ -435,12 +435,12 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted,
                       {/* 4 score highlights */}
                       <div className="grid grid-cols-4 gap-2 text-center">
                         <div className={`py-2.5 rounded-xl border text-[10px] font-black ${
-                          selectedEvent.sif_risk_score >= 8.5 ? 'bg-rose-50 border-rose-200 text-rose-700'
-                          : selectedEvent.sif_risk_score >= 6.5 ? 'bg-amber-50 border-amber-200 text-amber-700'
+                          (selectedEvent.sif_risk_score ?? 0) >= 8.5 ? 'bg-rose-50 border-rose-200 text-rose-700'
+                          : (selectedEvent.sif_risk_score ?? 0) >= 6.5 ? 'bg-amber-50 border-amber-200 text-amber-700'
                           : 'bg-emerald-50 border-emerald-200 text-emerald-700'
                         }`}>
                           <div className="opacity-60 text-[9px] mb-0.5">RISK</div>
-                          {selectedEvent.risk_level ?? (selectedEvent.sif_risk_score >= 6.5 ? 'HIGH' : 'MED')}
+                          {selectedEvent.risk_level ?? ((selectedEvent.sif_risk_score ?? 0) >= 6.5 ? 'HIGH' : 'MED')}
                         </div>
                         <div className="py-2.5 rounded-xl border border-slate-200 bg-white text-[10px] font-black text-slate-900">
                           <div className="opacity-60 text-[9px] mb-0.5 text-slate-400">SCORE</div>

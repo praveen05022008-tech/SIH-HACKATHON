@@ -81,44 +81,12 @@ export const Topbar: React.FC<TopbarProps> = ({
       {/* Right Action Icons & User Pill */}
       <div className="flex items-center gap-3.5">
         
-        {/* Persona Switcher Dropdown */}
-        <div className="relative">
-          <button
-            onClick={() => setShowPersonaDropdown(!showPersonaDropdown)}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-[#E6ECEB] rounded-full text-xs text-slate-700 font-bold hover:bg-slate-50 transition shadow-xs cursor-pointer"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-[#008779]" />
-            <span>Switch Role</span>
-            <ChevronDown className="h-3 w-3 text-slate-400" />
-          </button>
-
-          {showPersonaDropdown && (
-            <div className="absolute right-0 mt-2 w-64 bg-white border border-[#E6ECEB] rounded-2xl shadow-xl py-2 z-30 animate-fadeIn">
-              <div className="px-4 py-2 border-b border-slate-100 bg-[#E8F6F4]/30">
-                <span className="text-[10px] font-bold text-[#008779] uppercase tracking-wider">Quick Persona Navigator</span>
-              </div>
-              <div className="py-1">
-                {personas.map((p) => (
-                  <button
-                    key={p.email}
-                    onClick={() => {
-                      if (onSwitchPersona) {
-                        onSwitchPersona(p.email);
-                      }
-                      setShowPersonaDropdown(false);
-                    }}
-                    className={`w-full px-4 py-2.5 text-left text-xs font-semibold hover:bg-slate-50 flex items-center justify-between transition cursor-pointer ${
-                      user?.email === p.email ? 'text-[#008779] bg-[#E8F6F4]/50 font-bold' : 'text-slate-700'
-                    }`}
-                  >
-                    <span>{p.label}</span>
-                    <span className={`text-[9px] px-2 py-0.5 rounded-full border font-bold ${getRoleBadgeColor(p.role)}`}>
-                      {p.role}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
+        {/* Verified User Account Pill */}
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-white border border-[#E6ECEB] rounded-full text-xs text-slate-700 shadow-xs">
+          <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
+          <span className="font-extrabold text-slate-900">{user?.role}</span>
+          {user?.id_number && (
+            <span className="text-[10px] font-mono text-slate-400">({user.id_number})</span>
           )}
         </div>
 

@@ -1,7 +1,14 @@
 export interface User {
+  id?: number;
   email: string;
   name: string;
   role: string;
+  id_number?: string;
+  phone?: string;
+  address?: string;
+  approval_status?: string;
+  is_active?: boolean;
+  created_at?: string;
   token?: string;
 }
 
@@ -234,6 +241,77 @@ export interface SafetyDirective {
   issued_by: string;
   acknowledge_count: number;
   created_at: string;
+}
+
+export interface AdminUser {
+  id: number;
+  name: string;
+  id_number: string;
+  email: string;
+  phone: string;
+  address: string;
+  role: 'Employee' | 'Officer' | 'Manager' | 'Admin' | string;
+  approval_status: 'Pending' | 'Approved' | 'Rejected' | string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface AdminDashboardData {
+  kpis: {
+    total_employee: number;
+    total_officer: number;
+    total_manager: number;
+    total_admin: number;
+    total_users: number;
+    pending_approvals: number;
+    approved_users: number;
+    rejected_users: number;
+    active_users: number;
+    deactivated_users: number;
+    total_reports: number;
+  };
+  charts: {
+    role_distribution: { role: string; count: number; color: string }[];
+    status_distribution: { status: string; count: number; color: string }[];
+    issue_distribution: { type: string; count: number }[];
+    severity_distribution: { severity: string; count: number; color: string }[];
+  };
+}
+
+export interface AdminReport {
+  id: string;
+  report_code: string;
+  report_type: string;
+  reporter_email: string;
+  reviewer: string;
+  assigned_team: string;
+  site: string;
+  unit: string;
+  location: string;
+  activity: string;
+  description: string;
+  hazard: string;
+  life_saving_rule: string;
+  risk_level: string;
+  sif_risk_score: number;
+  is_sif_precursor: string;
+  status: string;
+  action_status: string;
+  stop_work_issued: boolean;
+  action_id?: string | null;
+  resolution_notes?: string | null;
+  timestamp: string;
+}
+
+export interface AuditLogEntry {
+  id: number;
+  event_id: string;
+  action: string;
+  actor_name: string;
+  actor_role: string;
+  details: string;
+  user_email: string;
+  timestamp: string;
 }
 
 

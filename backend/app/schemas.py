@@ -10,9 +10,29 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
 
+class UserRegister(BaseModel):
+    name: str
+    id_number: str
+    email: str
+    password: str
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    role: str = "Employee"
+
+class UserApprovalPayload(BaseModel):
+    action: str  # "approve" or "reject"
+
+class UserRoleChangePayload(BaseModel):
+    role: str  # Employee, Officer, Manager, Admin
+
 class UserResponse(UserBase):
     id: int
+    id_number: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
+    approval_status: str = "Pending"
     is_active: bool
+    created_at: Optional[datetime.datetime] = None
     
     class Config:
         from_attributes = True

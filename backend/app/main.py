@@ -52,66 +52,482 @@ def read_root():
         "database_type": "SQLite Fallback" if "sqlite" in str(database.engine.url) else "TiDB Cloud"
     }
 
+# POST /api/auth/register
+@app.post("/api/auth/register")
+def register_user(payload: schemas.UserRegister, db: Session = Depends(get_db)):
+    cleaned_email = payload.email.strip().lower()
+    existing = db.query(models.User).filter(models.User.email.ilike(cleaned_email)).first()
+    if existing:
+        raise HTTPException(
+            status_code=400,
+            detail=f"An account with email '{payload.email}' already exists."
+        )
+    
+    # Normalize role to standard 4 roles
+    req_role = payload.role.strip()
+    if req_role in ["Field Worker", "Worker", "Employee"]:
+        norm_role = "Employee"
+    elif req_role in ["Safety Officer", "Officer"]:
+        norm_role = "Officer"
+    elif req_role in ["Safety Manager", "Manager"]:
+        norm_role = "Manager"
+    elif req_role in ["Admin", "System Admin"]:
+        norm_role = "Admin"
+    else:
+        norm_role = "Employee"
+        
+    new_user = models.User(
+        email=cleaned_email,
+        name=payload.name.strip(),
+        id_number=payload.id_number.strip(),
+        password_hash=payload.password,
+        role=norm_role,
+        phone=payload.phone.strip() if payload.phone else None,
+        address=payload.address.strip() if payload.address else None,
+        approval_status="Pending",
+        is_active=False
+    )
+    db.add(new_user)
+    
+    # Record Audit Event
+    audit = models.AuditEvent(
+        event_id=f"REG-{payload.id_number.strip()}",
+        action="User Registered",
+        actor_name=payload.name.strip(),
+        actor_role=norm_role,
+        details=f"New user registration submitted for '{payload.name}' ({cleaned_email}, Role: {norm_role}, ID: {payload.id_number}). Placed in Admin approval queue.",
+        user_email=cleaned_email
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(new_user)
+    
+    return {
+        "success": True,
+        "message": f"Registration submitted for {payload.name}. Your account is pending System Administrator approval.",
+        "approval_status": "Pending",
+        "user": {
+            "id": new_user.id,
+            "name": new_user.name,
+            "email": new_user.email,
+            "id_number": new_user.id_number,
+            "role": new_user.role,
+            "approval_status": new_user.approval_status
+        }
+    }
+
 # POST /api/auth/login
 @app.post("/api/auth/login")
 def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
     user = auth.authenticate_user(db, payload.email, payload.password)
     if not user:
-        # Fallback for quick persona logins
-        fallback_roles = {
-            "worker@refinery.safe": ("Field Worker Demo", "Field Worker"),
-            "officer@refinery.safe": ("Safety Officer Lead", "Safety Officer"),
-            "reviewer@refinery.safe": ("Demo Reviewer", "Safety Officer"),
-            "manager@refinery.safe": ("HSE Manager / Lead", "Safety Manager"),
-            "admin@refinery.safe": ("System Administrator", "Admin"),
-            "field.worker@sifdemo.com": ("Field Worker Demo", "Field Worker"),
-            "ai.pipeline@sifdemo.com": ("AI Ingestion Pipeline", "AI Pipeline Viewer"),
-            "officer@sifdemo.com": ("Capt. Arvind Sen", "Safety Officer"),
-            "manager@sifdemo.com": ("Dr. Vikram Roy", "Safety Manager"),
-            "admin@sifdemo.com": ("System Administrator", "Admin")
-        }
-        if payload.email in fallback_roles:
-            name, role = fallback_roles[payload.email]
-            return {
-                "email": payload.email,
-                "name": name,
-                "role": role,
-                "token": f"mock-jwt-token-for-{role.lower().replace(' ', '-')}"
-            }
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password"
         )
+    
+    # Check approval status
+    if user.approval_status == "Pending":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is pending administrator approval. Please wait for an Admin to approve your account before logging in."
+        )
+        
+    if user.approval_status == "Rejected":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your registration request was rejected by the System Administrator. Access denied."
+        )
+        
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deactivated by the System Administrator. Please contact an Admin."
+        )
+        
     return {
+        "id": user.id,
         "email": user.email,
         "name": user.name,
         "role": user.role,
-        "token": f"mock-jwt-token-for-{user.role.lower().replace(' ', '-')}"
+        "id_number": user.id_number or "",
+        "phone": user.phone or "",
+        "address": user.address or "",
+        "approval_status": user.approval_status,
+        "token": f"token-{user.role.lower()}-{user.id}"
     }
 
-# GET /api/users
-@app.get("/api/users")
-def get_users(db: Session = Depends(get_db)):
-    users = db.query(models.User).all()
-    return users
+# ==========================================
+# SYSTEM ADMIN MASTER CONTROL ENDPOINTS
+# ==========================================
 
-# POST /api/users
-@app.post("/api/users")
-def create_user(payload: schemas.UserCreate, db: Session = Depends(get_db)):
-    existing = db.query(models.User).filter(models.User.email == payload.email).first()
-    if existing:
-        raise HTTPException(status_code=400, detail="User already exists")
-    new_user = models.User(
-        email=payload.email,
-        name=payload.name,
-        password_hash=payload.password,
-        role=payload.role,
-        is_active=True
+# GET /api/admin/dashboard
+@app.get("/api/admin/dashboard")
+def get_admin_dashboard(db: Session = Depends(get_db)):
+    total_employee = db.query(models.User).filter(models.User.role.in_(["Employee", "Field Worker"])).count()
+    total_officer = db.query(models.User).filter(models.User.role.in_(["Officer", "Safety Officer"])).count()
+    total_manager = db.query(models.User).filter(models.User.role.in_(["Manager", "Safety Manager"])).count()
+    total_admin = db.query(models.User).filter(models.User.role == "Admin").count()
+    
+    total_users = db.query(models.User).count()
+    pending_approvals = db.query(models.User).filter(models.User.approval_status == "Pending").count()
+    approved_users = db.query(models.User).filter(models.User.approval_status == "Approved").count()
+    rejected_users = db.query(models.User).filter(models.User.approval_status == "Rejected").count()
+    active_users = db.query(models.User).filter(models.User.is_active == True).count()
+    deactivated_users = db.query(models.User).filter(models.User.is_active == False).count()
+    
+    total_reports = db.query(models.SafetyEvent).count()
+    critical_reports = db.query(models.SafetyEvent).filter(models.SafetyEvent.risk_level == "CRITICAL").count()
+    high_reports = db.query(models.SafetyEvent).filter(models.SafetyEvent.risk_level == "HIGH").count()
+    medium_reports = db.query(models.SafetyEvent).filter(models.SafetyEvent.risk_level == "MEDIUM").count()
+    low_reports = db.query(models.SafetyEvent).filter(models.SafetyEvent.risk_level == "LOW").count()
+    
+    unsafe_acts = db.query(models.SafetyEvent).filter(models.SafetyEvent.report_type == "Unsafe Act").count()
+    unsafe_conditions = db.query(models.SafetyEvent).filter(models.SafetyEvent.report_type == "Unsafe Condition").count()
+    near_misses = db.query(models.SafetyEvent).filter(models.SafetyEvent.report_type == "Near Miss").count()
+    
+    role_distribution = [
+        {"role": "Employee", "count": total_employee, "color": "#10B981"},
+        {"role": "Officer", "count": total_officer, "color": "#3B82F6"},
+        {"role": "Manager", "count": total_manager, "color": "#F97316"},
+        {"role": "Admin", "count": total_admin, "color": "#8B5CF6"}
+    ]
+    
+    status_distribution = [
+        {"status": "Approved", "count": approved_users, "color": "#10B981"},
+        {"status": "Pending", "count": pending_approvals, "color": "#F59E0B"},
+        {"status": "Rejected", "count": rejected_users, "color": "#EF4444"}
+    ]
+    
+    issue_distribution = [
+        {"type": "Unsafe Condition", "count": unsafe_conditions},
+        {"type": "Unsafe Act", "count": unsafe_acts},
+        {"type": "Near Miss", "count": near_misses}
+    ]
+    
+    severity_distribution = [
+        {"severity": "Critical", "count": critical_reports, "color": "#E11D48"},
+        {"severity": "High", "count": high_reports, "color": "#EA580C"},
+        {"severity": "Medium", "count": medium_reports, "color": "#D97706"},
+        {"severity": "Low", "count": low_reports, "color": "#059669"}
+    ]
+    
+    return {
+        "kpis": {
+            "total_employee": total_employee,
+            "total_officer": total_officer,
+            "total_manager": total_manager,
+            "total_admin": total_admin,
+            "total_users": total_users,
+            "pending_approvals": pending_approvals,
+            "approved_users": approved_users,
+            "rejected_users": rejected_users,
+            "active_users": active_users,
+            "deactivated_users": deactivated_users,
+            "total_reports": total_reports
+        },
+        "charts": {
+            "role_distribution": role_distribution,
+            "status_distribution": status_distribution,
+            "issue_distribution": issue_distribution,
+            "severity_distribution": severity_distribution
+        }
+    }
+
+# GET /api/admin/users
+@app.get("/api/admin/users")
+def get_admin_users(
+    role: Optional[str] = None,
+    approval_status: Optional[str] = None,
+    is_active: Optional[bool] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.User)
+    
+    if role and role.lower() != "all":
+        if role.lower() in ["employee", "field worker"]:
+            query = query.filter(models.User.role.in_(["Employee", "Field Worker"]))
+        elif role.lower() in ["officer", "safety officer"]:
+            query = query.filter(models.User.role.in_(["Officer", "Safety Officer"]))
+        elif role.lower() in ["manager", "safety manager"]:
+            query = query.filter(models.User.role.in_(["Manager", "Safety Manager"]))
+        else:
+            query = query.filter(models.User.role.ilike(role))
+            
+    if approval_status and approval_status.lower() != "all":
+        query = query.filter(models.User.approval_status.ilike(approval_status))
+        
+    if is_active is not None:
+        query = query.filter(models.User.is_active == is_active)
+        
+    if search:
+        s = f"%{search}%"
+        query = query.filter(
+            (models.User.name.ilike(s)) |
+            (models.User.email.ilike(s)) |
+            (models.User.id_number.ilike(s)) |
+            (models.User.phone.ilike(s))
+        )
+        
+    users = query.order_by(models.User.created_at.desc()).all()
+    
+    return [
+        {
+            "id": u.id,
+            "name": u.name,
+            "id_number": u.id_number or f"USR-{u.id:04d}",
+            "email": u.email,
+            "phone": u.phone or "—",
+            "address": u.address or "—",
+            "role": "Employee" if u.role == "Field Worker" else ("Officer" if u.role == "Safety Officer" else ("Manager" if u.role == "Safety Manager" else u.role)),
+            "approval_status": u.approval_status or "Approved",
+            "is_active": u.is_active if u.is_active is not None else True,
+            "created_at": u.created_at.isoformat() if u.created_at else datetime.datetime.utcnow().isoformat()
+        }
+        for u in users
+    ]
+
+# POST /api/admin/users/{user_id}/approve
+@app.post("/api/admin/users/{user_id}/approve")
+def approve_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user.approval_status = "Approved"
+    user.is_active = True
+    
+    audit = models.AuditEvent(
+        event_id=f"USR-{user.id}",
+        action="User Approved",
+        actor_name="DevOps System Admin",
+        actor_role="Admin",
+        details=f"Admin approved registration for user '{user.name}' ({user.email}, Role: {user.role}, ID: {user.id_number}). Access granted to portal.",
+        user_email="admin@refinery.safe"
     )
-    db.add(new_user)
+    db.add(audit)
     db.commit()
-    db.refresh(new_user)
-    return new_user
+    db.refresh(user)
+    
+    return {"success": True, "message": f"User '{user.name}' approved successfully. They can now sign in."}
+
+# POST /api/admin/users/{user_id}/reject
+@app.post("/api/admin/users/{user_id}/reject")
+def reject_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user.approval_status = "Rejected"
+    user.is_active = False
+    
+    audit = models.AuditEvent(
+        event_id=f"USR-{user.id}",
+        action="User Rejected",
+        actor_name="DevOps System Admin",
+        actor_role="Admin",
+        details=f"Admin rejected registration for user '{user.name}' ({user.email}, Role: {user.role}, ID: {user.id_number}). Access denied.",
+        user_email="admin@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(user)
+    
+    return {"success": True, "message": f"User '{user.name}' registration rejected."}
+
+# POST /api/admin/users/{user_id}/toggle-active
+@app.post("/api/admin/users/{user_id}/toggle-active")
+def toggle_user_active(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user.is_active = not user.is_active
+    status_label = "Activated" if user.is_active else "Deactivated"
+    
+    audit = models.AuditEvent(
+        event_id=f"USR-{user.id}",
+        action=f"User {status_label}",
+        actor_name="DevOps System Admin",
+        actor_role="Admin",
+        details=f"Admin {status_label.lower()} account for '{user.name}' ({user.email}, Role: {user.role}).",
+        user_email="admin@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(user)
+    
+    return {"success": True, "is_active": user.is_active, "message": f"User '{user.name}' is now {status_label}."}
+
+# POST /api/admin/users/{user_id}/change-role
+@app.post("/api/admin/users/{user_id}/change-role")
+def change_user_role(user_id: int, payload: schemas.UserRoleChangePayload, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    old_role = user.role
+    new_role = payload.role.strip()
+    if new_role in ["Field Worker", "Worker", "Employee"]:
+        new_role = "Employee"
+    elif new_role in ["Safety Officer", "Officer"]:
+        new_role = "Officer"
+    elif new_role in ["Safety Manager", "Manager"]:
+        new_role = "Manager"
+    elif new_role in ["Admin", "System Admin"]:
+        new_role = "Admin"
+        
+    user.role = new_role
+    
+    audit = models.AuditEvent(
+        event_id=f"USR-{user.id}",
+        action="User Role Changed",
+        actor_name="DevOps System Admin",
+        actor_role="Admin",
+        details=f"Admin updated role for '{user.name}' ({user.email}) from '{old_role}' to '{new_role}'.",
+        user_email="admin@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(user)
+    
+    return {"success": True, "role": user.role, "message": f"Role for '{user.name}' successfully changed to {user.role}."}
+
+# GET /api/admin/reports
+@app.get("/api/admin/reports")
+def get_admin_reports(
+    employee: Optional[str] = None,
+    manager: Optional[str] = None,
+    officer: Optional[str] = None,
+    issue_type: Optional[str] = None,
+    status: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 150,
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.SafetyEvent)
+    
+    if employee and employee.lower() != "all":
+        query = query.filter(models.SafetyEvent.reporter_email.ilike(f"%{employee}%"))
+        
+    if officer and officer.lower() != "all":
+        query = query.filter(models.SafetyEvent.reviewer.ilike(f"%{officer}%"))
+        
+    if issue_type and issue_type.lower() != "all":
+        query = query.filter(
+            (models.SafetyEvent.report_type.ilike(f"%{issue_type}%")) |
+            (models.SafetyEvent.life_saving_rule.ilike(f"%{issue_type}%"))
+        )
+        
+    if status and status.lower() != "all":
+        query = query.filter(
+            (models.SafetyEvent.status.ilike(f"%{status}%")) |
+            (models.SafetyEvent.action_status.ilike(f"%{status}%"))
+        )
+        
+    if start_date:
+        try:
+            sd = datetime.datetime.fromisoformat(start_date.replace("Z", ""))
+            query = query.filter(models.SafetyEvent.timestamp >= sd)
+        except Exception:
+            pass
+            
+    if end_date:
+        try:
+            ed = datetime.datetime.fromisoformat(end_date.replace("Z", ""))
+            query = query.filter(models.SafetyEvent.timestamp <= ed)
+        except Exception:
+            pass
+            
+    if search:
+        s = f"%{search}%"
+        query = query.filter(
+            (models.SafetyEvent.id.ilike(s)) |
+            (models.SafetyEvent.report_code.ilike(s)) |
+            (models.SafetyEvent.description.ilike(s)) |
+            (models.SafetyEvent.site.ilike(s)) |
+            (models.SafetyEvent.hazard.ilike(s))
+        )
+        
+    events = query.order_by(models.SafetyEvent.timestamp.desc()).limit(limit).all()
+    
+    return [
+        {
+            "id": ev.id,
+            "report_code": ev.report_code or ev.id,
+            "report_type": ev.report_type or "Unsafe Condition",
+            "reporter_email": ev.reporter_email or "worker@refinery.safe",
+            "reviewer": ev.reviewer or "Unassigned",
+            "assigned_team": ev.assigned_team or "Pending Allotment",
+            "site": ev.site,
+            "unit": ev.unit,
+            "location": ev.location,
+            "activity": ev.activity,
+            "description": ev.description,
+            "hazard": ev.hazard,
+            "life_saving_rule": ev.life_saving_rule,
+            "risk_level": ev.risk_level,
+            "sif_risk_score": ev.sif_risk_score,
+            "is_sif_precursor": ev.is_sif_precursor,
+            "status": ev.status,
+            "action_status": ev.action_status or "Pending",
+            "stop_work_issued": ev.stop_work_issued,
+            "action_id": ev.action_id,
+            "resolution_notes": ev.resolution_notes,
+            "timestamp": ev.timestamp.isoformat() if ev.timestamp else datetime.datetime.utcnow().isoformat()
+        }
+        for ev in events
+    ]
+
+# GET /api/admin/audit-logs
+@app.get("/api/admin/audit-logs")
+def get_admin_audit_logs(
+    action: Optional[str] = None,
+    event_id: Optional[str] = None,
+    user_email: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 250,
+    db: Session = Depends(get_db)
+):
+    query = db.query(models.AuditEvent)
+    
+    if event_id and event_id.lower() != "all":
+        query = query.filter(models.AuditEvent.event_id == event_id)
+        
+    if action and action.lower() != "all":
+        query = query.filter(models.AuditEvent.action.ilike(f"%{action}%"))
+        
+    if user_email and user_email.lower() != "all":
+        query = query.filter(models.AuditEvent.user_email.ilike(f"%{user_email}%"))
+        
+    if search:
+        s = f"%{search}%"
+        query = query.filter(
+            (models.AuditEvent.event_id.ilike(s)) |
+            (models.AuditEvent.action.ilike(s)) |
+            (models.AuditEvent.details.ilike(s)) |
+            (models.AuditEvent.actor_name.ilike(s)) |
+            (models.AuditEvent.user_email.ilike(s))
+        )
+        
+    audits = query.order_by(models.AuditEvent.timestamp.desc()).limit(limit).all()
+    
+    return [
+        {
+            "id": a.id,
+            "event_id": a.event_id or "GENERAL",
+            "action": a.action,
+            "actor_name": a.actor_name or (a.user_email.split("@")[0] if a.user_email else "System"),
+            "actor_role": a.actor_role or "System",
+            "details": a.details,
+            "user_email": a.user_email,
+            "timestamp": a.timestamp.isoformat() if a.timestamp else datetime.datetime.utcnow().isoformat()
+        }
+        for a in audits
+    ]
 
 # GET /api/dashboard
 @app.get("/api/dashboard", response_model=schemas.DashboardResponse)
@@ -332,10 +748,24 @@ def analyze_report(payload: schemas.SafetyReportCreate, db: Session = Depends(ge
         )
         db.add(event)
         
-        # Create Audit Log
+        # Create Audit Log for Report Submission
+        reporter_name = payload.reporter_email.split("@")[0].replace(".", " ").title() if payload.reporter_email else "Employee"
+        audit_creation = models.AuditEvent(
+            event_id=evt_id,
+            action="Report Created",
+            actor_name=reporter_name,
+            actor_role="Employee",
+            details=f"Safety report {report_code} created by Employee '{reporter_name}' ({payload.reporter_email or 'worker@refinery.safe'}). Site: {analysis['site']}, Type: {payload.report_type}.",
+            user_email=payload.reporter_email or "worker@refinery.safe"
+        )
+        db.add(audit_creation)
+
+        # Create Audit Log for AI Analysis
         audit = models.AuditEvent(
             event_id=evt_id,
             action="AI Scanned & Classified",
+            actor_name="GATI Neural AI",
+            actor_role="AI Engine",
             details=f"SIF-SHIELD AI evaluated report {report_code}. Risk Score: {analysis['sif_risk_score']}/10 ({analysis['risk_level']}). Precursor: {analysis['is_sif_precursor']}. Rule: {analysis['life_saving_rule']}.",
             user_email="engine@sifshield.ai"
         )
@@ -422,7 +852,9 @@ def dispatch_corrective_action(event_id: str, payload: schemas.ActionDispatchPay
     # Audit log
     audit = models.AuditEvent(
         event_id=event.id,
-        action="Stop Work Issued" if payload.stop_work else "Action Dispatched",
+        action="Issue Assigned" if not payload.stop_work else "Stop Work Issued",
+        actor_name="Safety Officer Lead",
+        actor_role="Officer",
         details=f"Action {action_id} assigned to '{payload.assigned_team}'. Priority: {payload.priority}. Stop Work Order: {'YES' if payload.stop_work else 'NO'}.",
         user_email="officer@refinery.safe"
     )
@@ -495,7 +927,9 @@ def review_event(event_id: str, payload: schemas.SafetyEventReview, db: Session 
         
     audit = models.AuditEvent(
         event_id=event.id,
-        action="Officer Verified" if not is_corrected else "Officer Recalibrated",
+        action="Issue Accepted & Verified" if not is_corrected else "Issue Recalibrated",
+        actor_name=payload.reviewer_name or "Safety Officer Lead",
+        actor_role="Officer",
         details=f"Safety Officer '{payload.reviewer_name}' verified result. Decision: {corrected_sif}, Rule: {corrected_rule}. GATI status: {'Recalibrated' if is_corrected else 'Reinforced'}.",
         user_email="officer@refinery.safe"
     )
@@ -1035,10 +1469,13 @@ def update_manager_task(task_id: str, payload: schemas.OfficerTaskUpdatePayload,
             task.assigned_officer_id = officer.id
             task.assigned_officer_name = officer.officer_name
 
+    audit_action = "Issue Completed" if task.status == "Completed" else ("Issue Rejected" if task.status == "Rejected" else "Progress Updated")
     audit = models.AuditEvent(
-        event_id=task.task_id,
-        action="Task Progress Updated",
-        details=f"Safety Inspection '{task.title}' updated to '{task.status}' by {task.assigned_officer_name}. Findings: {task.findings or 'Pending physical verification'}",
+        event_id=task.related_event_id or task.task_id,
+        action=audit_action,
+        actor_name=task.assigned_officer_name or "Safety Officer",
+        actor_role="Officer",
+        details=f"Inspection '{task.title}' updated to status '{task.status}' by {task.assigned_officer_name}. Findings: {task.findings or 'Verified in field.'}",
         user_email="officer@refinery.safe"
     )
     db.add(audit)

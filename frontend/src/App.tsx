@@ -68,11 +68,11 @@ function App() {
     
     // Role based routing redirection
     let defaultPage = 'dashboard';
-    if (loggedInUser.role === 'Field Worker') {
+    if (loggedInUser.role === 'Employee' || loggedInUser.role === 'Field Worker') {
       defaultPage = 'worker-portal';
-    } else if (loggedInUser.role === 'Safety Officer') {
+    } else if (loggedInUser.role === 'Officer' || loggedInUser.role === 'Safety Officer') {
       defaultPage = 'dashboard';
-    } else if (loggedInUser.role === 'Safety Manager') {
+    } else if (loggedInUser.role === 'Manager' || loggedInUser.role === 'Safety Manager') {
       defaultPage = 'manager';
     } else if (loggedInUser.role === 'Admin') {
       defaultPage = 'settings';
@@ -179,10 +179,18 @@ function App() {
     return titles[currentPage] || 'RAKSHA AI Platform';
   };
 
-  // Field Worker route guard enforcement
+  // Strict role-based route guard enforcement
   useEffect(() => {
-    if (user && user.role === 'Field Worker' && currentPage !== 'worker-portal') {
+    if (!user) return;
+    const isEmployee = user.role === 'Employee' || user.role === 'Field Worker';
+    const isOfficer = user.role === 'Officer' || user.role === 'Safety Officer';
+    const isManager = user.role === 'Manager' || user.role === 'Safety Manager';
+
+    if (isEmployee && currentPage !== 'worker-portal') {
       setCurrentPage('worker-portal');
+      setSelectedEvent(null);
+    } else if ((isOfficer || isManager) && (currentPage === 'settings' || currentPage === 'worker-portal')) {
+      setCurrentPage(isManager ? 'manager' : 'dashboard');
       setSelectedEvent(null);
     }
   }, [user, currentPage]);
@@ -198,7 +206,7 @@ function App() {
       <Sidebar 
         currentPage={currentPage === 'detail' ? 'inbox' : currentPage} 
         setCurrentPage={(page) => {
-          if (user.role === 'Field Worker') return;
+          if (user.role === 'Employee' || user.role === 'Field Worker') return;
           setSelectedEvent(null);
           setCurrentPage(page);
         }} 
@@ -221,7 +229,7 @@ function App() {
 
         {/* Scrollable Page Body */}
         <main className="flex-1 pt-20 px-8 pb-12 overflow-y-auto">
-          {currentPage === 'dashboard' && user.role !== 'Field Worker' && (
+          {currentPage === 'dashboard' && !['Employee', 'Field Worker'].includes(user.role) && (
             <Dashboard 
               onViewEvent={handleViewEvent} 
               triggerNotification={triggerNotification} 
@@ -232,38 +240,38 @@ function App() {
             />
           )}
 
-          {currentPage === 'inbox' && user.role !== 'Field Worker' && (
+          {currentPage === 'inbox' && !['Employee', 'Field Worker'].includes(user.role) && (
             <Inbox 
               onViewEvent={handleViewEvent} 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'sif' && user.role !== 'Field Worker' && (
+          {currentPage === 'sif' && !['Employee', 'Field Worker'].includes(user.role) && (
             <SifIntelligence 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'lsr' && user.role !== 'Field Worker' && (
+          {currentPage === 'lsr' && !['Employee', 'Field Worker'].includes(user.role) && (
             <LifeSavingRules 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'precursors' && user.role !== 'Field Worker' && (
+          {currentPage === 'precursors' && !['Employee', 'Field Worker'].includes(user.role) && (
             <Precursors 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'sites' && user.role !== 'Field Worker' && (
+          {currentPage === 'sites' && !['Employee', 'Field Worker'].includes(user.role) && (
             <Sites 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'review' && user.role !== 'Field Worker' && (
+          {currentPage === 'review' && !['Employee', 'Field Worker'].includes(user.role) && (
             <Review 
               reviewerName={user.name} 
               onReviewSubmitted={handleRefreshApp}
@@ -271,13 +279,13 @@ function App() {
             />
           )}
 
-          {currentPage === 'learning' && user.role !== 'Field Worker' && (
+          {currentPage === 'learning' && !['Employee', 'Field Worker'].includes(user.role) && (
             <Learning 
               triggerStateRefresh={triggerStateRefresh} 
             />
           )}
 
-          {currentPage === 'reports' && user.role !== 'Field Worker' && (
+          {currentPage === 'reports' && !['Employee', 'Field Worker'].includes(user.role) && (
             <Reports />
           )}
 

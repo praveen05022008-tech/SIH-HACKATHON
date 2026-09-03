@@ -40,10 +40,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const getMenuItems = () => {
     switch (userRole) {
+      case 'Employee':
       case 'Field Worker':
         return [
-          { id: 'worker-portal', label: 'Worker Portal', icon: FileText }
+          { id: 'worker-portal', label: 'Worker Safety Portal', icon: FileText }
         ];
+      case 'Officer':
       case 'Safety Officer':
         return [
           { id: 'dashboard', label: 'Tactical Dashboard', icon: LayoutDashboard },
@@ -58,6 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           { id: 'learning', label: 'GATI Learning Hub', icon: GraduationCap },
           { id: 'reports', label: 'Compliance Reports', icon: FileBarChart2 }
         ];
+      case 'Manager':
       case 'Safety Manager':
         return [
           { id: 'manager', label: 'HSE Command Center', icon: Users },
@@ -70,7 +73,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ];
       case 'Admin':
         return [
-          { id: 'settings', label: 'Admin Console', icon: SettingsIcon }
+          { id: 'settings', label: 'Admin Master Console', icon: SettingsIcon }
         ];
       default:
         return [

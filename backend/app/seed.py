@@ -157,18 +157,21 @@ def seed_database():
     Base.metadata.create_all(bind=engine)
     print("Cleaned existing tables and created fresh schemas.")
 
-    # 2. Seed Default Users (5 personas)
-    demo_users = [
-        models.User(email="worker@refinery.safe", name="Ramesh Kumar (Drilling Tech)", password_hash="password123", role="Field Worker"),
-        models.User(email="officer@refinery.safe", name="Capt. Arvind Sen (Safety Lead)", password_hash="password123", role="Safety Officer"),
-        models.User(email="reviewer@refinery.safe", name="Priya Sharma (HSE Inspector)", password_hash="password123", role="Safety Officer"),
-        models.User(email="manager@refinery.safe", name="Dr. Vikram Roy (Head of HSE)", password_hash="password123", role="Safety Manager"),
-        models.User(email="admin@refinery.safe", name="DevOps System Admin", password_hash="password123", role="Admin")
-    ]
-    for u in demo_users:
-        db.add(u)
+    # 2. Seed Default Users (ONLY System Admin seeded)
+    admin_user = models.User(
+        email="admin@refinery.safe",
+        name="DevOps System Admin",
+        password_hash="password123",
+        role="Admin",
+        id_number="ADM-001",
+        phone="+91 98000 00001",
+        address="Central Operations Tower, Level 4",
+        approval_status="Approved",
+        is_active=True
+    )
+    db.add(admin_user)
     db.commit()
-    print("Users seeded successfully with 5 personas.")
+    print("Users seeded successfully: ONLY System Admin seeded.")
 
     # 2b. Seed Officer Profiles
     officer_profiles = [
@@ -494,7 +497,7 @@ def seed_database():
     # 7. Seed sample historical corrections & GATI learning logs
     print("Seeding sample review history and GATI learning signals...")
     historical_events = db.query(models.SafetyEvent).filter(models.SafetyEvent.sif_risk_score > 5.0).limit(8).all()
-    reviewer_user = db.query(models.User).filter(models.User.email == "officer@refinery.safe").first()
+    reviewer_user = db.query(models.User).filter(models.User.role == "Admin").first()
     
     for idx, event in enumerate(historical_events):
         if not reviewer_user:

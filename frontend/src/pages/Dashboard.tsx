@@ -33,7 +33,9 @@ import {
   Radio,
   Send,
   BarChart3,
-  Check
+  Check,
+  ClipboardCheck,
+  BrainCircuit
 } from 'lucide-react';
 
 interface DashboardProps {

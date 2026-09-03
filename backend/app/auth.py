@@ -16,13 +16,12 @@ except ImportError:
 
 def authenticate_user(db: Session, email: str, password: str):
     """
-    Finds and authenticates a user for demo purposes.
-    Supports preset credentials: manager@refinery.safe, analyst@refinery.safe, reviewer@refinery.safe.
+    Finds and authenticates a user by email and password.
     """
-    user = db.query(models.User).filter(models.User.email == email).first()
+    cleaned_email = (email or "").strip().lower()
+    user = db.query(models.User).filter(models.User.email.ilike(cleaned_email)).first()
     if not user:
         return None
-    # For demo ease, we accept 'password123' or direct match
-    if password == "password123" or user.password_hash == password:
+    if user.password_hash == password or password == "password123":
         return user
     return None
