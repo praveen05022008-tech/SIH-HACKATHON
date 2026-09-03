@@ -20,7 +20,10 @@ import {
   Send,
   Radio,
   CheckCircle2,
-  Check
+  Check,
+  Loader2,
+  Key,
+  Cpu
 } from 'lucide-react';
 import { SafetyEvent, User, SafetyDirective } from '../types';
 
@@ -119,13 +122,21 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
   const [peopleInvolved, setPeopleInvolved] = useState(1);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   
-  // Voice Recording state
+  // Voice Recording & Whisper-v3 AI state
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [voiceTranscript, setVoiceTranscript] = useState('');
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [hfConfigured, setHfConfigured] = useState(true);
+  const [tokenModalOpen, setTokenModalOpen] = useState(false);
+  const [tokenInput, setTokenInput] = useState('');
+  const [savingToken, setSavingToken] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const animationRef = useRef<number | null>(null);
   const timerRef = useRef<any | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioStreamRef = useRef<MediaStream | null>(null);
 
   // Submission Output states
   const [submitting, setSubmitting] = useState(false);
@@ -346,24 +357,133 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
     fetchDirectives();
   }, [triggerStateRefresh, userEmail]);
 
-  const handleStartRecording = () => {
-    setIsRecording(true);
-    setRecordingSeconds(0);
-    setVoiceTranscript('');
+  // Check Voice Model Status on Mount
+  useEffect(() => {
+    fetch('http://localhost:8000/api/voice/status')
+      .then(r => r.json())
+      .then(d => {
+        if (d.configured) setHfConfigured(true);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      audioChunksRef.current = [];
+
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+        mimeType = 'audio/webm;codecs=opus';
+      } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+        mimeType = 'audio/webm';
+      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+        mimeType = 'audio/mp4';
+      }
+
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach(t => t.stop());
+        }
+        await processLiveWhisperTranscription(audioBlob);
+      };
+
+      recorder.start(250);
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      setVoiceTranscript('');
+      triggerNotification("🎙️ Microphone active. Speak your safety observation clearly...");
+    } catch (err: any) {
+      console.warn("Microphone access error:", err);
+      alert("Could not access microphone: " + (err.message || "Please check microphone permissions."));
+    }
   };
 
   const handleStopRecording = () => {
     setIsRecording(false);
-    
-    const transcripts = [
-      "We were preparing to service the mud pump high-pressure line. One technician started adjusting the flange valves without checking the zero-pressure isolation state or looking for LOTO lock tags. This is an active line.",
-      "During crane lifting operations at Drilling Site A, riggers were observed standing inside the direct line of fire underneath the suspended 5-ton structural pile load. Supervisor did not issue a stop work order.",
-      "Technician entered the crude storage tank V-301 cell without taking atmospheric multi-gas clearance test readings or verifying if the forced ventilation blower was powered on."
-    ];
-    const textResult = transcripts[Math.floor(Math.random() * transcripts.length)];
-    setVoiceTranscript(textResult);
-    setDescription(textResult);
-    triggerNotification("Voice transcript processed successfully via Whisper-v3");
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+  };
+
+  const processLiveWhisperTranscription = async (audioBlob: Blob) => {
+    setIsTranscribing(true);
+    triggerNotification("Transcribing speech with Hugging Face Whisper-v3...");
+
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'voice_report.webm');
+
+    try {
+      const res = await fetch('http://localhost:8000/api/voice/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.detail && data.detail.includes('token')) {
+          setTokenModalOpen(true);
+        }
+        throw new Error(data.detail || "Transcription request failed");
+      }
+
+      if (data.status === 'loading') {
+        const waitTime = Math.round(data.estimated_time || 15);
+        triggerNotification(`Whisper-v3 model is warming up (${waitTime}s). Retrying automatically...`);
+        setTimeout(() => processLiveWhisperTranscription(audioBlob), 4000);
+        return;
+      }
+
+      const rawText = data.text ? data.text.trim() : '';
+      if (!rawText || rawText === '.') {
+        triggerNotification("No voice detected in audio. Please speak clearly into the microphone.");
+        return;
+      }
+
+      setVoiceTranscript(rawText);
+      setDescription(prev => {
+        const trimmed = prev.trim();
+        return trimmed ? `${trimmed} ${rawText}` : rawText;
+      });
+      triggerNotification(`✓ Transcribed live with Hugging Face Whisper-v3 (${data.model})`);
+    } catch (err: any) {
+      console.error("Transcription error:", err);
+      triggerNotification(`Whisper AI Error: ${err.message}`);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleSaveHfToken = async () => {
+    if (!tokenInput.trim()) return;
+    setSavingToken(true);
+    try {
+      const res = await fetch('http://localhost:8000/api/voice/set-token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: tokenInput.trim() }),
+      });
+      if (res.ok) {
+        setHfConfigured(true);
+        setTokenModalOpen(false);
+        triggerNotification("✓ Hugging Face Token saved and active!");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingToken(false);
+    }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -683,10 +803,18 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                   4. Voice & Narrative Details
                 </label>
-                <span className="text-[9px] text-[#008779] font-bold bg-[#E8F6F4] px-2.5 py-0.5 rounded-full border border-[#008779]/20 flex items-center gap-1">
-                  <Sparkles className="h-3 w-3" />
-                  <span>Whisper-v3 Speech AI Active</span>
-                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTokenModalOpen(true)}
+                    className="text-[9.5px] text-[#008779] hover:bg-[#008779]/10 font-black bg-[#E8F6F4] px-3 py-1 rounded-full border border-[#008779]/30 flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                    title="Click to view or edit Hugging Face Whisper-v3 token"
+                  >
+                    <Cpu className="h-3.5 w-3.5 text-[#008779]" />
+                    <span>Whisper-v3 Turbo (Active)</span>
+                    <Key className="h-3 w-3 text-slate-400" />
+                  </button>
+                </div>
               </div>
 
               {/* Voice recorder widget */}
@@ -694,7 +822,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1">
                     <Mic className="h-3.5 w-3.5 text-[#008779]" />
-                    <span>Interactive Voice Report</span>
+                    <span>Live Voice Recording (Hugging Face Whisper-v3)</span>
                   </span>
                   {isRecording && (
                     <span className="text-[10px] font-bold text-red-600 animate-pulse bg-red-100 px-2 py-0.5 rounded">
@@ -715,8 +843,9 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                     {!isRecording ? (
                       <button
                         type="button"
+                        disabled={isTranscribing}
                         onClick={handleStartRecording}
-                        className="px-4 py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                        className="px-4 py-2 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer disabled:opacity-50"
                       >
                         <Mic className="h-4 w-4" />
                         <span>Record Audio</span>
@@ -728,16 +857,26 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                         className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs animate-pulse cursor-pointer"
                       >
                         <MicOff className="h-4 w-4" />
-                        <span>Transcribe Speech</span>
+                        <span>Transcribe with Whisper-v3</span>
                       </button>
                     )}
                   </div>
                 </div>
 
+                {isTranscribing && (
+                  <div className="p-3 bg-white border border-[#008779]/30 text-xs text-[#008779] rounded-xl flex items-center gap-2 shadow-2xs animate-pulse">
+                    <Loader2 className="h-4 w-4 animate-spin text-[#008779]" />
+                    <span className="font-extrabold">Transcribing speech with Hugging Face Whisper-v3...</span>
+                  </div>
+                )}
+
                 {voiceTranscript && (
                   <div className="p-3 bg-white border border-[#008779]/20 text-xs text-slate-700 rounded-xl shadow-2xs">
-                    <div className="font-bold text-[#008779] uppercase text-[9px] tracking-wide mb-1">Transcribed Text</div>
-                    <p className="italic leading-normal">"{voiceTranscript}"</p>
+                    <div className="font-bold text-[#008779] uppercase text-[9px] tracking-wide mb-1 flex items-center gap-1.5">
+                      <Sparkles className="h-3 w-3" />
+                      <span>Whisper-v3 Transcribed Observation</span>
+                    </div>
+                    <p className="italic leading-normal text-slate-900 font-medium">"{voiceTranscript}"</p>
                   </div>
                 )}
               </div>
@@ -985,6 +1124,78 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Hugging Face Whisper-v3 Token Configuration Modal */}
+      {tokenModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                  <Key className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Hugging Face Whisper-v3</h3>
+                  <div className="text-[10px] text-slate-400 font-medium">Model: openai/whisper-large-v3-turbo</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setTokenModalOpen(false)}
+                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-xs cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 flex items-start gap-2.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-extrabold text-[11px] uppercase tracking-wide">Connected & Ready</div>
+                  <div className="text-[11px] text-emerald-800 mt-0.5">
+                    Your token is authenticated. All microphone speech recordings on this portal will be transcribed directly by Hugging Face Whisper-v3.
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold text-slate-700 uppercase tracking-wider mb-1">
+                  Hugging Face User Access Token (HF_TOKEN)
+                </label>
+                <input
+                  type="password"
+                  value={tokenInput}
+                  onChange={(e) => setTokenInput(e.target.value)}
+                  placeholder="hf_..."
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-mono text-slate-900 bg-white focus:ring-2 focus:ring-[#008779]"
+                />
+                <div className="text-[10px] text-slate-400 mt-1">
+                  Saved securely in backend environment (.env).
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  disabled={savingToken}
+                  onClick={handleSaveHfToken}
+                  className="flex-1 py-2.5 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold shadow-sm transition cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {savingToken ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                  <span>{savingToken ? 'Updating...' : 'Save & Verify'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTokenModalOpen(false)}
+                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

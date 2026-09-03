@@ -2,11 +2,12 @@ import os
 import sys
 import datetime
 import random
-from fastapi import FastAPI, Depends, HTTPException, Query, status
+from fastapi import FastAPI, Depends, HTTPException, Query, status, File, UploadFile, Header
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional, List, Dict, Any
+import requests
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -51,6 +52,120 @@ def read_root():
         "engine": "GATI Calibrated Neural NLP",
         "database_type": "SQLite Fallback" if "sqlite" in str(database.engine.url) else "TiDB Cloud"
     }
+
+# ==========================================
+# HUGGING FACE WHISPER-V3 VOICE TRANSCRIBER
+# ==========================================
+
+@app.get("/api/voice/status")
+def get_voice_status():
+    token = os.getenv("HF_TOKEN") or getattr(config, "HF_TOKEN", "")
+    is_set = bool(token and token.strip())
+    masked = f"{token[:7]}...{token[-4:]}" if len(token) > 12 else ("Configured" if is_set else "Not Configured")
+    return {
+        "configured": is_set,
+        "masked_token": masked,
+        "model": "openai/whisper-large-v3-turbo",
+        "provider": "Hugging Face Inference Router"
+    }
+
+@app.post("/api/voice/set-token")
+def set_hf_token(payload: Dict[str, str]):
+    token = payload.get("token", "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="Hugging Face token cannot be empty.")
+    
+    os.environ["HF_TOKEN"] = token
+    config.HF_TOKEN = token
+
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    try:
+        lines = []
+        if os.path.exists(env_path):
+            with open(env_path, "r") as f:
+                lines = f.readlines()
+        
+        updated = False
+        new_lines = []
+        for line in lines:
+            if line.startswith("HF_TOKEN="):
+                new_lines.append(f"HF_TOKEN={token}\n")
+                updated = True
+            elif line.startswith("HUGGINGFACE_API_KEY="):
+                new_lines.append(f"HUGGINGFACE_API_KEY={token}\n")
+            else:
+                new_lines.append(line)
+        if not updated:
+            new_lines.append(f"HF_TOKEN={token}\n")
+            new_lines.append(f"HUGGINGFACE_API_KEY={token}\n")
+        
+        with open(env_path, "w") as f:
+            f.writelines(new_lines)
+    except Exception as e:
+        print("Notice saving .env:", e)
+
+    return {"success": True, "message": "Hugging Face token successfully configured and saved!"}
+
+@app.post("/api/voice/transcribe")
+async def transcribe_voice(
+    file: UploadFile = File(...),
+    x_hf_token: Optional[str] = Header(None, alias="X-HF-Token"),
+    db: Session = Depends(get_db)
+):
+    token = (x_hf_token or os.getenv("HF_TOKEN") or getattr(config, "HF_TOKEN", "")).strip()
+    if not token:
+        raise HTTPException(
+            status_code=400,
+            detail="Hugging Face API token is required for Whisper-v3 speech recognition. Please provide your token."
+        )
+
+    audio_bytes = await file.read()
+    if not audio_bytes or len(audio_bytes) < 100:
+        raise HTTPException(status_code=400, detail="Empty or invalid audio recording received.")
+
+    # Primary and secondary Hugging Face endpoints
+    endpoints = [
+        "https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3-turbo",
+        "https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3",
+        "https://api-inference.huggingface.co/models/openai/whisper-large-v3"
+    ]
+
+    last_error = ""
+    for url in endpoints:
+        try:
+            content_type = file.content_type or "audio/webm"
+            headers = {
+                "Authorization": f"Bearer {token}",
+                "Content-Type": content_type
+            }
+            res = requests.post(url, headers=headers, data=audio_bytes, timeout=40)
+
+            if res.status_code == 200:
+                data = res.json()
+                transcribed_text = data.get("text", "").strip() if isinstance(data, dict) else str(data).strip()
+                return {
+                    "success": True,
+                    "text": transcribed_text,
+                    "model": url.split("/")[-1],
+                    "provider": "Hugging Face Inference",
+                    "bytes": len(audio_bytes)
+                }
+            elif res.status_code == 503:
+                # Model loading
+                est = res.json().get("estimated_time", 20.0) if res.content else 20.0
+                return {
+                    "success": False,
+                    "status": "loading",
+                    "estimated_time": est,
+                    "message": f"Whisper-v3 model is currently initializing on Hugging Face. Ready in ~{int(est)}s."
+                }
+            else:
+                last_error = f"{res.status_code}: {res.text}"
+        except Exception as ex:
+            last_error = str(ex)
+
+    raise HTTPException(status_code=502, detail=f"Hugging Face Whisper-v3 API transcription failed: {last_error}")
+
 
 # POST /api/auth/register
 @app.post("/api/auth/register")

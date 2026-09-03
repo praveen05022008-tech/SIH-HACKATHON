@@ -39,6 +39,9 @@ lerna-debug.log*
 # Environment & Secrets
 .env
 .env.*
+*.env
+**/.env
+**/.env.*
 !.env.example
 *.local
 
