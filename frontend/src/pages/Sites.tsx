@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useEffect, useState } from 'react';
 import { RefreshCcw, MapPin, ShieldAlert, ArrowDown, ChevronRight, ChevronDown, Activity, ShieldCheck } from 'lucide-react';
 
@@ -22,7 +23,7 @@ export const Sites: React.FC<SitesProps> = ({ triggerStateRefresh }) => {
   const fetchSiteDetails = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/sites/${selectedSite}`);
+      const res = await fetch(apiUrl(`/api/sites/${selectedSite}`));
       if (!res.ok) throw new Error();
       const data = await res.json();
       setDetails(data);

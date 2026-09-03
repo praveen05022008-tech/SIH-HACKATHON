@@ -1,5 +1,7 @@
+import { apiUrl } from '../config/api';
 import React, { useEffect, useState, useMemo } from 'react';
 import { SafetyEvent, SafetyDirective } from '../types';
+
 import { 
   ShieldAlert, 
   Clock, 
@@ -274,8 +276,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setLoading(true);
     try {
       const [evtRes, dirRes] = await Promise.all([
-        fetch('http://localhost:8000/api/events'),
-        fetch('http://localhost:8000/api/manager/directives')
+        fetch(apiUrl('/api/events')),
+        fetch(apiUrl('/api/manager/directives'))
       ]);
 
       if (evtRes.ok) {
@@ -303,7 +305,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   const handleAcknowledgeDirective = async (dir: SafetyDirective) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/manager/directives/${dir.directive_id}/acknowledge`, {
+      const res = await fetch(apiUrl(`/api/manager/directives/${dir.directive_id}/acknowledge`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

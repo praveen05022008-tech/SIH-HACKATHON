@@ -16,7 +16,8 @@ import {
   Activity,
   LogOut,
   Sparkles,
-  Users
+  Users,
+  X
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -29,6 +30,8 @@ interface SidebarProps {
   };
   userRole?: string;
   onLogout?: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
@@ -36,7 +39,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   setCurrentPage, 
   systemStatus, 
   userRole,
-  onLogout 
+  onLogout,
+  isOpen = false,
+  onClose
 }) => {
   const getMenuItems = () => {
     switch (userRole) {
@@ -94,53 +99,82 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const menuItems = getMenuItems();
 
   return (
-    <aside className="w-64 bg-white text-slate-800 flex flex-col h-screen fixed left-0 top-0 border-r border-[#E6ECEB] z-20 font-sans shadow-sm">
-      {/* Brand Header */}
-      <div className="px-6 py-6 flex items-center gap-3">
-        <div className="h-10 w-10 rounded-2xl bg-[#008779] flex items-center justify-center text-white shadow-md shadow-[#008779]/20">
-          <ShieldAlert className="h-5 w-5" />
-        </div>
-        <div>
-          <h1 className="text-base font-extrabold tracking-tight text-slate-900 flex items-center gap-1">
-            <span>RAK<span className="text-[#008779] font-black">SHA</span></span>
-          </h1>
-          <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">
-            Precursor Engine
-          </p>
-        </div>
-      </div>
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-30 md:hidden transition-opacity"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* Navigation Links */}
-      <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = currentPage === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setCurrentPage(item.id)}
-              className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-200 text-left ${
-                isActive
-                  ? 'bg-[#008779] text-white shadow-lg shadow-[#008779]/25 font-bold scale-[1.02]'
-                  : 'text-slate-600 hover:bg-[#E8F6F4]/60 hover:text-[#008779]'
-              }`}
-            >
-              <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
-              <span className="truncate">{item.label}</span>
-            </button>
-          );
-        })}
+      <aside className={`w-64 bg-white text-slate-800 flex flex-col h-screen fixed left-0 top-0 border-r border-[#E6ECEB] z-40 font-sans shadow-xl md:shadow-sm transition-transform duration-300 ease-in-out ${
+        isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      }`}>
+        {/* Brand Header */}
+        <div className="px-6 py-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-2xl bg-[#008779] flex items-center justify-center text-white shadow-md shadow-[#008779]/20">
+              <ShieldAlert className="h-5 w-5" />
+            </div>
+            <div>
+              <h1 className="text-base font-extrabold tracking-tight text-slate-900 flex items-center gap-1">
+                <span>RAK<span className="text-[#008779] font-black">SHA</span></span>
+              </h1>
+              <p className="text-[10px] text-slate-400 font-semibold tracking-wider uppercase">
+                Precursor Engine
+              </p>
+            </div>
+          </div>
 
-        {onLogout && (
+          {/* Close button on mobile */}
           <button
-            onClick={onLogout}
-            className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs font-bold text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all duration-150 text-left mt-2"
+            onClick={onClose}
+            className="md:hidden p-1.5 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+            aria-label="Close menu"
           >
-            <LogOut className="h-4.5 w-4.5 shrink-0 text-slate-400" />
-            <span>Logout</span>
+            <X className="h-5 w-5" />
           </button>
-        )}
-      </nav>
+        </div>
+
+        {/* Navigation Links */}
+        <nav className="flex-1 px-4 py-2 space-y-1.5 overflow-y-auto">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = currentPage === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setCurrentPage(item.id);
+                  onClose?.();
+                }}
+                className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs font-bold transition-all duration-200 text-left ${
+                  isActive
+                    ? 'bg-[#008779] text-white shadow-lg shadow-[#008779]/25 font-bold scale-[1.02]'
+                    : 'text-slate-600 hover:bg-[#E8F6F4]/60 hover:text-[#008779]'
+                }`}
+              >
+                <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                <span className="truncate">{item.label}</span>
+              </button>
+            );
+          })}
+
+          {onLogout && (
+            <button
+              onClick={() => {
+                onLogout();
+                onClose?.();
+              }}
+              className="w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-xs font-bold text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all duration-150 text-left mt-2"
+            >
+              <LogOut className="h-4.5 w-4.5 shrink-0 text-slate-400" />
+              <span>Logout</span>
+            </button>
+          )}
+        </nav>
 
       {/* Bottom Promo / Telemetry Card (Matching Reference Card at bottom left) */}
       <div className="p-4">
@@ -166,5 +200,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
     </aside>
+    </>
   );
 };

@@ -24,6 +24,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState<string>('dashboard');
   const [selectedEvent, setSelectedEvent] = useState<SafetyEvent | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Theme state (dark / light)
   const [theme, setTheme] = useState<'dark' | 'light'>(() => {
@@ -209,13 +210,16 @@ function App() {
           if (user.role === 'Employee' || user.role === 'Field Worker') return;
           setSelectedEvent(null);
           setCurrentPage(page);
+          setIsMobileMenuOpen(false);
         }} 
         systemStatus={systemStatus} 
         userRole={user.role}
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
       />
 
       {/* Main Container Layout */}
-      <div className="flex-1 pl-64 flex flex-col min-h-screen">
+      <div className="flex-1 pl-0 md:pl-64 flex flex-col min-h-screen w-full overflow-x-hidden">
         
         {/* Top Header widgets */}
         <Topbar 
@@ -225,10 +229,11 @@ function App() {
           notifications={notifications}
           clearNotifications={() => setNotifications([])}
           onSwitchPersona={handleSwitchPersona}
+          onOpenMobileMenu={() => setIsMobileMenuOpen(true)}
         />
 
         {/* Scrollable Page Body */}
-        <main className="flex-1 pt-20 px-8 pb-12 overflow-y-auto">
+        <main className="flex-1 pt-20 px-3 sm:px-6 lg:px-8 pb-12 overflow-y-auto">
           {currentPage === 'dashboard' && !['Employee', 'Field Worker'].includes(user.role) && (
             <Dashboard 
               onViewEvent={handleViewEvent} 

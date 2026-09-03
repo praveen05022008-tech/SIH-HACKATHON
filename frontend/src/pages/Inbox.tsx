@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useState, useEffect } from 'react';
 import { SafetyEvent } from '../types';
 import { 
@@ -39,7 +40,7 @@ export const Inbox: React.FC<InboxProps> = ({ onViewEvent, triggerStateRefresh }
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/events');
+      const res = await fetch(apiUrl('/api/events'));
       if (!res.ok) throw new Error();
       const data = await res.json();
       setEvents(data);

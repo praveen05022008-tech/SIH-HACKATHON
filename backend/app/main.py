@@ -27,9 +27,10 @@ app = FastAPI(
     version="2.0.0"
 )
 
-# Configure CORS for frontend access
+# Configure CORS for frontend access (supporting all origins, vercel domains & credentials safely)
 app.add_middleware(
     CORSMiddleware,
+    allow_origin_regex=r"^https?://.*",
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],

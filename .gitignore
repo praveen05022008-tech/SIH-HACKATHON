@@ -44,6 +44,9 @@ lerna-debug.log*
 **/.env.*
 !.env.example
 *.local
+backend/app/env
+**/env
+scratch/
 
 # Database & SQLite files
 *.sqlite
@@ -64,3 +67,5 @@ logs/
 *.sln
 *.sw?
 Thumbs.db
+.vercel
+.env*

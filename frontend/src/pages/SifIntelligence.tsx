@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useEffect, useState } from 'react';
 import { 
   ScatterChart, 
@@ -23,7 +24,7 @@ export const SifIntelligence: React.FC<SifIntelProps> = ({ triggerStateRefresh }
   const fetchSifIntel = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/sif');
+      const res = await fetch(apiUrl('/api/sif'));
       if (!res.ok) throw new Error();
       const data = await res.json();
       setStats(data);

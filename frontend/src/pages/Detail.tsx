@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useEffect, useState } from 'react';
 import { SafetyEvent, AuditEvent } from '../types';
 import { 
@@ -69,7 +70,7 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
   const fetchEventDetail = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/events/${event.id}`);
+      const res = await fetch(apiUrl(`/api/events/${event.id}`));
       if (!res.ok) throw new Error();
       const payload = await res.json();
       setData(payload);
@@ -100,7 +101,7 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
     setAnalyzingAi(true);
     setAiSuccessMsg(null);
     try {
-      const res = await fetch(`http://localhost:8000/api/events/${event.id}/ai-analyze`, { method: 'POST' });
+      const res = await fetch(apiUrl(`/api/events/${event.id}/ai-analyze`), { method: 'POST' });
       if (!res.ok) throw new Error('Analysis failed');
       const result = await res.json();
       // Refresh the event data to show updated scores
@@ -121,7 +122,7 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
     setCopilotLoading(true);
     setCopilotAnswer(null);
     try {
-      const res = await fetch('http://localhost:8000/api/ai/chat', {
+      const res = await fetch(apiUrl('/api/ai/chat'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: question, context_event_id: event.id })
@@ -177,7 +178,7 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
     }
 
     try {
-      const res = await fetch(`http://localhost:8000/api/events/${event.id}/review`, {
+      const res = await fetch(apiUrl(`/api/events/${event.id}/review`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -210,7 +211,7 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
 
     setSubmitting(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/events/${event.id}/action`, {
+      const res = await fetch(apiUrl(`/api/events/${event.id}/action`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

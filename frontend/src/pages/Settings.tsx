@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useEffect, useState } from 'react';
 import { 
   Settings as SettingsIcon, 
@@ -51,7 +52,7 @@ export const Settings: React.FC<SettingsProps> = ({ onResetDb, triggerNotificati
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/users');
+      const res = await fetch(apiUrl('/api/users'));
       if (!res.ok) throw new Error();
       const data = await res.json();
       setUsers(data);
@@ -69,7 +70,7 @@ export const Settings: React.FC<SettingsProps> = ({ onResetDb, triggerNotificati
   const fetchAudits = async () => {
     setLoadingAudits(true);
     try {
-      const res = await fetch('http://localhost:8000/api/audit');
+      const res = await fetch(apiUrl('/api/audit'));
       if (!res.ok) throw new Error();
       const data = await res.json();
       setAudits(data);
@@ -95,7 +96,7 @@ export const Settings: React.FC<SettingsProps> = ({ onResetDb, triggerNotificati
     
     setAddingUser(true);
     try {
-      const res = await fetch('http://localhost:8000/api/users', {
+      const res = await fetch(apiUrl('/api/users'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -137,7 +138,7 @@ export const Settings: React.FC<SettingsProps> = ({ onResetDb, triggerNotificati
     setResetting(true);
     setSuccess(false);
     try {
-      const res = await fetch('http://localhost:8000/api/seed/reset', { method: 'POST' });
+      const res = await fetch(apiUrl('/api/seed/reset'), { method: 'POST' });
       if (!res.ok) throw new Error();
       setSuccess(true);
       triggerNotification('Database reset and re-seeded successfully.');

@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   FileText, 
@@ -238,7 +239,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
   // Fetch worker's personal reports strictly isolated to reporter_email
   const fetchMyReports = async () => {
     try {
-      const res = await fetch(`http://localhost:8000/api/events?reporter_email=${encodeURIComponent(userEmail)}`);
+      const res = await fetch(apiUrl(`/api/events?reporter_email=${encodeURIComponent(userEmail)}`));
       if (!res.ok) throw new Error();
       const data = await res.json();
       setMyReports(data.slice(0, 10));
@@ -317,7 +318,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
 
   const fetchDirectives = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/manager/directives');
+      const res = await fetch(apiUrl('/api/manager/directives'));
       if (res.ok) {
         const data = await res.json();
         setDirectives(data);
@@ -329,7 +330,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
 
   const handleAcknowledgeDirective = async (directive: SafetyDirective) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/manager/directives/${directive.directive_id}/acknowledge`, {
+      const res = await fetch(apiUrl(`/api/manager/directives/${directive.directive_id}/acknowledge`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -359,7 +360,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
 
   // Check Voice Model Status on Mount
   useEffect(() => {
-    fetch('http://localhost:8000/api/voice/status')
+    fetch(apiUrl('/api/voice/status'))
       .then(r => r.json())
       .then(d => {
         if (d.configured) setHfConfigured(true);
@@ -425,7 +426,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
     formData.append('file', audioBlob, 'voice_report.webm');
 
     try {
-      const res = await fetch('http://localhost:8000/api/voice/transcribe', {
+      const res = await fetch(apiUrl('/api/voice/transcribe'), {
         method: 'POST',
         body: formData,
       });
@@ -469,7 +470,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
     if (!tokenInput.trim()) return;
     setSavingToken(true);
     try {
-      const res = await fetch('http://localhost:8000/api/voice/set-token', {
+      const res = await fetch(apiUrl('/api/voice/set-token'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: tokenInput.trim() }),
@@ -528,7 +529,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
     };
 
     try {
-      const res = await fetch('http://localhost:8000/api/events/analyze', {
+      const res = await fetch(apiUrl('/api/events/analyze'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -672,7 +673,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">
                   Primary Category
                 </label>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
                     { type: 'Unsafe Act', desc: 'Behavioral hazard' },
                     { type: 'Unsafe Condition', desc: 'Physical asset hazard' },

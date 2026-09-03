@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useEffect, useState } from 'react';
 import { SafetyEvent, OfficerTask } from '../types';
 import { 
@@ -58,7 +59,7 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted,
   const fetchQueue = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/events?status=Needs Review');
+      const res = await fetch(apiUrl('/api/events?status=Needs Review'));
       if (!res.ok) throw new Error();
       const data = await res.json();
       setQueue(data);
@@ -141,7 +142,7 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted,
   const fetchTasks = async () => {
     setTasksLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/manager/tasks');
+      const res = await fetch(apiUrl('/api/manager/tasks'));
       if (res.ok) {
         const data = await res.json();
         setTasks(data);
@@ -164,7 +165,7 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted,
 
     setUpdatingTask(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/manager/tasks/${selectedTaskForFindings.task_id}`, {
+      const res = await fetch(apiUrl(`/api/manager/tasks/${selectedTaskForFindings.task_id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -208,7 +209,7 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted,
     const isCorrected = (originalSifStr !== sifChoice) || (selectedEvent.life_saving_rule !== lsrChoice);
 
     try {
-      const res = await fetch(`http://localhost:8000/api/events/${selectedEvent.id}/review`, {
+      const res = await fetch(apiUrl(`/api/events/${selectedEvent.id}/review`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,5 +1,7 @@
+import { apiUrl } from '../config/api';
 import React, { useState } from 'react';
 import { User } from '../types';
+
 import { 
   Activity, 
   ShieldAlert, 
@@ -68,7 +70,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     const payloadPassword = password;
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/login', {
+      const response = await fetch(apiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: payloadEmail, password: payloadPassword }),
@@ -121,7 +123,7 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
     setRegSuccess(null);
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/register', {
+      const response = await fetch(apiUrl('/api/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

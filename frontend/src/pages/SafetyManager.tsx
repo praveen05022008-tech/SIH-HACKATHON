@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useState, useEffect } from 'react';
 import { 
   Users, 
@@ -93,10 +94,10 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
     setLoading(true);
     try {
       const [offRes, taskRes, dirRes, evtRes] = await Promise.all([
-        fetch('http://localhost:8000/api/manager/officers'),
-        fetch('http://localhost:8000/api/manager/tasks'),
-        fetch('http://localhost:8000/api/manager/directives'),
-        fetch('http://localhost:8000/api/events?status=Needs%20Review')
+        fetch(apiUrl('/api/manager/officers')),
+        fetch(apiUrl('/api/manager/tasks')),
+        fetch(apiUrl('/api/manager/directives')),
+        fetch(apiUrl('/api/events?status=Needs%20Review'))
       ]);
 
       if (offRes.ok) {
@@ -330,7 +331,7 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
 
     setActionLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/manager/officers/allot', {
+      const res = await fetch(apiUrl('/api/manager/officers/allot'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -372,7 +373,7 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
 
     setActionLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/manager/tasks', {
+      const res = await fetch(apiUrl('/api/manager/tasks'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(taskForm)
@@ -428,7 +429,7 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
 
     setActionLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/manager/broadcast', {
+      const res = await fetch(apiUrl('/api/manager/broadcast'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(directiveForm)
@@ -478,7 +479,7 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
 
     setActionLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/manager/reassign-event', {
+      const res = await fetch(apiUrl('/api/manager/reassign-event'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1036,7 +1037,7 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
                     <button
                       onClick={async () => {
                         try {
-                          await fetch(`http://localhost:8000/api/manager/directives/${dir.directive_id}/acknowledge`, {
+                          await fetch(apiUrl(`/api/manager/directives/${dir.directive_id}/acknowledge`), {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({

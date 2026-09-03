@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useState } from 'react';
 import { FileText, Download, CheckCircle, RefreshCcw, FileBarChart2 } from 'lucide-react';
 
@@ -17,7 +18,7 @@ export const Reports: React.FC = () => {
     setLoadingReport(title);
     setSuccessReport(null);
     try {
-      const res = await fetch('http://localhost:8000/api/reports/generate', {
+      const res = await fetch(apiUrl('/api/reports/generate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: title })

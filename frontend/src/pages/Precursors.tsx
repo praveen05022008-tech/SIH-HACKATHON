@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useEffect, useState } from 'react';
 import { PrecursorPattern } from '../types';
 import { Network, RefreshCcw, ShieldAlert, Filter, X } from 'lucide-react';
@@ -18,7 +19,7 @@ export const Precursors: React.FC<PrecursorsProps> = ({ triggerStateRefresh }) =
   const fetchPatterns = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/precursors');
+      const res = await fetch(apiUrl('/api/precursors'));
       if (!res.ok) throw new Error();
       const data = await res.json();
       setPatterns(data);

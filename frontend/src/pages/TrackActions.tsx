@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useEffect, useState } from 'react';
 import { SafetyEvent } from '../types';
 import { 
@@ -60,7 +61,7 @@ export const TrackActions: React.FC<TrackActionsProps> = ({ triggerNotification,
   const fetchActionItems = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/events');
+      const res = await fetch(apiUrl('/api/events'));
       if (!res.ok) throw new Error();
       const events: SafetyEvent[] = await res.json();
       

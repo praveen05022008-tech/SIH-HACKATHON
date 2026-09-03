@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useEffect, useState } from 'react';
 import { SafetyEvent } from '../types';
 import { 
@@ -46,7 +47,7 @@ export const TakeAction: React.FC<TakeActionProps> = ({ triggerNotification, tri
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/events');
+      const res = await fetch(apiUrl('/api/events'));
       if (!res.ok) throw new Error();
       const data = await res.json();
       setEvents(data);
@@ -119,7 +120,7 @@ export const TakeAction: React.FC<TakeActionProps> = ({ triggerNotification, tri
     const deadlineString = `${new Date(deadlineDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}, ${deadlineTime}`;
 
     try {
-      const res = await fetch(`http://localhost:8000/api/events/${selectedEventId}/action`, {
+      const res = await fetch(apiUrl(`/api/events/${selectedEventId}/action`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

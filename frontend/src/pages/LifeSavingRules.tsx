@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useEffect, useState } from 'react';
 import { LifeSavingRuleStat } from '../types';
 import { 
@@ -24,7 +25,7 @@ export const LifeSavingRules: React.FC<LSRProps> = ({ triggerStateRefresh }) => 
   const fetchLSRS = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/life-saving-rules');
+      const res = await fetch(apiUrl('/api/life-saving-rules'));
       if (!res.ok) throw new Error();
       const data = await res.json();
       setRules(data);

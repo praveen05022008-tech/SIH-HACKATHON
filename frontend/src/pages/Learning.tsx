@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useEffect, useState } from 'react';
 import { RefreshCcw, GraduationCap, ArrowRight, BrainCircuit, Sparkles, AlertCircle } from 'lucide-react';
 
@@ -12,7 +13,7 @@ export const Learning: React.FC<LearningProps> = ({ triggerStateRefresh }) => {
   const fetchLearning = async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:8000/api/learning');
+      const res = await fetch(apiUrl('/api/learning'));
       if (!res.ok) throw new Error();
       const payload = await res.json();
       setData(payload);

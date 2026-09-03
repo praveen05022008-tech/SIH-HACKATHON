@@ -72,6 +72,20 @@ def init_db():
     except Exception as e:
         logger.warning(f"Column migration check note: {e}")
 
+    # Check if DB has users, if not seed it
+    try:
+        from backend.app import models, seed
+        db = SessionLocal()
+        try:
+            user_cnt = db.query(models.User).count()
+            if user_cnt == 0:
+                logger.info("Fresh database detected. Auto-seeding initial safety intelligence dataset...")
+                seed.seed_database()
+        finally:
+            db.close()
+    except Exception as e:
+        logger.warning(f"Initial seed verification: {e}")
+
 init_db()
 
 def get_db():

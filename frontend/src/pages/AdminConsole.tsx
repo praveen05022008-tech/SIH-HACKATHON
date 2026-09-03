@@ -1,3 +1,4 @@
+import { apiUrl } from '../config/api';
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Settings as SettingsIcon,
@@ -114,7 +115,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   // ── Fetch Dashboard Data ───────────────────────────────────────────────────
   const fetchDashboardData = () => {
     setLoadingDashboard(true);
-    fetch('http://localhost:8000/api/admin/dashboard')
+    fetch(apiUrl('/api/admin/dashboard'))
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data) setDashboardData(data);
@@ -126,7 +127,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   // ── Fetch Users List ───────────────────────────────────────────────────────
   const fetchUsers = () => {
     setLoadingUsers(true);
-    fetch('http://localhost:8000/api/admin/users')
+    fetch(apiUrl('/api/admin/users'))
       .then(res => res.ok ? res.json() : [])
       .then(data => setUsers(data))
       .catch(err => console.error('Error fetching users:', err))
@@ -136,7 +137,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   // ── Fetch All Reports ──────────────────────────────────────────────────────
   const fetchReports = () => {
     setLoadingReports(true);
-    fetch('http://localhost:8000/api/admin/reports?limit=200')
+    fetch(apiUrl('/api/admin/reports?limit=200'))
       .then(res => res.ok ? res.json() : [])
       .then(data => setReports(data))
       .catch(err => console.error('Error fetching reports:', err))
@@ -146,7 +147,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   // ── Fetch Audit Logs ───────────────────────────────────────────────────────
   const fetchAuditLogs = () => {
     setLoadingAudits(true);
-    fetch('http://localhost:8000/api/admin/audit-logs?limit=300')
+    fetch(apiUrl('/api/admin/audit-logs?limit=300'))
       .then(res => res.ok ? res.json() : [])
       .then(data => setAuditLogs(data))
       .catch(err => console.error('Error fetching audit logs:', err))
@@ -172,7 +173,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   // ── User Actions: Approve, Reject, Toggle Active, Change Role ──────────────
   const handleApproveUser = async (userId: number, userName: string) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/users/${userId}/approve`, {
+      const res = await fetch(apiUrl(`/api/admin/users/${userId}/approve`), {
         method: 'POST'
       });
       const data = await res.json();
@@ -191,7 +192,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
   const handleRejectUser = async (userId: number, userName: string) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/users/${userId}/reject`, {
+      const res = await fetch(apiUrl(`/api/admin/users/${userId}/reject`), {
         method: 'POST'
       });
       const data = await res.json();
@@ -210,7 +211,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
   const handleToggleActiveUser = async (userId: number, userName: string) => {
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/users/${userId}/toggle-active`, {
+      const res = await fetch(apiUrl(`/api/admin/users/${userId}/toggle-active`), {
         method: 'POST'
       });
       const data = await res.json();
@@ -231,7 +232,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   const handleChangeRole = async (userId: number, newRole: string) => {
     setRoleUpdating(true);
     try {
-      const res = await fetch(`http://localhost:8000/api/admin/users/${userId}/change-role`, {
+      const res = await fetch(apiUrl(`/api/admin/users/${userId}/change-role`), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole })
