@@ -17,6 +17,7 @@ import {
   LogOut,
   Sparkles,
   Users,
+  Clock,
   X
 } from 'lucide-react';
 
@@ -78,7 +79,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         ];
       case 'Admin':
         return [
-          { id: 'settings', label: 'Admin Master Console', icon: SettingsIcon }
+          { id: 'settings', label: 'Admin Master Console', icon: SettingsIcon },
+          { id: 'admin-requests', label: 'Access Requests', icon: Clock }
         ];
       default:
         return [

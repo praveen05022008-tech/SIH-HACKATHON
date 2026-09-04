@@ -55,15 +55,17 @@ interface AdminConsoleProps {
   onResetDb?: () => void;
   triggerNotification?: (msg: string) => void;
   onNavigateTo?: (page: string) => void;
+  initialTab?: 'dashboard' | 'requests' | 'users' | 'roles' | 'reports' | 'audit';
 }
 
 export const AdminConsole: React.FC<AdminConsoleProps> = ({
   onResetDb,
   triggerNotification,
-  onNavigateTo
+  onNavigateTo,
+  initialTab = 'dashboard'
 }) => {
-  // Top-level 5 Admin Tabs
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'roles' | 'reports' | 'audit'>('dashboard');
+  // Top-level 6 Admin Tabs
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'requests' | 'users' | 'roles' | 'reports' | 'audit'>(initialTab);
 
   // ==========================================
   // 1. DASHBOARD STATE
@@ -154,18 +156,25 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
       .finally(() => setLoadingAudits(false));
   };
 
-  // Load initial data
+  // Load initial data and keep polling in background every 6 seconds
   useEffect(() => {
     fetchDashboardData();
     fetchUsers();
     fetchReports();
     fetchAuditLogs();
+
+    const interval = setInterval(() => {
+      fetchUsers();
+      fetchDashboardData();
+    }, 6000);
+
+    return () => clearInterval(interval);
   }, []);
 
   // Reload tab-specific data when tab changes
   useEffect(() => {
     if (activeTab === 'dashboard') fetchDashboardData();
-    if (activeTab === 'users' || activeTab === 'roles') fetchUsers();
+    if (activeTab === 'users' || activeTab === 'roles' || activeTab === 'requests') fetchUsers();
     if (activeTab === 'reports') fetchReports();
     if (activeTab === 'audit') fetchAuditLogs();
   }, [activeTab]);
@@ -253,11 +262,16 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
     }
   };
 
+  // ── Pending Users Queue ──────────────────────────────────────────────────
+  const pendingUsers = useMemo(() => {
+    return users.filter(u => u.approval_status === 'Pending');
+  }, [users]);
+
   // ── Filtered Users ─────────────────────────────────────────────────────────
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
       // Role filter
-      if (userRoleFilter !== 'All' && u.role.toLowerCase() !== userRoleFilter.toLowerCase()) {
+      if (userRoleFilter !== 'All' && u.role?.toLowerCase() !== userRoleFilter.toLowerCase()) {
         return false;
       }
       // Status filter
@@ -270,10 +284,10 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
       // Search query
       if (userSearchQuery) {
         const q = userSearchQuery.toLowerCase();
-        const matchesName = u.name.toLowerCase().includes(q);
-        const matchesEmail = u.email.toLowerCase().includes(q);
-        const matchesId = u.id_number.toLowerCase().includes(q);
-        const matchesPhone = u.phone?.toLowerCase().includes(q);
+        const matchesName = u.name?.toLowerCase().includes(q) ?? false;
+        const matchesEmail = u.email?.toLowerCase().includes(q) ?? false;
+        const matchesId = u.id_number?.toLowerCase().includes(q) ?? false;
+        const matchesPhone = u.phone?.toLowerCase().includes(q) ?? false;
         if (!matchesName && !matchesEmail && !matchesId && !matchesPhone) return false;
       }
       return true;
@@ -428,14 +442,15 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
           </div>
         </div>
 
-        {/* 5 Core Admin Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-5">
+        {/* 6 Core Admin Tabs */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-5">
           {[
-            { id: 'dashboard', label: 'Dashboard', icon: BarChart3, count: null },
-            { id: 'users', label: 'User Management', icon: Users, count: dashboardData?.kpis.pending_approvals || users.filter(u => u.approval_status === 'Pending').length },
-            { id: 'roles', label: 'Role Management', icon: Shield, count: null },
-            { id: 'reports', label: 'All Reports', icon: FileText, count: reports.length },
-            { id: 'audit', label: 'Audit Log', icon: History, count: auditLogs.length },
+            { id: 'dashboard', label: 'Dashboard', icon: BarChart3, count: null, highlight: false },
+            { id: 'requests', label: 'Admin Requests', icon: Clock, count: pendingUsers.length, highlight: pendingUsers.length > 0 },
+            { id: 'users', label: 'User Directory', icon: Users, count: users.length, highlight: false },
+            { id: 'roles', label: 'Role Governance', icon: Shield, count: null, highlight: false },
+            { id: 'reports', label: 'All Reports', icon: FileText, count: reports.length, highlight: false },
+            { id: 'audit', label: 'Audit Log', icon: History, count: auditLogs.length, highlight: false },
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -443,20 +458,24 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`py-3 px-3.5 rounded-2xl font-extrabold text-xs transition flex items-center justify-between cursor-pointer border ${
+                className={`py-3 px-3 rounded-2xl font-extrabold text-xs transition flex items-center justify-between cursor-pointer border ${
                   isActive
                     ? 'bg-[#008779] text-white border-[#008779] shadow-md shadow-[#008779]/20'
+                    : tab.highlight
+                    ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 shadow-2xs'
                     : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200/70'
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <Icon className={`h-4 w-4 ${isActive ? 'text-white' : 'text-slate-500'}`} />
-                  <span>{tab.label}</span>
+                <div className="flex items-center gap-1.5 truncate">
+                  <Icon className={`h-4 w-4 shrink-0 ${
+                    isActive ? 'text-white' : tab.highlight ? 'text-amber-700' : 'text-slate-500'
+                  }`} />
+                  <span className="truncate">{tab.label}</span>
                 </div>
                 {tab.count !== null && tab.count > 0 && (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${
-                    tab.id === 'users' && tab.count > 0
-                      ? (isActive ? 'bg-amber-400 text-slate-900' : 'bg-amber-100 text-amber-900')
+                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                    tab.highlight
+                      ? (isActive ? 'bg-amber-400 text-slate-900' : 'bg-amber-200 text-amber-950')
                       : (isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700')
                   }`}>
                     {tab.count}
@@ -600,6 +619,115 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
           </div>
 
+          {/* Quick Review: Pending Access Requests Queue */}
+          <div className={`border rounded-3xl p-5 shadow-sm transition ${
+            pendingUsers.length > 0 
+              ? 'bg-amber-50/70 border-amber-300' 
+              : 'bg-white border-[#E6ECEB]'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className={`h-9 w-9 rounded-2xl flex items-center justify-center font-bold ${
+                  pendingUsers.length > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  <Clock className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-black text-slate-900">
+                      User Registration & Access Requests
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                      pendingUsers.length > 0 ? 'bg-amber-200 text-amber-900' : 'bg-emerald-100 text-emerald-800'
+                    }`}>
+                      {pendingUsers.length} Pending
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 font-medium mt-0.5">
+                    {pendingUsers.length > 0
+                      ? 'New users who registered on the login page awaiting administrator review and access approval.'
+                      : 'All user onboarding registrations are currently approved. New registrations will appear here automatically in real time.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { fetchUsers(); fetchDashboardData(); }}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span>Sync Requests</span>
+                </button>
+                {pendingUsers.length > 0 && (
+                  <button
+                    onClick={() => setActiveTab('requests')}
+                    className="px-3 py-1.5 bg-[#008779] hover:bg-[#007064] text-white text-xs font-bold rounded-xl transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  >
+                    <span>Open Requests Queue ({pendingUsers.length})</span>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {pendingUsers.length === 0 ? (
+              <div className="py-6 px-4 text-center rounded-2xl bg-white/80 border border-slate-200/60">
+                <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-1.5" />
+                <div className="text-xs font-bold text-slate-700">No Pending Requests</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">
+                  When an employee, officer, or manager registers on the login page, their request will appear here instantly with 1-click Approve and Reject buttons.
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {pendingUsers.map(u => (
+                  <div 
+                    key={u.id}
+                    className="bg-white border border-amber-200 rounded-2xl p-3.5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs shrink-0">
+                        {u.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-slate-900 text-xs">{u.name}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-slate-100 text-slate-800 border border-slate-200">
+                            Requested: {u.role}
+                          </span>
+                          <span className="font-mono text-[10px] text-slate-400">({u.id_number})</span>
+                        </div>
+                        <div className="text-[11px] text-slate-500 flex items-center gap-3 mt-0.5 font-mono">
+                          <span>{u.email}</span>
+                          {u.phone && u.phone !== '—' && <span className="font-sans text-slate-400">📱 {u.phone}</span>}
+                          {u.address && u.address !== '—' && <span className="font-sans text-slate-400">📍 {u.address}</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 self-end md:self-auto">
+                      <button
+                        onClick={() => handleApproveUser(u.id, u.name)}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer shadow-xs"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        <span>Approve</span>
+                      </button>
+                      <button
+                        onClick={() => handleRejectUser(u.id, u.name)}
+                        className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        <span>Reject</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* 3. GRAPHS SECTION */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -665,6 +793,168 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
               </div>
             </div>
 
+          </div>
+
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* ── TAB: ADMIN ACCESS REQUESTS (PENDING APPROVALS) ─────────────────── */}
+      {/* ===================================================================== */}
+      {activeTab === 'requests' && (
+        <div className="space-y-6">
+
+          {/* Header & Controls */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl p-5 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
+                    Approval Queue
+                  </span>
+                  <span className="text-xs font-bold text-slate-500">
+                    {pendingUsers.length} pending request{pendingUsers.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                  <Clock className="h-4.5 w-4.5 text-amber-600" />
+                  <span>Admin Access Requests & Onboarding Approvals</span>
+                </h2>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                  When new field employees, officers, or managers register on the login page, their accounts arrive here with status <strong>Pending</strong>. Review and approve their access to enable system login.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => { fetchUsers(); fetchDashboardData(); }}
+                  className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  <span>Sync Requests</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab('users')}
+                  className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Users className="h-3.5 w-3.5" />
+                  <span>All Users Directory</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Requests List */}
+          <div className="bg-white border border-[#E6ECEB] rounded-3xl overflow-hidden shadow-sm">
+            {pendingUsers.length === 0 ? (
+              <div className="py-16 px-4 text-center">
+                <div className="h-14 w-14 rounded-3xl bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center mb-3">
+                  <CheckCircle2 className="h-7 w-7" />
+                </div>
+                <h3 className="text-base font-extrabold text-slate-800">No Pending Requests In Queue</h3>
+                <p className="text-xs text-slate-500 max-w-md mx-auto mt-1 leading-relaxed">
+                  All user registration requests have been reviewed and approved. When a new user registers on the portal login screen, their application will appear here instantly.
+                </p>
+                <button
+                  onClick={() => setActiveTab('users')}
+                  className="mt-5 px-4 py-2 bg-[#008779] text-white hover:bg-[#007064] text-xs font-bold rounded-xl transition cursor-pointer shadow-xs"
+                >
+                  Browse Authorized Users
+                </button>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-700">
+                  <thead className="bg-amber-50/70 border-b border-amber-200/80 text-[10.5px] font-black uppercase tracking-wider text-amber-900">
+                    <tr>
+                      <th className="py-3.5 px-4">Applicant & Contact</th>
+                      <th className="py-3.5 px-4">Employee / ID No.</th>
+                      <th className="py-3.5 px-4">Requested Role</th>
+                      <th className="py-3.5 px-4">Status</th>
+                      <th className="py-3.5 px-4">Registration Date</th>
+                      <th className="py-3.5 px-4 text-right">Admin Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {pendingUsers.map(user => (
+                      <tr key={user.id} className="hover:bg-amber-50/30 transition">
+                        {/* Name & Contact */}
+                        <td className="py-4 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-9 w-9 rounded-xl bg-amber-100 text-amber-800 font-bold flex items-center justify-center text-xs shrink-0">
+                              {user.name.charAt(0)}
+                            </div>
+                            <div>
+                              <div className="font-extrabold text-slate-900 text-sm">{user.name}</div>
+                              <div className="text-[11px] text-slate-500 font-mono mt-0.5">{user.email}</div>
+                              {(user.phone || user.address) && (
+                                <div className="text-[10px] text-slate-400 mt-0.5 flex gap-2">
+                                  {user.phone && user.phone !== '—' && <span>📱 {user.phone}</span>}
+                                  {user.address && user.address !== '—' && <span>📍 {user.address}</span>}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* ID No. */}
+                        <td className="py-4 px-4 font-mono font-bold text-slate-700">
+                          {user.id_number || '—'}
+                        </td>
+
+                        {/* Role */}
+                        <td className="py-4 px-4">
+                          <span className={`px-2.5 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider ${
+                            user.role === 'Employee'
+                              ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              : user.role === 'Officer'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : user.role === 'Manager'
+                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                              : 'bg-purple-100 text-purple-800 border border-purple-200'
+                          }`}>
+                            {user.role}
+                          </span>
+                        </td>
+
+                        {/* Status */}
+                        <td className="py-4 px-4">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                            <Clock className="h-3 w-3 text-amber-700" />
+                            <span>Awaiting Approval</span>
+                          </span>
+                        </td>
+
+                        {/* Date */}
+                        <td className="py-4 px-4 text-slate-500 font-mono text-[11px]">
+                          {user.created_at ? new Date(user.created_at).toLocaleString() : 'Recent'}
+                        </td>
+
+                        {/* Actions */}
+                        <td className="py-4 px-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleApproveUser(user.id, user.name)}
+                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                              <span>Approve Access</span>
+                            </button>
+                            <button
+                              onClick={() => handleRejectUser(user.id, user.name)}
+                              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                              <span>Reject</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
         </div>

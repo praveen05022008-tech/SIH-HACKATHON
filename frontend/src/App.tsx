@@ -307,6 +307,19 @@ function App() {
 
           {currentPage === 'settings' && (
             <AdminConsole
+              initialTab="dashboard"
+              onResetDb={handleRefreshApp}
+              triggerNotification={triggerNotification}
+              onNavigateTo={(page) => {
+                setSelectedEvent(null);
+                setCurrentPage(page);
+              }}
+            />
+          )}
+
+          {currentPage === 'admin-requests' && (
+            <AdminConsole
+              initialTab="requests"
               onResetDb={handleRefreshApp}
               triggerNotification={triggerNotification}
               onNavigateTo={(page) => {

@@ -306,10 +306,10 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                   ) : (
                     <ShieldAlert className="h-4 w-4 shrink-0 text-rose-600 mt-0.5" />
                   )}
-                  <div>
+                  <div className="flex-1">
                     <div className="font-extrabold uppercase text-[10px] tracking-wider mb-0.5">
                       {error.type === 'pending' 
-                        ? 'Registration Pending Approval' 
+                        ? 'Registration Pending Admin Approval' 
                         : error.type === 'rejected' 
                         ? 'Registration Rejected' 
                         : error.type === 'deactivated' 
@@ -317,6 +317,27 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                         : 'Authentication Notice'}
                     </div>
                     <div>{error.message}</div>
+                    
+                    {error.type === 'pending' && (
+                      <div className="mt-2.5 text-[11px] text-amber-900 bg-amber-100/70 p-2.5 rounded-xl border border-amber-200 leading-relaxed font-medium">
+                        💡 <strong>In Admin Request Queue:</strong> Your registration request is visible to the System Administrator in the <strong>Admin Master Console</strong>. Once approved, you will be able to log in immediately.
+                      </div>
+                    )}
+
+                    {error.message.toLowerCase().includes('register') && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRegEmail(email.trim());
+                          setActiveTab('register');
+                          setError(null);
+                        }}
+                        className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#008779] hover:bg-[#007064] text-white text-[11px] font-bold rounded-xl transition cursor-pointer shadow-xs"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        <span>Register '{email}' & Submit Admin Request</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

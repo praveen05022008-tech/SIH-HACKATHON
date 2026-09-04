@@ -235,12 +235,20 @@ def register_user(payload: schemas.UserRegister, db: Session = Depends(get_db)):
 # POST /api/auth/login
 @app.post("/api/auth/login")
 def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
-    user = auth.authenticate_user(db, payload.email, payload.password)
+    cleaned_email = payload.email.strip().lower()
+    user = auth.authenticate_user(db, cleaned_email, payload.password)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password"
-        )
+        existing = db.query(models.User).filter(models.User.email.ilike(cleaned_email)).first()
+        if not existing:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"No account found for '{payload.email}'. Please switch to the 'Register (Onboarding)' tab to request access from the System Administrator."
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect password. Please verify your password and try again."
+            )
     
     # Check approval status
     if user.approval_status == "Pending":
