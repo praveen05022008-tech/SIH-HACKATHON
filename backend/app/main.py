@@ -5,7 +5,7 @@ import random
 from fastapi import FastAPI, Depends, HTTPException, Query, status, File, UploadFile, Header, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, text
 from typing import Optional, List, Dict, Any
 import requests
 
@@ -118,11 +118,17 @@ except ImportError:
     cloudinary = None
 
 def get_cloudinary_config():
+    global cloudinary
     if not cloudinary:
-        return False
+        try:
+            import cloudinary
+            import cloudinary.uploader
+        except ImportError:
+            cloudinary = None
+            return False
     cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME") or getattr(config, "CLOUDINARY_CLOUD_NAME", "")
-    api_key = os.getenv("CLOUDINARY_API_KEY") or getattr(config, "CLOUDINARY_API_KEY", "569737981981872")
-    api_secret = os.getenv("CLOUDINARY_API_SECRET") or getattr(config, "CLOUDINARY_API_SECRET", "TpQm-JkWcqPn--7oeQWaUXoBA54")
+    api_key = os.getenv("CLOUDINARY_API_KEY") or getattr(config, "CLOUDINARY_API_KEY", "")
+    api_secret = os.getenv("CLOUDINARY_API_SECRET") or getattr(config, "CLOUDINARY_API_SECRET", "")
     
     if cloud_name and api_key and api_secret:
         cloudinary.config(
@@ -137,11 +143,13 @@ def get_cloudinary_config():
 @app.get("/api/cloudinary/status")
 def get_cloudinary_status():
     cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME") or getattr(config, "CLOUDINARY_CLOUD_NAME", "")
-    api_key = os.getenv("CLOUDINARY_API_KEY") or getattr(config, "CLOUDINARY_API_KEY", "569737981981872")
+    api_key = os.getenv("CLOUDINARY_API_KEY") or getattr(config, "CLOUDINARY_API_KEY", "")
+    configured = get_cloudinary_config()
     return {
-        "configured": bool(cloud_name and api_key),
+        "configured": bool(configured),
         "cloud_name": cloud_name or None,
-        "api_key": api_key[:4] + "****" if api_key else None
+        "api_key": api_key[:4] + "****" if api_key else None,
+        "provider": "cloudinary" if configured else "local"
     }
 
 @app.post("/api/cloudinary/config")
@@ -278,6 +286,11 @@ async def transcribe_voice(
 @app.post("/api/auth/register")
 def register_user(payload: schemas.UserRegister, db: Session = Depends(get_db)):
     cleaned_email = payload.email.strip().lower()
+    if cleaned_email == "admin@refinery.safe":
+        raise HTTPException(
+            status_code=400,
+            detail="The master administrator account 'admin@refinery.safe' is reserved and pre-seeded. Please sign in using Admin credentials."
+        )
     existing = db.query(models.User).filter(models.User.email.ilike(cleaned_email)).first()
     if existing:
         raise HTTPException(
@@ -356,6 +369,15 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
                 detail="Incorrect password. Please verify your password and try again."
             )
     
+    # Ensure master system administrator always retains Admin role and Approved status
+    if user.email.lower() == "admin@refinery.safe":
+        if user.role != "Admin" or user.approval_status != "Approved" or not user.is_active:
+            user.role = "Admin"
+            user.approval_status = "Approved"
+            user.is_active = True
+            db.commit()
+            db.refresh(user)
+
     # Check approval status
     if user.approval_status == "Pending":
         raise HTTPException(
@@ -420,6 +442,14 @@ def get_current_user_profile(
     if not user:
         raise HTTPException(status_code=401, detail="Session expired or user not found. Please log in again.")
         
+    if user.email.lower() == "admin@refinery.safe":
+        if user.role != "Admin" or user.approval_status != "Approved" or not user.is_active:
+            user.role = "Admin"
+            user.approval_status = "Approved"
+            user.is_active = True
+            db.commit()
+            db.refresh(user)
+
     if user.approval_status != "Approved":
         raise HTTPException(status_code=403, detail=f"Account status is {user.approval_status}.")
         
@@ -843,6 +873,134 @@ def get_admin_audit_logs(
         for a in audits
     ]
 
+# GET /api/admin/service-status
+@app.get("/api/admin/service-status")
+def get_service_status(db: Session = Depends(get_db)):
+    import time, requests as _requests, os
+
+    results = {}
+
+    # ── 1. TiDB Cloud ────────────────────────────────────────────────────────
+    try:
+        t0 = time.time()
+        db.execute(text("SELECT 1"))  # text() is imported from sqlalchemy
+        latency_ms = round((time.time() - t0) * 1000, 1)
+        db_url = os.getenv("DATABASE_URL", "")
+        host = "tidbcloud.com"
+        try:
+            host = db_url.split("@")[1].split(":")[0] if "@" in db_url else "tidbcloud.com"
+        except Exception:
+            pass
+        results["tidb"] = {
+            "status": "live",
+            "latency_ms": latency_ms,
+            "host": host,
+            "message": "Connected — query executed successfully"
+        }
+    except Exception as e:
+        db_url = os.getenv("DATABASE_URL", "")
+        host = "tidbcloud.com"
+        try:
+            host = db_url.split("@")[1].split(":")[0] if "@" in db_url else "tidbcloud.com"
+        except Exception:
+            pass
+        results["tidb"] = {
+            "status": "error",
+            "latency_ms": None,
+            "host": host,
+            "message": str(e)[:200]
+        }
+
+    # ── 2. Cloudinary ────────────────────────────────────────────────────────
+    try:
+        cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+        api_key    = os.getenv("CLOUDINARY_API_KEY", "")
+        api_secret = os.getenv("CLOUDINARY_API_SECRET", "")
+        t0 = time.time()
+        resp = _requests.get(
+            f"https://api.cloudinary.com/v1_1/{cloud_name}/ping",
+            auth=(api_key, api_secret),
+            timeout=8
+        )
+        latency_ms = round((time.time() - t0) * 1000, 1)
+        if resp.status_code == 200:
+            results["cloudinary"] = {
+                "status": "live",
+                "latency_ms": latency_ms,
+                "cloud_name": cloud_name,
+                "message": "Connected — ping OK"
+            }
+        else:
+            results["cloudinary"] = {
+                "status": "error",
+                "latency_ms": latency_ms,
+                "cloud_name": cloud_name,
+                "message": f"HTTP {resp.status_code}: {resp.text[:120]}"
+            }
+    except Exception as e:
+        results["cloudinary"] = {
+            "status": "error",
+            "latency_ms": None,
+            "cloud_name": os.getenv("CLOUDINARY_CLOUD_NAME", ""),
+            "message": str(e)[:200]
+        }
+
+    # ── 3. Hugging Face ───────────────────────────────────────────────────────
+    # Use the inference API on a tiny public model to verify token works end-to-end.
+    # Falls back to a connectivity check if the model call fails for unrelated reasons.
+    try:
+        hf_token = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY", "")
+        username = None
+        t0 = time.time()
+        # Try whoami first
+        r_me = _requests.get(
+            "https://huggingface.co/api/whoami-v2",
+            headers={"Authorization": f"Bearer {hf_token}"},
+            timeout=8
+        )
+        latency_ms = round((time.time() - t0) * 1000, 1)
+        if r_me.status_code == 200:
+            data = r_me.json()
+            username = data.get("name") or data.get("fullname") or "authenticated"
+            results["huggingface"] = {
+                "status": "live",
+                "latency_ms": latency_ms,
+                "username": username,
+                "message": f"Connected — token valid (user: {username})"
+            }
+        elif r_me.status_code == 401:
+            # Token invalid — still check if HF is reachable
+            t0b = time.time()
+            r_ping = _requests.get("https://huggingface.co", timeout=6)
+            ping_ms = round((time.time() - t0b) * 1000, 1)
+            results["huggingface"] = {
+                "status": "error",
+                "latency_ms": ping_ms,
+                "username": None,
+                "message": "HF reachable but token is invalid or expired — update HF_TOKEN in .env"
+            }
+        else:
+            results["huggingface"] = {
+                "status": "error",
+                "latency_ms": latency_ms,
+                "username": None,
+                "message": f"HTTP {r_me.status_code}: {r_me.text[:120]}"
+            }
+    except Exception as e:
+        results["huggingface"] = {
+            "status": "error",
+            "latency_ms": None,
+            "username": None,
+            "message": str(e)[:200]
+        }
+
+    overall = "live" if all(v["status"] == "live" for v in results.values()) else "degraded"
+    return {
+        "overall": overall,
+        "checked_at": datetime.datetime.utcnow().isoformat() + "Z",
+        "services": results
+    }
+
 # GET /api/dashboard
 @app.get("/api/dashboard", response_model=schemas.DashboardResponse)
 def get_dashboard(db: Session = Depends(get_db)):
@@ -979,6 +1137,26 @@ def get_event_detail(event_id: str, db: Session = Depends(get_db)):
         "interventions": interventions,
         "reviews": reviews
     }
+
+# DELETE /api/events/:id  (admin)
+@app.delete("/api/events/{event_id}")
+@app.delete("/api/admin/reports/{event_id}")
+def delete_event(event_id: str, db: Session = Depends(get_db)):
+    event = db.query(models.SafetyEvent).filter(
+        (models.SafetyEvent.id == event_id) | (models.SafetyEvent.report_code == event_id)
+    ).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Safety event not found")
+
+    # Cascade delete related records
+    db.query(models.AuditEvent).filter(models.AuditEvent.event_id == event.id).delete()
+    db.query(models.Intervention).filter(models.Intervention.event_id == event.id).delete()
+    db.query(models.Review).filter(models.Review.event_id == event.id).delete()
+    # Delete the safety report row if it exists (linked by report_code)
+    db.query(models.SafetyReport).filter(models.SafetyReport.report_code == event.report_code).delete()
+    db.delete(event)
+    db.commit()
+    return {"success": True, "message": f"Report {event.report_code} permanently deleted"}
 
 # POST /api/events/analyze
 @app.post("/api/events/analyze")
@@ -1124,11 +1302,13 @@ def analyze_report(payload: schemas.SafetyReportCreate, db: Session = Depends(ge
         
         return {
             "success": True,
+            "id": evt_id,
             "event_id": evt_id,
             "report_code": report_code,
             "risk_level": analysis["risk_level"],
             "sif_risk_score": analysis["sif_risk_score"],
             "is_sif_precursor": analysis["is_sif_precursor"],
+            "photo_url": payload.photo_url,
             "analysis": analysis
         }
         

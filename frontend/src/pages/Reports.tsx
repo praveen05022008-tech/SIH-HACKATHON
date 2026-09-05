@@ -31,9 +31,9 @@ export const Reports: React.FC = () => {
     try {
       const res = await fetch(apiUrl('/api/events'));
       const data = await res.json();
-      const csvHeader = "ID,Site,Unit,Location,Risk Level,SIF Probability,Life Saving Rule,Status,Timestamp,Description\n";
+      const csvHeader = "ID,Site,Unit,Location,Risk Level,SIF Probability,Life Saving Rule,Status,Timestamp,Photo Evidence URL,Description\n";
       const csvRows = Array.isArray(data) ? data.map(e => 
-        `"${e.id}","${e.site || ''}","${e.unit || ''}","${e.location || ''}","${e.risk_level || ''}","${e.sif_probability || ''}","${e.life_saving_rule || ''}","${e.status || ''}","${e.timestamp || ''}","${(e.description || '').replace(/"/g, '""')}"`
+        `"${e.id}","${e.site || ''}","${e.unit || ''}","${e.location || ''}","${e.risk_level || ''}","${e.sif_probability || ''}","${e.life_saving_rule || ''}","${e.status || ''}","${e.timestamp || ''}","${e.photo_url || ''}","${(e.description || '').replace(/"/g, '""')}"`
       ).join("\n") : "";
       
       const blob = new Blob([csvHeader + csvRows], { type: 'text/csv;charset=utf-8;' });

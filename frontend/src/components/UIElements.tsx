@@ -35,12 +35,40 @@ export const KPICard: React.FC<KPICardProps> = ({
 
 // SIF Potential Badge
 interface RiskBadgeProps {
-  probability: number;
+  probability?: number;
+  level?: string;
 }
 
-export const RiskBadge: React.FC<RiskBadgeProps> = ({ probability }) => {
-  const isHigh = probability >= 70.0;
-  const isMedium = probability >= 40.0 && probability < 70.0;
+export const RiskBadge: React.FC<RiskBadgeProps> = ({ probability, level }) => {
+  if (level) {
+    const l = level.toUpperCase();
+    if (l === 'CRITICAL' || l === 'HIGH') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 text-industrial-red border border-red-100 rounded-full text-xs font-bold">
+          <ShieldAlert className="h-3.5 w-3.5" />
+          <span>{level}</span>
+        </span>
+      );
+    }
+    if (l === 'MEDIUM') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-industrial-orange border border-amber-100 rounded-full text-xs font-bold">
+          <ShieldAlert className="h-3.5 w-3.5" />
+          <span>{level}</span>
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-industrial-green border border-emerald-100 rounded-full text-xs font-bold">
+        <ShieldCheck className="h-3.5 w-3.5" />
+        <span>{level}</span>
+      </span>
+    );
+  }
+
+  const prob = probability ?? 0;
+  const isHigh = prob >= 70.0;
+  const isMedium = prob >= 40.0 && prob < 70.0;
 
   if (isHigh) {
     return (

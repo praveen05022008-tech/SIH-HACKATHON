@@ -410,27 +410,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 ) : (
                   <>
                     <button
-                      onClick={() => onNavigateTo?.('review')}
+                      onClick={() => onNavigateTo?.('assigned-reports')}
                       className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#008779] hover:bg-emerald-50 text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
                     >
                       <ClipboardCheck className="h-3.5 w-3.5 text-[#008779]" />
-                      <span>Assurance & Assigned Audits</span>
+                      <span>Assigned Reports</span>
                     </button>
 
                     <button
-                      onClick={() => onNavigateTo?.('take-action')}
+                      onClick={() => onNavigateTo?.('investigate')}
                       className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-full shadow-md transition-all duration-200 transform hover:translate-x-0.5 cursor-pointer"
                     >
-                      <span>Take Action Now</span>
+                      <Search className="h-3.5 w-3.5" />
+                      <span>Investigate Issue</span>
                       <ChevronRight className="h-3.5 w-3.5" />
                     </button>
 
                     <button
-                      onClick={() => onNavigateTo?.('track-actions')}
+                      onClick={() => onNavigateTo?.('sif')}
                       className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
                     >
-                      <Activity className="h-3.5 w-3.5 text-emerald-100" />
-                      <span>Track Actions ({metrics.incompleted} Open)</span>
+                      <ShieldAlert className="h-3.5 w-3.5 text-emerald-100" />
+                      <span>SIF Risk</span>
+                    </button>
+
+                    <button
+                      onClick={() => onNavigateTo?.('ai-analysis')}
+                      className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all duration-200 cursor-pointer backdrop-blur-xs"
+                    >
+                      <BrainCircuit className="h-3.5 w-3.5 text-emerald-100" />
+                      <span>AI Analysis</span>
                     </button>
                   </>
                 )}
@@ -1478,26 +1487,51 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => {
-                    const evt = popupEvent;
                     setPopupEvent(null);
-                    onNavigateTo?.('take-action');
+                    if (userRole === 'Officer' || userRole === 'Safety Officer') {
+                      onNavigateTo?.('investigate');
+                    } else {
+                      onNavigateTo?.('take-action');
+                    }
                   }}
                   className="px-4 py-2 bg-[#FF7A1A] hover:bg-[#E56A12] text-white text-xs font-extrabold rounded-xl transition shadow-2xs cursor-pointer flex items-center gap-1.5"
                 >
-                  <Activity className="h-3.5 w-3.5" />
-                  <span>Dispatch Corrective Action</span>
+                  {userRole === 'Officer' || userRole === 'Safety Officer' ? (
+                    <>
+                      <Search className="h-3.5 w-3.5" />
+                      <span>Investigate Issue</span>
+                    </>
+                  ) : (
+                    <>
+                      <Activity className="h-3.5 w-3.5" />
+                      <span>Dispatch Corrective Action</span>
+                    </>
+                  )}
                 </button>
 
                 <button
                   onClick={() => {
                     const evt = popupEvent;
                     setPopupEvent(null);
-                    onViewEvent(evt);
+                    if (userRole === 'Officer' || userRole === 'Safety Officer') {
+                      onNavigateTo?.('ai-analysis');
+                    } else {
+                      onViewEvent(evt);
+                    }
                   }}
                   className="px-4 py-2 bg-[#008779] hover:bg-[#007064] text-white text-xs font-extrabold rounded-xl transition shadow-2xs cursor-pointer flex items-center gap-1.5"
                 >
-                  <Eye className="h-3.5 w-3.5" />
-                  <span>Open Full Triage & Review</span>
+                  {userRole === 'Officer' || userRole === 'Safety Officer' ? (
+                    <>
+                      <BrainCircuit className="h-3.5 w-3.5" />
+                      <span>Open AI Analysis</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>Open Full Triage & Review</span>
+                    </>
+                  )}
                   <ChevronRight className="h-3.5 w-3.5" />
                 </button>
               </div>

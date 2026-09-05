@@ -25,8 +25,8 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 # Cloudinary Configuration (Image Uploads & Storage)
 CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
-CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "569737981981872")
-CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "TpQm-JkWcqPn--7oeQWaUXoBA54")
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
 CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "")
 
 # AI Engine Configuration (Cerebras / OpenAI compatible)

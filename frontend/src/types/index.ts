@@ -192,7 +192,9 @@ export interface DashboardResponse {
 export interface OfficerProfile {
   id: number;
   officer_name: string;
+  name?: string;
   officer_code: string;
+  employee_id?: string;
   email: string;
   phone: string;
   radio_channel: string;
@@ -200,6 +202,7 @@ export interface OfficerProfile {
   unit: string;
   shift: string;
   status: 'On Duty' | 'In Field' | 'Standby' | 'Off Duty' | string;
+  role?: string;
   certifications: string[];
   experience_years: number;
   max_capacity: number;

@@ -268,6 +268,29 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
     return users.filter(u => u.approval_status === 'Pending');
   }, [users]);
 
+  // ── Delete Report ────────────────────────────────────────────────────────
+  const handleDeleteReport = async (reportId: string, reportCode: string) => {
+    if (!window.confirm(`Permanently delete report ${reportCode}? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(apiUrl(`/api/admin/reports/${reportId}`), {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setUserActionMessage(`Report "${reportCode}" has been permanently deleted.`);
+        triggerNotification?.(`Report Deleted: ${reportCode}`);
+        fetchReports();
+        fetchDashboardData();
+        fetchAuditLogs();
+        setTimeout(() => setUserActionMessage(null), 4000);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        alert(data.detail || 'Failed to delete report');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const handleDeleteUser = async (userId: number, userName: string) => {
     if (!window.confirm(`Are you sure you want to permanently delete user "${userName}"?`)) return;
     try {
@@ -463,50 +486,6 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
               </button>
             )}
           </div>
-        </div>
-
-        {/* 6 Core Admin Tabs */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mt-5">
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: BarChart3, count: null, highlight: false },
-            { id: 'requests', label: 'Admin Requests', icon: Clock, count: pendingUsers.length, highlight: pendingUsers.length > 0 },
-            { id: 'users', label: 'User Directory', icon: Users, count: users.length, highlight: false },
-            { id: 'roles', label: 'Role Governance', icon: Shield, count: null, highlight: false },
-            { id: 'reports', label: 'All Reports', icon: FileText, count: reports.length, highlight: false },
-            { id: 'audit', label: 'Audit Log', icon: History, count: auditLogs.length, highlight: false },
-          ].map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`py-3 px-3 rounded-2xl font-extrabold text-xs transition flex items-center justify-between cursor-pointer border ${
-                  isActive
-                    ? 'bg-[#008779] text-white border-[#008779] shadow-md shadow-[#008779]/20'
-                    : tab.highlight
-                    ? 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100 shadow-2xs'
-                    : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border-slate-200/70'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 truncate">
-                  <Icon className={`h-4 w-4 shrink-0 ${
-                    isActive ? 'text-white' : tab.highlight ? 'text-amber-700' : 'text-slate-500'
-                  }`} />
-                  <span className="truncate">{tab.label}</span>
-                </div>
-                {tab.count !== null && tab.count > 0 && (
-                  <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
-                    tab.highlight
-                      ? (isActive ? 'bg-amber-400 text-slate-900' : 'bg-amber-200 text-amber-950')
-                      : (isActive ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700')
-                  }`}>
-                    {tab.count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
         </div>
       </div>
 
@@ -1551,7 +1530,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                     <th className="py-3 px-4">Issue Type / LSR</th>
                     <th className="py-3 px-4">SIF Score</th>
                     <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4 text-right">View Detail</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
@@ -1632,14 +1611,23 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                           </span>
                         </td>
 
-                        {/* View Complete Details */}
+                        {/* Actions: View + Delete */}
                         <td className="py-3 px-4 text-right">
-                          <button
-                            onClick={() => setSelectedReportDetail(report)}
-                            className="px-2.5 py-1.5 bg-[#008779] hover:bg-[#007064] text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-2xs"
-                          >
-                            View
-                          </button>
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              onClick={() => setSelectedReportDetail(report)}
+                              className="px-2.5 py-1.5 bg-[#008779] hover:bg-[#007064] text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-2xs"
+                            >
+                              View
+                            </button>
+                            <button
+                              onClick={() => handleDeleteReport(report.id.toString(), report.report_code)}
+                              title="Permanently delete report"
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 rounded-xl transition cursor-pointer border border-transparent hover:border-rose-200"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </td>
 
                       </tr>

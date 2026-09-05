@@ -19,6 +19,16 @@ import { WorkerPortal } from './pages/WorkerPortal';
 import { TakeAction } from './pages/TakeAction';
 import { TrackActions } from './pages/TrackActions';
 import { SafetyManager } from './pages/SafetyManager';
+import { AdminSettings } from './pages/AdminSettings';
+import { MyReport } from './pages/MyReport';
+import { EmployeeDashboard } from './pages/EmployeeDashboard';
+import { AssignedReports } from './pages/AssignedReports';
+import { Investigate } from './pages/Investigate';
+import { AiAnalysis } from './pages/AiAnalysis';
+import { AssignOfficer } from './pages/AssignOfficer';
+import { ManagerActions } from './pages/ManagerActions';
+import { ManagerAnalytics } from './pages/ManagerAnalytics';
+import { ManagerAlerts } from './pages/ManagerAlerts';
 import { apiUrl } from './config/api';
 
 function App() {
@@ -40,7 +50,7 @@ function App() {
       const savedUser = localStorage.getItem('raksha_auth_user');
       if (savedUser) {
         const u = JSON.parse(savedUser);
-        if (u.role === 'Employee' || u.role === 'Field Worker') return 'worker-portal';
+        if (u.role === 'Employee' || u.role === 'Field Worker') return 'dashboard';
         if (u.role === 'Officer' || u.role === 'Safety Officer') return 'dashboard';
         if (u.role === 'Manager' || u.role === 'Safety Manager') return 'manager';
         if (u.role === 'Admin') return 'settings';
@@ -165,7 +175,7 @@ function App() {
     // Role based routing redirection
     let defaultPage = 'dashboard';
     if (loggedInUser.role === 'Employee' || loggedInUser.role === 'Field Worker') {
-      defaultPage = 'worker-portal';
+      defaultPage = 'dashboard';
     } else if (loggedInUser.role === 'Officer' || loggedInUser.role === 'Safety Officer') {
       defaultPage = 'dashboard';
     } else if (loggedInUser.role === 'Manager' || loggedInUser.role === 'Safety Manager') {
@@ -187,7 +197,7 @@ function App() {
     if (email === 'worker@refinery.safe' || email === 'field.worker@sifdemo.com') {
       name = 'Field Employee / Worker';
       role = 'Field Worker';
-      defaultPage = 'worker-portal';
+      defaultPage = 'dashboard';
     } else if (email === 'officer@refinery.safe' || email === 'officer@sifdemo.com') {
       name = 'Safety Officer Lead';
       role = 'Safety Officer';
@@ -249,8 +259,11 @@ function App() {
     if (currentPage === 'detail' && selectedEvent) {
       return `Safety Alert: ${selectedEvent.id}`;
     }
-    if (user?.role === 'Field Worker' || currentPage === 'worker-portal') {
-      return 'Field Worker Safety Portal';
+    if ((user?.role === 'Field Worker' || user?.role === 'Employee') && currentPage === 'dashboard') {
+      return 'Employee Safety Dashboard';
+    }
+    if (currentPage === 'report-issue' || currentPage === 'worker-portal') {
+      return 'Report Safety Issue';
     }
     if (user?.role === 'Safety Officer' && currentPage === 'inbox') {
       return 'Safety Officer Intelligence Console';
@@ -274,10 +287,25 @@ function App() {
       review: 'Review & Validate',
       learning: 'GATI Continuous Learning Centre',
       reports: 'Compliance Reports Exporter',
-      settings: 'Settings & DB Calibration',
-      'worker-portal': 'Field Employee / Worker Safety Portal',
+      settings: 'Admin Dashboard',
+      'admin-requests': 'Admin Requests — Access Management',
+      'admin-users': 'User Directory',
+      'admin-roles': 'Role Governance',
+      'admin-reports': 'All Reports — Admin View',
+      'admin-audit': 'Audit Log',
+      'admin-settings': 'System Settings',
+      'report-issue': 'Report Safety Issue',
+      'worker-portal': 'Report Safety Issue',
+      'my-report': 'My Safety Reports',
       'take-action': 'Take Action',
-      'track-actions': 'Track Actions'
+      'track-actions': 'Track Actions',
+      'assigned-reports': 'Assigned Safety Reports',
+      investigate: 'Investigate Safety Issue',
+      'ai-analysis': 'AI & NLP Safety Analysis',
+      'assign-officer': 'Assign Officer to Report',
+      'manager-actions': 'Actions & Corrective Review',
+      'manager-analytics': 'Safety Analytics & Trends',
+      'manager-alerts': 'Safety Alerts & Escalations'
     };
     return titles[currentPage] || 'RAKSHA AI Platform';
   };
@@ -288,12 +316,13 @@ function App() {
     const isEmployee = user.role === 'Employee' || user.role === 'Field Worker';
     const isOfficer = user.role === 'Officer' || user.role === 'Safety Officer';
     const isManager = user.role === 'Manager' || user.role === 'Safety Manager';
+    const employeeAllowed = ['dashboard', 'report-issue', 'worker-portal', 'my-report', 'learning'];
 
-    if (isEmployee && currentPage !== 'worker-portal') {
-      setCurrentPage('worker-portal');
+    if (isEmployee && !employeeAllowed.includes(currentPage)) {
+      setCurrentPage('dashboard');
       setSelectedEvent(null);
-    } else if ((isOfficer || isManager) && (currentPage === 'settings' || currentPage === 'worker-portal')) {
-      setCurrentPage(isManager ? 'manager' : 'dashboard');
+    } else if ((isOfficer || isManager) && (currentPage === 'settings' || currentPage === 'worker-portal' || currentPage === 'report-issue')) {
+      setCurrentPage('dashboard');
       setSelectedEvent(null);
     }
   }, [user, currentPage]);
@@ -309,13 +338,16 @@ function App() {
       <Sidebar 
         currentPage={currentPage === 'detail' ? 'inbox' : currentPage} 
         setCurrentPage={(page) => {
-          if (user.role === 'Employee' || user.role === 'Field Worker') return;
+          const isEmployee = user.role === 'Employee' || user.role === 'Field Worker';
+          const employeeAllowed = ['dashboard', 'report-issue', 'worker-portal', 'my-report', 'learning'];
+          if (isEmployee && !employeeAllowed.includes(page)) return;
           setSelectedEvent(null);
           setCurrentPage(page);
           setIsMobileMenuOpen(false);
         }} 
         systemStatus={systemStatus} 
         userRole={user.role}
+        user={user}
         isOpen={isMobileMenuOpen}
         onClose={() => setIsMobileMenuOpen(false)}
       />
@@ -336,6 +368,14 @@ function App() {
 
         {/* Scrollable Page Body */}
         <main className="flex-1 pt-20 px-3 sm:px-6 lg:px-8 pb-12 overflow-y-auto">
+          {currentPage === 'dashboard' && ['Employee', 'Field Worker'].includes(user.role) && (
+            <EmployeeDashboard 
+              user={user}
+              onNavigateTo={setCurrentPage}
+              triggerStateRefresh={triggerStateRefresh}
+            />
+          )}
+
           {currentPage === 'dashboard' && !['Employee', 'Field Worker'].includes(user.role) && (
             <Dashboard 
               onViewEvent={handleViewEvent} 
@@ -386,7 +426,7 @@ function App() {
             />
           )}
 
-          {currentPage === 'learning' && !['Employee', 'Field Worker'].includes(user.role) && (
+          {currentPage === 'learning' && (
             <Learning 
               triggerStateRefresh={triggerStateRefresh} 
             />
@@ -405,6 +445,38 @@ function App() {
                 setSelectedEvent(null);
                 setCurrentPage(page);
               }}
+            />
+          )}
+
+          {currentPage === 'assign-officer' && (
+            <AssignOfficer
+              user={user}
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+            />
+          )}
+
+          {currentPage === 'manager-actions' && (
+            <ManagerActions
+              user={user}
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+            />
+          )}
+
+          {currentPage === 'manager-analytics' && (
+            <ManagerAnalytics
+              user={user}
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+            />
+          )}
+
+          {currentPage === 'manager-alerts' && (
+            <ManagerAlerts
+              user={user}
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
             />
           )}
 
@@ -432,12 +504,72 @@ function App() {
             />
           )}
 
-          {currentPage === 'worker-portal' && (
+          {currentPage === 'admin-users' && (
+            <AdminConsole
+              initialTab="users"
+              onResetDb={handleRefreshApp}
+              triggerNotification={triggerNotification}
+              onNavigateTo={(page) => {
+                setSelectedEvent(null);
+                setCurrentPage(page);
+              }}
+            />
+          )}
+
+          {currentPage === 'admin-roles' && (
+            <AdminConsole
+              initialTab="roles"
+              onResetDb={handleRefreshApp}
+              triggerNotification={triggerNotification}
+              onNavigateTo={(page) => {
+                setSelectedEvent(null);
+                setCurrentPage(page);
+              }}
+            />
+          )}
+
+          {currentPage === 'admin-reports' && (
+            <AdminConsole
+              initialTab="reports"
+              onResetDb={handleRefreshApp}
+              triggerNotification={triggerNotification}
+              onNavigateTo={(page) => {
+                setSelectedEvent(null);
+                setCurrentPage(page);
+              }}
+            />
+          )}
+
+          {currentPage === 'admin-audit' && (
+            <AdminConsole
+              initialTab="audit"
+              onResetDb={handleRefreshApp}
+              triggerNotification={triggerNotification}
+              onNavigateTo={(page) => {
+                setSelectedEvent(null);
+                setCurrentPage(page);
+              }}
+            />
+          )}
+
+          {currentPage === 'admin-settings' && (
+            <AdminSettings />
+          )}
+
+          {(currentPage === 'report-issue' || currentPage === 'worker-portal') && (
             <WorkerPortal 
               user={user}
               triggerNotification={triggerNotification}
               triggerStateRefresh={triggerStateRefresh}
               onEventCreated={handleRefreshApp}
+              onNavigateTo={setCurrentPage}
+            />
+          )}
+
+          {currentPage === 'my-report' && (
+            <MyReport 
+              user={user} 
+              onNavigateTo={setCurrentPage}
             />
           )}
 
@@ -452,6 +584,44 @@ function App() {
             <TrackActions 
               triggerNotification={triggerNotification}
               triggerStateRefresh={triggerStateRefresh}
+            />
+          )}
+
+          {currentPage === 'assigned-reports' && (
+            <AssignedReports
+              user={user}
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+              onNavigateTo={(page, event) => {
+                if (event) setSelectedEvent(event);
+                setCurrentPage(page);
+              }}
+            />
+          )}
+
+          {currentPage === 'investigate' && (
+            <Investigate
+              user={user}
+              selectedEvent={selectedEvent}
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+              onNavigateTo={(page, event) => {
+                if (event) setSelectedEvent(event);
+                setCurrentPage(page);
+              }}
+            />
+          )}
+
+          {currentPage === 'ai-analysis' && (
+            <AiAnalysis
+              user={user}
+              selectedEvent={selectedEvent}
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+              onNavigateTo={(page, event) => {
+                if (event) setSelectedEvent(event);
+                setCurrentPage(page);
+              }}
             />
           )}
 
