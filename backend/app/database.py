@@ -61,29 +61,34 @@ def normalize_db_url(raw_url: str):
 
 def get_engine():
     db_url = config.DATABASE_URL
-    cleaned_url, connect_args = normalize_db_url(db_url)
     
+    # If placeholder password is present, fallback directly to SQLite
+    if not db_url or "<PASSWORD>" in db_url:
+        sqlite_path = os.path.join(os.path.dirname(__file__), "safety.db")
+        sqlite_url = f"sqlite:///{sqlite_path}"
+        logger.info(f"Using local SQLite database: {sqlite_url}")
+        return create_engine(sqlite_url, connect_args={"check_same_thread": False})
+
+    cleaned_url, connect_args = normalize_db_url(db_url)
     logger.info(f"Connecting to TiDB Cloud Enterprise Database: {cleaned_url.split('@')[-1] if '@' in cleaned_url else cleaned_url}")
     
-    engine = create_engine(
-        cleaned_url,
-        connect_args=connect_args,
-        pool_size=10,
-        max_overflow=20,
-        pool_pre_ping=True,
-        pool_recycle=1800
-    )
-    
     try:
+        engine = create_engine(
+            cleaned_url,
+            connect_args=connect_args,
+            pool_size=10,
+            max_overflow=20,
+            pool_pre_ping=True,
+            pool_recycle=1800
+        )
         with engine.connect() as conn:
             logger.info("Successfully connected to TiDB Cloud Enterprise Database.")
+        return engine
     except Exception as e:
-        if "<PASSWORD>" in db_url:
-            logger.warning("TiDB Cloud connection notice: '<PASSWORD>' placeholder found in DATABASE_URL. Please set your actual cluster password in backend/app/.env to enable database operations.")
-        else:
-            logger.error(f"Failed to connect to TiDB Cloud: {e}. Please check your credentials and network connectivity.")
-            
-    return engine
+        logger.warning(f"Could not connect to TiDB Cloud ({e}). Falling back to local SQLite database.")
+        sqlite_path = os.path.join(os.path.dirname(__file__), "safety.db")
+        sqlite_url = f"sqlite:///{sqlite_path}"
+        return create_engine(sqlite_url, connect_args={"check_same_thread": False})
 
 engine = get_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

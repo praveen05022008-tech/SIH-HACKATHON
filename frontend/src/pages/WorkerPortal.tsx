@@ -249,76 +249,90 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
       if (!res.ok) throw new Error();
       const data = await res.json();
       setMyReports(data.slice(0, 10));
+      localStorage.setItem('raksha_worker_reports_' + userEmail, JSON.stringify(data.slice(0, 10)));
     } catch (err) {
       console.warn('Could not load worker reports from API, loading local personal report list');
-      setMyReports([
-        {
-          id: 'EVT-10288',
-          report_code: '#SIF26165-012',
-          report_type: 'Unsafe Condition',
-          reporter_email: userEmail,
-          hazard_category: 'Working at Height',
-          shift_timing: 'Morning Shift (06:00 - 14:00)',
-          location_detail: 'Substructure Bay 2 - Monkey Board',
-          timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
-          site: 'Drilling Site B',
-          unit: 'Rig Floor 01',
-          location: 'Rig Floor 01 - Under Monkey Board',
-          activity: 'Drilling & Casing Operations',
-          description: 'Observed casing crew member working on structural platform without visual anchor lifeline clipped.',
-          hazard: 'Elevated fall risk during casing pipe trip',
-          energy_source: 'Gravitational Potential',
-          barrier: '100% Tie-off Fall Arrest System & Guardrails',
-          barrier_failure: 'Harness lanyard not anchored',
-          exposure: 'Worker positioned on rig mast unclipped',
-          consequence: 'Fatal fall from mast height',
-          sif_probability: 91.0,
-          confidence: 89.0,
-          life_saving_rule: 'Working at Height',
-          status: 'Action Dispatched',
-          reviewer: 'Safety Officer Lead',
-          evidence: 'Self submitted report',
-          l1_milestone: 'OIL Annual Rig Operations 2026',
-          l2_unit: 'Rig Floor 01 Section',
-          l3_discipline: 'Drilling & Mechanical HSE',
-          l4_work_package: 'Casing Operations Package',
-          l5_activity: 'Drilling & Casing Operations',
-          l6_job: 'Inspect rig mast casing platform'
-        },
-        {
-          id: 'EVT-10275',
-          report_code: '#SIF26165-008',
-          report_type: 'Near Miss',
-          reporter_email: userEmail,
-          hazard_category: 'Energy Isolation / LOTO',
-          shift_timing: 'Evening Shift (14:00 - 22:00)',
-          location_detail: 'Pump House Line V-4',
-          timestamp: new Date(Date.now() - 3600000 * 26).toISOString(),
-          site: 'Refinery A',
-          unit: 'CDU Area',
-          location: 'CDU Area - Pump Line V-4',
-          activity: 'Pump Maintenance',
-          description: 'Unlabeled isolation valve found open on pressurized line prior to flange clearance.',
-          hazard: 'Pressurized chemical discharge',
-          energy_source: 'Pressurized Fluid / Gas',
-          barrier: 'Lockout/Tagout Zero Pressure Verification',
-          barrier_failure: 'Missing LOTO lock tag',
-          exposure: 'Maintenance technician at valve',
-          consequence: 'Chemical spray exposure',
-          sif_probability: 78.0,
-          confidence: 85.0,
-          life_saving_rule: 'Energy Isolation',
-          status: 'Confirmed',
-          reviewer: 'Safety Officer Lead',
-          evidence: 'Self submitted report',
-          l1_milestone: 'OIL Annual Rig Operations 2026',
-          l2_unit: 'CDU Section',
-          l3_discipline: 'Mechanical Maintenance',
-          l4_work_package: 'Pump Overhaul Package',
-          l5_activity: 'Flange Inspection',
-          l6_job: 'Check valve isolation'
+      const saved = localStorage.getItem('raksha_worker_reports_' + userEmail);
+      if (saved) {
+        try {
+          setMyReports(JSON.parse(saved));
+          return;
+        } catch {
+          // ignore
         }
-      ]);
+      }
+      if (userEmail === 'worker@refinery.safe') {
+        setMyReports([
+          {
+            id: 'EVT-10288',
+            report_code: '#SIF26165-012',
+            report_type: 'Unsafe Condition',
+            reporter_email: userEmail,
+            hazard_category: 'Working at Height',
+            shift_timing: 'Morning Shift (06:00 - 14:00)',
+            location_detail: 'Substructure Bay 2 - Monkey Board',
+            timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
+            site: 'Drilling Site B',
+            unit: 'Rig Floor 01',
+            location: 'Rig Floor 01 - Under Monkey Board',
+            activity: 'Drilling & Casing Operations',
+            description: 'Observed casing crew member working on structural platform without visual anchor lifeline clipped.',
+            hazard: 'Elevated fall risk during casing pipe trip',
+            energy_source: 'Gravitational Potential',
+            barrier: '100% Tie-off Fall Arrest System & Guardrails',
+            barrier_failure: 'Harness lanyard not anchored',
+            exposure: 'Worker positioned on rig mast unclipped',
+            consequence: 'Fatal fall from mast height',
+            sif_probability: 91.0,
+            confidence: 89.0,
+            life_saving_rule: 'Working at Height',
+            status: 'Action Dispatched',
+            reviewer: 'Safety Officer Lead',
+            evidence: 'Self submitted report',
+            l1_milestone: 'OIL Annual Rig Operations 2026',
+            l2_unit: 'Rig Floor 01 Section',
+            l3_discipline: 'Drilling & Mechanical HSE',
+            l4_work_package: 'Casing Operations Package',
+            l5_activity: 'Drilling & Casing Operations',
+            l6_job: 'Inspect rig mast casing platform'
+          },
+          {
+            id: 'EVT-10275',
+            report_code: '#SIF26165-008',
+            report_type: 'Near Miss',
+            reporter_email: userEmail,
+            hazard_category: 'Energy Isolation / LOTO',
+            shift_timing: 'Evening Shift (14:00 - 22:00)',
+            location_detail: 'Pump House Line V-4',
+            timestamp: new Date(Date.now() - 3600000 * 26).toISOString(),
+            site: 'Refinery A',
+            unit: 'CDU Area',
+            location: 'CDU Area - Pump Line V-4',
+            activity: 'Pump Maintenance',
+            description: 'Unlabeled isolation valve found open on pressurized line prior to flange clearance.',
+            hazard: 'Pressurized chemical discharge',
+            energy_source: 'Pressurized Fluid / Gas',
+            barrier: 'Lockout/Tagout Zero Pressure Verification',
+            barrier_failure: 'Missing LOTO lock tag',
+            exposure: 'Maintenance technician at valve',
+            consequence: 'Chemical spray exposure',
+            sif_probability: 78.0,
+            confidence: 85.0,
+            life_saving_rule: 'Energy Isolation',
+            status: 'Confirmed',
+            reviewer: 'Safety Officer Lead',
+            evidence: 'Self submitted report',
+            l1_milestone: 'OIL Annual Rig Operations 2026',
+            l2_unit: 'CDU Section',
+            l3_discipline: 'Mechanical Maintenance',
+            l4_work_package: 'Pump Overhaul Package',
+            l5_activity: 'Flange Inspection',
+            l6_job: 'Check valve isolation'
+          }
+        ]);
+      } else {
+        setMyReports([]);
+      }
     } finally {
       setLoadingReports(false);
     }
@@ -647,7 +661,11 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
         l6_job: 'Inspect work area layout'
       };
       
-      setMyReports(prev => [newEvent, ...prev]);
+      setMyReports(prev => {
+        const updated = [newEvent, ...prev];
+        localStorage.setItem('raksha_worker_reports_' + userEmail, JSON.stringify(updated));
+        return updated;
+      });
       onEventCreated();
       
       // Clear form

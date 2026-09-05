@@ -924,6 +924,7 @@ def get_events(
     risk_level: Optional[str] = None,
     report_type: Optional[str] = None,
     life_saving_rule: Optional[str] = None,
+    reporter_email: Optional[str] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
@@ -939,6 +940,8 @@ def get_events(
         query = query.filter(models.SafetyEvent.report_type == report_type)
     if life_saving_rule and life_saving_rule != "All Rules":
         query = query.filter(models.SafetyEvent.life_saving_rule == life_saving_rule)
+    if reporter_email:
+        query = query.filter(models.SafetyEvent.reporter_email.ilike(reporter_email))
         
     if sif_potential == "SIF Potential":
         query = query.filter((models.SafetyEvent.sif_risk_score >= 6.5) | (models.SafetyEvent.sif_probability >= 50.0))
@@ -1021,6 +1024,7 @@ def analyze_report(payload: schemas.SafetyReportCreate, db: Session = Depends(ge
             report_id=report.id,
             report_code=report_code,
             report_type=payload.report_type or "Unsafe Condition",
+            reporter_email=payload.reporter_email or "worker@refinery.safe",
             timestamp=datetime.datetime.utcnow(),
             site=analysis["site"],
             unit=analysis["unit"],
