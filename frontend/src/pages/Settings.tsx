@@ -52,18 +52,13 @@ export const Settings: React.FC<SettingsProps> = ({ onResetDb, triggerNotificati
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch(apiUrl('/api/users'));
+      const res = await fetch(apiUrl('/api/admin/users'));
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setUsers(data);
+      setUsers(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.warn("Could not load users list, loading mocks");
-      setUsers([
-        { email: 'worker@refinery.safe', name: 'Field Worker Demo', role: 'Field Worker' },
-        { email: 'officer@refinery.safe', name: 'Safety Officer Lead', role: 'Safety Officer' },
-        { email: 'manager@refinery.safe', name: 'HSE Manager / Lead', role: 'Safety Manager' },
-        { email: 'admin@refinery.safe', name: 'System Administrator', role: 'Admin' }
-      ]);
+      console.warn("Could not load users list:", err);
+      setUsers([]);
     }
   };
 
@@ -73,13 +68,10 @@ export const Settings: React.FC<SettingsProps> = ({ onResetDb, triggerNotificati
       const res = await fetch(apiUrl('/api/audit'));
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setAudits(data);
+      setAudits(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.warn("Could not load audits, seeding mocks");
-      setAudits([
-        { id: 1, event_id: 'EVT-10291', action: 'AI Classified', details: 'System scanned SIF potential report. Score: 8.2/10.', user_email: 'engine@sifshield.ai', timestamp: new Date().toISOString() },
-        { id: 2, event_id: 'EVT-10291', action: 'Officer Verified', details: 'Safety Officer verified result. Corrective action ACT-1002 issued.', user_email: 'officer@refinery.safe', timestamp: new Date(Date.now() - 600000).toISOString() }
-      ]);
+      console.warn("Could not load audits:", err);
+      setAudits([]);
     } finally {
       setLoadingAudits(false);
     }

@@ -24,64 +24,8 @@ export const Precursors: React.FC<PrecursorsProps> = ({ triggerStateRefresh }) =
       const data = await res.json();
       setPatterns(data);
     } catch (err) {
-      console.warn('Precursors API failed, loading mock pattern cards.');
-      setPatterns([
-        {
-          id: 'PAT-01',
-          name: 'Incomplete Energy Isolation Verification',
-          occurrences: 37,
-          sites: 3,
-          activities: 'Maintenance / Valve Work',
-          life_saving_rule: 'Energy Isolation',
-          trend: '↑ 18%',
-          barrier_failure: 'Isolation verification not performed',
-          risk_level: 'HIGH'
-        },
-        {
-          id: 'PAT-02',
-          name: 'Personnel entering Line-of-Fire Zone',
-          occurrences: 24,
-          sites: 4,
-          activities: 'Lifting Operations',
-          life_saving_rule: 'Line of Fire',
-          trend: 'Stable',
-          barrier_failure: 'Lifting exclusion zone not barricaded',
-          risk_level: 'HIGH'
-        },
-        {
-          id: 'PAT-03',
-          name: 'Confined Space Gas Testing Bypass',
-          occurrences: 22,
-          sites: 2,
-          activities: 'Vessel Inspection / Entry',
-          life_saving_rule: 'Confined Space',
-          trend: '↑ 12%',
-          barrier_failure: 'Gas clearance test omitted before entry',
-          risk_level: 'HIGH'
-        },
-        {
-          id: 'PAT-04',
-          name: 'Fall Protection Anchorage Omission',
-          occurrences: 19,
-          sites: 3,
-          activities: 'Working at Height',
-          life_saving_rule: 'Working at Height',
-          trend: 'Stable',
-          barrier_failure: 'Fall protection harness not anchored',
-          risk_level: 'MEDIUM'
-        },
-        {
-          id: 'PAT-05',
-          name: 'Unprotected Live Electrical Testing',
-          occurrences: 8,
-          sites: 2,
-          activities: 'Routine Maintenance',
-          life_saving_rule: 'Electrical Safety',
-          trend: '↑ 5%',
-          barrier_failure: 'Isolation verification not performed',
-          risk_level: 'MEDIUM'
-        }
-      ]);
+      console.warn('Precursors API error:', err);
+      setPatterns([]);
     } finally {
       setLoading(false);
     }

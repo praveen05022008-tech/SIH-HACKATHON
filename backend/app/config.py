@@ -1,6 +1,4 @@
 import os
-import tempfile
-import shutil
 from dotenv import load_dotenv
 
 # Load from .env or env file
@@ -12,34 +10,24 @@ for possible_env in [
     if os.path.exists(possible_env):
         load_dotenv(possible_env)
 
-DATABASE_URL = os.getenv("DATABASE_URL", "")
-SECRET_KEY = os.getenv("SECRET_KEY", "raksha_ai_secret_key_2026")
+# Primary Enterprise Database (TiDB Cloud MySQL protocol)
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "mysql+pymysql://3jfTYcg9qFzDk43.root:<PASSWORD>@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/sys"
+)
+
+SECRET_KEY = os.getenv("SECRET_KEY", "gati_secret_key_sih_2026_mayan_safe")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 ENV = os.getenv("ENV", "development")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
-# Determine database url and fallback
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
-# In Vercel or Serverless environments, filesystem is read-only except in temp directory
-is_serverless = bool(os.getenv("VERCEL") or os.getenv("AWS_LAMBDA_FUNCTION_NAME"))
-if is_serverless:
-    SQLITE_DB_PATH = os.path.join(tempfile.gettempdir(), "mayan_safe.db")
-    src_db = os.path.join(BASE_DIR, "mayan_safe.db")
-    if os.path.exists(src_db) and not os.path.exists(SQLITE_DB_PATH):
-        try:
-            shutil.copy2(src_db, SQLITE_DB_PATH)
-        except Exception:
-            pass
-else:
-    SQLITE_DB_PATH = os.path.join(BASE_DIR, "mayan_safe.db")
-
-SQLITE_FALLBACK_URL = f"sqlite:///{SQLITE_DB_PATH.replace(os.sep, '/')}"
-IS_SQLITE = False
-
-if not DATABASE_URL or "<PASSWORD>" in DATABASE_URL or "password" in DATABASE_URL.lower() or len(DATABASE_URL.strip()) == 0:
-    DATABASE_URL = SQLITE_FALLBACK_URL
-    IS_SQLITE = True
+# Cloudinary Configuration (Image Uploads & Storage)
+CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "569737981981872")
+CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "TpQm-JkWcqPn--7oeQWaUXoBA54")
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "")
 
 # AI Engine Configuration (Cerebras / OpenAI compatible)
 AI_PROVIDER = os.getenv("AI_PROVIDER", "cerebras")

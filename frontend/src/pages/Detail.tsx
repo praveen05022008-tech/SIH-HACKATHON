@@ -84,12 +84,10 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
         });
       }
     } catch (err) {
-      console.warn('Failed to fetch event detail, using mock data.');
+      console.warn('Failed to fetch event detail:', err);
       setData({
         event: event,
-        audits: [
-          { id: 1, event_id: event.id, action: 'AI Classified', details: `System automatically parsed safety report. predicted SIF probability: ${event.sif_probability}%, mapped to Life-Saving Rule: ${event.life_saving_rule}.`, user_email: 'engine@sifshield.ai', timestamp: event.timestamp }
-        ],
+        audits: [],
         interventions: []
       });
     } finally {
@@ -235,14 +233,8 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
       });
       fetchEventDetail();
     } catch (err) {
-      console.warn("Fallback action dispatch mock");
-      setActionDispatched({
-        action_id: `ACT-${Math.floor(Math.random() * 900 + 1000)}`,
-        assigned_team: assignedTeam,
-        status: 'In Progress',
-        stop_work_issued: stopWork
-      });
-      fetchEventDetail();
+      console.warn("Action dispatch error:", err);
+      alert("Failed to dispatch corrective action to database. Please check your connection.");
     } finally {
       setSubmitting(false);
     }
@@ -315,7 +307,7 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
               </div>
               <div className="flex justify-between py-1 border-b border-slate-50">
                 <span className="text-slate-400 font-medium">Reported By:</span>
-                <span className="font-bold text-slate-800">Ramesh Kumar (Worker)</span>
+                <span className="font-bold text-slate-800">{currentEvent.reporter_name || currentEvent.reported_by || 'Field Employee'}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-50">
                 <span className="text-slate-400 font-medium">Date & Time:</span>

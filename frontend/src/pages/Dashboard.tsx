@@ -37,7 +37,8 @@ import {
   BarChart3,
   Check,
   ClipboardCheck,
-  BrainCircuit
+  BrainCircuit,
+  Camera
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -70,208 +71,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Selected issue for the View Popup Modal
   const [popupEvent, setPopupEvent] = useState<SafetyEvent | null>(null);
 
-  // Baseline mock events to display if backend has 0 events or is offline
-  const fallbackEvents: SafetyEvent[] = [
-    {
-      id: 'EVT-10105',
-      report_code: '#SIF26165-001',
-      report_type: 'Unsafe Condition',
-      timestamp: new Date().toISOString(),
-      site: 'Drilling Site B',
-      unit: 'Utility Block Section 02',
-      location: 'Utility Block - Section 02',
-      activity: 'Energy Isolation / Valve Work',
-      description: 'Technician was observed servicing a pressurized line before independently verifying mechanical energy isolation LOTO tags.',
-      hazard: 'Unverified Mechanical Energy Isolation & Line Depressurization',
-      energy_source: 'Pressurized Fluid / Gas',
-      barrier: 'Lockout/Tagout (LOTO)',
-      barrier_failure: 'Zero energy verification bypass',
-      exposure: 'Crew within valve flange spray trajectory',
-      consequence: 'Severe pressurized fluid / gas release',
-      sif_probability: 72.0,
-      confidence: 88.0,
-      life_saving_rule: 'Energy Isolation',
-      status: 'Needs Review',
-      reviewer: null,
-      evidence: 'Worker field submission',
-      l1_milestone: 'OIL Annual Rig Operations 2026',
-      l2_unit: 'Rig Floor 01 Section',
-      l3_discipline: 'Mechanical Maintenance',
-      l4_work_package: 'Valve service',
-      l5_activity: 'Energy Isolation',
-      l6_job: 'Inspect block valves',
-      sif_risk_score: 7.8,
-      risk_level: 'HIGH',
-      action_id: 'ACT-1001',
-      action_status: 'In Progress'
-    },
-    {
-      id: 'EVT-10028',
-      report_code: '#SIF26165-002',
-      report_type: 'Unsafe Act',
-      timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
-      site: 'Drilling Site B',
-      unit: 'FCCU - Section 01',
-      location: 'FCCU - Section 01',
-      activity: 'Working at Height',
-      description: 'Contractor climbed the derrick mast at Drilling Site B without securing their safety harness lanyard to the structural anchor point.',
-      hazard: 'Working at Elevated Height Without Fall Protection Anchor',
-      energy_source: 'Gravitational Potential',
-      barrier: 'Harness Tie-Off Lifelines',
-      barrier_failure: 'Harness lanyard not anchored to lifeline',
-      exposure: 'Worker climbing upper mast scaffolding',
-      consequence: 'Fatal fall from elevated structure',
-      sif_probability: 84.0,
-      confidence: 92.0,
-      life_saving_rule: 'Working at Height',
-      status: 'Needs Review',
-      reviewer: null,
-      evidence: 'CCTV AI detection feed',
-      l1_milestone: 'OIL Annual Rig Operations 2026',
-      l2_unit: 'Derrick Mast Scaffold',
-      l3_discipline: 'Rig Operations',
-      l4_work_package: 'Platform inspection',
-      l5_activity: 'Working at Height',
-      l6_job: 'Climb mast platform',
-      sif_risk_score: 8.4,
-      risk_level: 'CRITICAL',
-      action_id: 'ACT-1002',
-      action_status: 'Overdue'
-    },
-    {
-      id: 'EVT-10102',
-      report_code: '#SIF26165-003',
-      report_type: 'Near Miss',
-      timestamp: new Date(Date.now() - 3600000 * 8).toISOString(),
-      site: 'Drilling Site A',
-      unit: 'Mud Pump Section',
-      location: 'Mud Pump Area Unit 01',
-      activity: 'Routine Maintenance',
-      description: 'Observed intermittent electrical sparks near the primary mud pump motor terminal box housing during shift startup.',
-      hazard: 'Exposed Live Terminal Contacts in Mud Pump Housing',
-      energy_source: 'Electrical Energy (415V)',
-      barrier: 'Insulated housing covers & IP65 enclosure',
-      barrier_failure: 'Missing gasket seal & loose cover',
-      exposure: 'Technician working in wet washdown zone',
-      consequence: 'Severe shock / occupational arc flash',
-      sif_probability: 68.0,
-      confidence: 85.0,
-      life_saving_rule: 'Energy Isolation',
-      status: 'Action Dispatched',
-      reviewer: 'Safety Officer Lead',
-      evidence: 'Shift supervisor log',
-      l1_milestone: 'Standard Operations',
-      l2_unit: 'Mud Pump Area Unit',
-      l3_discipline: 'Electrical Maintenance',
-      l4_work_package: 'Motor inspection',
-      l5_activity: 'Routine Maintenance',
-      l6_job: 'Check motor terminals',
-      sif_risk_score: 6.8,
-      risk_level: 'HIGH',
-      action_id: 'ACT-1003',
-      action_status: 'In Progress'
-    },
-    {
-      id: 'EVT-10084',
-      report_code: '#SIF26165-004',
-      report_type: 'Unsafe Condition',
-      timestamp: new Date(Date.now() - 86400000 * 1).toISOString(),
-      site: 'Refinery Unit 1',
-      unit: 'Tank Farm - Section 02',
-      location: 'Tank Farm Storage Sector 3',
-      activity: 'Confined Space Entry',
-      description: 'Continuous atmospheric gas detector alarm was muted during tank TK-201 internal inspection due to false alarm presumption.',
-      hazard: 'Gas Detector Alarm Override in Confined Storage Tank',
-      energy_source: 'Toxic Hydrocarbon Vapors',
-      barrier: 'Continuous Gas Monitoring & Permit to Work',
-      barrier_failure: 'Audio visual alarm silenced without evacuation',
-      exposure: 'Inspection team inside sealed vessel',
-      consequence: 'Asphyxiation / acute toxic inhalation',
-      sif_probability: 91.0,
-      confidence: 94.0,
-      life_saving_rule: 'Confined Space',
-      status: 'Confirmed',
-      reviewer: 'HSE Manager Lead',
-      evidence: 'Gas monitor telemetry log',
-      l1_milestone: 'Turnaround Operations',
-      l2_unit: 'Storage Tank Sector',
-      l3_discipline: 'Process Safety',
-      l4_work_package: 'Internal vessel wash',
-      l5_activity: 'Confined Space',
-      l6_job: 'Atmosphere check',
-      sif_risk_score: 9.1,
-      risk_level: 'CRITICAL',
-      action_id: 'ACT-1004',
-      action_status: 'Completed'
-    },
-    {
-      id: 'EVT-10067',
-      report_code: '#SIF26165-005',
-      report_type: 'Unsafe Act',
-      timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
-      site: 'Drilling Site C',
-      unit: 'Rig Floor 01',
-      location: 'Substructure Wellhead Pad',
-      activity: 'Lifting Operations',
-      description: 'Crane rigger positioned body directly underneath the suspended 3.5-ton blowout preventer spool during rigging reposition.',
-      hazard: 'Personnel in Direct Line of Fire Under Suspended Heavy Load',
-      energy_source: 'Suspended Gravity Load (3.5T)',
-      barrier: 'Exclusion Zone Barricades & Taglines',
-      barrier_failure: 'Personnel entered drop perimeter',
-      exposure: 'Rigger standing in load trajectory',
-      consequence: 'Crush fatality due to sling failure',
-      sif_probability: 88.0,
-      confidence: 95.0,
-      life_saving_rule: 'Line of Fire',
-      status: 'Resolved',
-      reviewer: 'Safety Officer Lead',
-      evidence: 'Stop Work Authority Form',
-      l1_milestone: 'Well Spudding Ops',
-      l2_unit: 'Substructure Area',
-      l3_discipline: 'Rig Floor Operations',
-      l4_work_package: 'BOP installation',
-      l5_activity: 'Lifting Operations',
-      l6_job: 'Position crane sling',
-      sif_risk_score: 8.8,
-      risk_level: 'CRITICAL',
-      action_id: 'ACT-1005',
-      action_status: 'Completed'
-    },
-    {
-      id: 'EVT-10055',
-      report_code: '#SIF26165-006',
-      report_type: 'Unsafe Condition',
-      timestamp: new Date(Date.now() - 86400000 * 3).toISOString(),
-      site: 'Refinery Unit 2',
-      unit: 'Utility Block Section 02',
-      location: 'Boiler Feed Water Pump House',
-      activity: 'Hot Work',
-      description: 'Hot work welding permit expired 3 hours prior but torch cutting was continuing without fire watch presence.',
-      hazard: 'Hot Work Operations With Expired Permit & Missing Fire Watch',
-      energy_source: 'Thermal / Open Flame',
-      barrier: 'Hot Work Permit & Certified Fire Watch',
-      barrier_failure: 'Work continued past authorized permit validity',
-      exposure: 'Welder cutting flange near diesel day tank',
-      consequence: 'Flash fire & hydrocarbon ignition',
-      sif_probability: 76.0,
-      confidence: 89.0,
-      life_saving_rule: 'Hot Work',
-      status: 'Confirmed',
-      reviewer: 'Safety Officer Lead',
-      evidence: 'Permit audit inspection',
-      l1_milestone: 'Boiler House Overhaul',
-      l2_unit: 'Feed Pump Station',
-      l3_discipline: 'Welding & Fabrication',
-      l4_work_package: 'Piping retrofit',
-      l5_activity: 'Hot Work',
-      l6_job: 'Torch cut support beam',
-      sif_risk_score: 7.6,
-      risk_level: 'HIGH',
-      action_id: 'ACT-1006',
-      action_status: 'Completed'
-    }
-  ];
-
   const fetchDashboardData = async () => {
     setLoading(true);
     try {
@@ -282,22 +81,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
       if (evtRes.ok) {
         const data = await evtRes.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setEvents(data);
-        } else {
-          setEvents(fallbackEvents);
-        }
+        setEvents(Array.isArray(data) ? data : []);
       } else {
-        setEvents(fallbackEvents);
+        setEvents([]);
       }
 
       if (dirRes.ok) {
         const dirData = await dirRes.json();
-        setDirectives(dirData);
+        setDirectives(Array.isArray(dirData) ? dirData : []);
       }
     } catch (err) {
-      console.warn("FastAPI offline or empty, utilizing baseline events dataset.");
-      setEvents(fallbackEvents);
+      console.warn("FastAPI fetch error:", err);
+      setEvents([]);
+      setDirectives([]);
     } finally {
       setLoading(false);
     }
@@ -309,8 +105,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          user_email: 'officer@refinery.safe',
-          user_name: userName || 'Capt. Arvind Sen',
+          user_email: 'user@refinery.safe',
+          user_name: userName || 'Authorized Officer',
           site: 'All Operational Sites',
           role: userRole || 'Safety Officer'
         })
@@ -554,17 +350,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
               <h1 className="text-2xl font-black tracking-tight text-white">
                 {userRole === 'Admin' 
-                  ? 'Welcome Back, System Administrator' 
+                  ? `Welcome Back, ${userName || 'System Administrator'}` 
                   : userRole === 'Safety Manager'
-                    ? 'Welcome Back, Dr. Vikram Roy (Head of HSE)'
-                    : 'Welcome Back, Safety Officer Lead!'}
+                    ? `Welcome Back, ${userName || 'Safety Manager'}`
+                    : `Welcome Back, ${userName || 'Safety Officer'}!`}
               </h1>
               <p className="text-sm text-emerald-50/90 italic mt-1 font-medium leading-relaxed">
                 {userRole === 'Admin' 
                   ? 'Enterprise Portal Operations, System Health, and AI Precursor Governance'
                   : userRole === 'Safety Manager'
-                    ? 'Macro Safety Governance: 5 Operational Sites, 4 Active Officers, 94.2% SIF Prevention Rate'
-                    : 'Active Shift: Drilling Site A (Rig Floor 01). Review precursor hazard reports & execute assigned barrier audits.'}
+                    ? `Macro Safety Governance: ${events.length} Total Field Observations Logged • Real-time AI SIF Analysis`
+                    : 'Active Shift: Precursor Hazard Review Queue & Barrier Audit Operations.'}
               </p>
               
               <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -1580,6 +1376,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Attached Photo Evidence */}
+              {popupEvent.photo_url && (
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Camera className="h-4 w-4 text-[#008779]" />
+                    <span>Uploaded Photo Evidence (Cloudinary)</span>
+                  </h4>
+                  <a href={popupEvent.photo_url} target="_blank" rel="noreferrer" className="inline-block group">
+                    <img 
+                      src={popupEvent.photo_url} 
+                      alt="Hazard snapshot" 
+                      className="h-36 max-w-full rounded-xl object-cover border border-slate-300 shadow-2xs group-hover:opacity-90 transition"
+                    />
+                    <span className="text-[10px] text-[#008779] font-bold mt-1 block group-hover:underline">View Full Resolution ↗</span>
+                  </a>
+                </div>
+              )}
 
               {/* 1. Observation Narrative */}
               <div className="space-y-2">

@@ -18,17 +18,13 @@ export const Learning: React.FC<LearningProps> = ({ triggerStateRefresh }) => {
       const payload = await res.json();
       setData(payload);
     } catch (err) {
-      console.warn('Learning API failed, loading mock loop stats.');
+      console.warn('Learning API error:', err);
       setData({
-        reports_reviewed: 1248,
-        corrections_count: 83,
-        learning_events_count: 83,
-        model_improvement: '+12%',
-        recent_learning: [
-          { id: 1, event_id: 'EVT-10291', original_prediction: 'SIF: Non-SIF, Rule: None', reviewer_decision: 'SIF: SIF Potential, Rule: Energy Isolation', learning_signal: 'GATI calibrated: SIF correction: Non-SIF -> SIF Potential | LSR correction: None -> Energy Isolation', timestamp: new Date().toISOString() },
-          { id: 2, event_id: 'EVT-10283', original_prediction: 'SIF: SIF Potential, Rule: Line of Fire', reviewer_decision: 'SIF: SIF Potential, Rule: Lifting Operations', learning_signal: 'GATI calibrated: LSR correction: Line of Fire -> Lifting Operations', timestamp: new Date(Date.now() - 3600000 * 24).toISOString() },
-          { id: 3, event_id: 'EVT-10271', original_prediction: 'SIF: SIF Potential, Rule: Energy Isolation', reviewer_decision: 'SIF: Non-SIF, Rule: Energy Isolation', learning_signal: 'GATI calibrated: SIF correction: SIF Potential -> Non-SIF', timestamp: new Date(Date.now() - 3600000 * 48).toISOString() }
-        ]
+        reports_reviewed: 0,
+        corrections_count: 0,
+        learning_events_count: 0,
+        model_improvement: '0%',
+        recent_learning: []
       });
     } finally {
       setLoading(false);

@@ -19,10 +19,36 @@ import { WorkerPortal } from './pages/WorkerPortal';
 import { TakeAction } from './pages/TakeAction';
 import { TrackActions } from './pages/TrackActions';
 import { SafetyManager } from './pages/SafetyManager';
+import { apiUrl } from './config/api';
 
 function App() {
-  const [user, setUser] = useState<User | null>(null);
-  const [currentPage, setCurrentPage] = useState<string>('dashboard');
+  // Persistent user state from localStorage
+  const [user, setUser] = useState<User | null>(() => {
+    try {
+      const savedUser = localStorage.getItem('raksha_auth_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Persistent navigation state from localStorage
+  const [currentPage, setCurrentPage] = useState<string>(() => {
+    try {
+      const savedPage = localStorage.getItem('raksha_current_page');
+      if (savedPage) return savedPage;
+      const savedUser = localStorage.getItem('raksha_auth_user');
+      if (savedUser) {
+        const u = JSON.parse(savedUser);
+        if (u.role === 'Employee' || u.role === 'Field Worker') return 'worker-portal';
+        if (u.role === 'Officer' || u.role === 'Safety Officer') return 'dashboard';
+        if (u.role === 'Manager' || u.role === 'Safety Manager') return 'manager';
+        if (u.role === 'Admin') return 'settings';
+      }
+    } catch {}
+    return 'dashboard';
+  });
+
   const [selectedEvent, setSelectedEvent] = useState<SafetyEvent | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
@@ -39,6 +65,71 @@ function App() {
       document.documentElement.classList.remove('dark');
     }
   }, [theme]);
+
+  // Sync user state changes to localStorage
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('raksha_auth_user', JSON.stringify(user));
+      if (user.token) {
+        localStorage.setItem('raksha_auth_token', user.token);
+      }
+    } else {
+      localStorage.removeItem('raksha_auth_user');
+      localStorage.removeItem('raksha_auth_token');
+      localStorage.removeItem('raksha_current_page');
+    }
+  }, [user]);
+
+  // Sync page changes to localStorage
+  useEffect(() => {
+    if (user && currentPage) {
+      localStorage.setItem('raksha_current_page', currentPage);
+    }
+  }, [currentPage, user]);
+
+  // Verify and refresh session on mount
+  useEffect(() => {
+    const token = localStorage.getItem('raksha_auth_token');
+    const savedUserStr = localStorage.getItem('raksha_auth_user');
+    if (!token && !savedUserStr) return;
+
+    let userEmail = '';
+    try {
+      if (savedUserStr) {
+        userEmail = JSON.parse(savedUserStr).email;
+      }
+    } catch {}
+
+    fetch(apiUrl('/api/auth/me'), {
+      headers: {
+        'Authorization': token ? `Bearer ${token}` : '',
+        'X-User-Email': userEmail || ''
+      }
+    })
+      .then(async (res) => {
+        if (res.ok) {
+          return res.json();
+        }
+        if (res.status === 401 || res.status === 403) {
+          const errData = await res.json().catch(() => ({}));
+          console.warn('Session expired or invalidated:', errData);
+          handleLogout();
+        }
+        return null;
+      })
+      .then((freshUserData) => {
+        if (freshUserData && freshUserData.email) {
+          setUser(prev => ({
+            ...(prev || {}),
+            ...freshUserData,
+            token: freshUserData.token || token
+          }));
+        }
+      })
+      .catch((err) => {
+        console.warn('Session verification notice:', err);
+      });
+  }, []);
 
   const handleToggleTheme = () => {
     setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
@@ -66,6 +157,10 @@ function App() {
 
   const handleLoginSuccess = (loggedInUser: User) => {
     setUser(loggedInUser);
+    if (loggedInUser.token) {
+      localStorage.setItem('raksha_auth_token', loggedInUser.token);
+    }
+    localStorage.setItem('raksha_auth_user', JSON.stringify(loggedInUser));
     
     // Role based routing redirection
     let defaultPage = 'dashboard';
@@ -80,6 +175,7 @@ function App() {
     }
     
     setCurrentPage(defaultPage);
+    localStorage.setItem('raksha_current_page', defaultPage);
     triggerNotification(`Authorized as: ${loggedInUser.name} (${loggedInUser.role})`);
   };
 
@@ -110,14 +206,17 @@ function App() {
       defaultPage = 'settings';
     }
 
-    const updatedUser = {
+    const updatedUser: User = {
       email,
       name,
       role,
-      token: `mock-jwt-token-for-${role.toLowerCase().replace(' ', '-')}`
+      token: `token-${role.toLowerCase().replace(' ', '-')}-session`
     };
     
     setUser(updatedUser);
+    localStorage.setItem('raksha_auth_user', JSON.stringify(updatedUser));
+    localStorage.setItem('raksha_auth_token', updatedUser.token || '');
+    localStorage.setItem('raksha_current_page', defaultPage);
     setCurrentPage(defaultPage);
     setSelectedEvent(null);
     triggerNotification(`Switched persona to: ${name} (${role})`);
@@ -125,8 +224,11 @@ function App() {
 
   const handleLogout = () => {
     setUser(null);
-    setCurrentPage('dashboard');
     setSelectedEvent(null);
+    setCurrentPage('dashboard');
+    localStorage.removeItem('raksha_auth_user');
+    localStorage.removeItem('raksha_auth_token');
+    localStorage.removeItem('raksha_current_page');
   };
 
   const handleViewEvent = (evt: SafetyEvent) => {
@@ -298,6 +400,7 @@ function App() {
             <SafetyManager
               triggerNotification={triggerNotification}
               triggerStateRefresh={triggerStateRefresh}
+              userName={user?.name}
               onNavigateTo={(page) => {
                 setSelectedEvent(null);
                 setCurrentPage(page);

@@ -160,7 +160,7 @@ def seed_database():
     # 2. Seed Default Users (ONLY System Admin seeded)
     admin_user = models.User(
         email="admin@refinery.safe",
-        name="DevOps System Admin",
+        name="System Admin",
         password_hash="password123",
         role="Admin",
         id_number="ADM-001",

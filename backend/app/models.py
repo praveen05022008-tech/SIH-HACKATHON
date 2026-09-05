@@ -60,7 +60,7 @@ class SafetyReport(Base):
     report_type = Column(String(50), default="Unsafe Condition")  # Unsafe Act, Unsafe Condition, Near Miss
     raw_text = Column(Text, nullable=False)
     audio_transcript = Column(Text, nullable=True)
-    photo_url = Column(String(255), nullable=True)
+    photo_url = Column(Text, nullable=True)
     site = Column(String(100), nullable=True)
     unit = Column(String(100), nullable=True)
     location = Column(String(255), nullable=True)
@@ -131,7 +131,7 @@ class SafetyEvent(Base):
     action_status = Column(String(50), default="Pending")  # Pending, In Progress, Completed, Verified
     resolution_notes = Column(Text, nullable=True)
     audio_transcript = Column(Text, nullable=True)
-    photo_url = Column(String(255), nullable=True)
+    photo_url = Column(Text, nullable=True)
     
     # Operational hierarchy (L1-L6)
     l1_milestone = Column(String(200))
@@ -266,7 +266,7 @@ class OfficerTask(Base):
     priority = Column(String(20), default="HIGH")  # CRITICAL, HIGH, MEDIUM, LOW
     assigned_officer_id = Column(Integer, ForeignKey("officer_profiles.id"), nullable=True)
     assigned_officer_name = Column(String(100), nullable=False)
-    assigned_by = Column(String(100), default="Dr. Vikram Roy (Head of HSE)")
+    assigned_by = Column(String(100), default="HSE Safety Manager")
     instructions = Column(Text, nullable=False)
     status = Column(String(50), default="Assigned")  # Assigned, In Progress, Completed, Overdue
     due_date = Column(DateTime, nullable=False)
@@ -288,7 +288,7 @@ class SafetyDirective(Base):
     target_scope = Column(String(50), default="ALL")  # ALL, TEAM, SITE, OFFICER, SHIFT
     target_name = Column(String(100), default="All Operational Teams")
     target_sites = Column(String(200), default="All Operational Sites")
-    issued_by = Column(String(100), default="Dr. Vikram Roy (Head of HSE)")
+    issued_by = Column(String(100), default="HSE Safety Manager")
     acknowledge_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

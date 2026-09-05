@@ -239,6 +239,7 @@ class OfficerTaskCreatePayload(BaseModel):
     unit: str
     priority: str = "HIGH"  # CRITICAL, HIGH, MEDIUM, LOW
     assigned_officer_id: int
+    assigned_by: Optional[str] = "HSE Safety Manager"
     instructions: str
     due_days: int = 2
     related_event_id: Optional[str] = None
@@ -255,6 +256,7 @@ class SafetyDirectivePayload(BaseModel):
     target_scope: Optional[str] = "ALL"  # ALL, TEAM, SITE, OFFICER, SHIFT
     target_name: Optional[str] = "All Operational Teams"
     target_sites: Optional[str] = "All Operational Sites"
+    issued_by: Optional[str] = "HSE Safety Manager"
 
 class DirectiveAcknowledgePayload(BaseModel):
     user_email: Optional[str] = "worker@refinery.safe"

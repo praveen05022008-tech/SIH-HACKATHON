@@ -48,6 +48,8 @@ export interface SafetyEvent {
   report_id?: number;
   report_code?: string;
   report_type?: string;
+  reporter_name?: string;
+  reported_by?: string;
   reporter_email?: string;
   hazard_category?: string;
   shift_timing?: string;
@@ -300,6 +302,7 @@ export interface AdminReport {
   stop_work_issued: boolean;
   action_id?: string | null;
   resolution_notes?: string | null;
+  photo_url?: string | null;
   timestamp: string;
 }
 

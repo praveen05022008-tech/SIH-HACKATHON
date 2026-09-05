@@ -30,9 +30,9 @@ export const TakeAction: React.FC<TakeActionProps> = ({ triggerNotification, tri
   const [investigation, setInvestigation] = useState(false);
   
   const [assignedTeam, setAssignedTeam] = useState('Maintenance Team');
-  const [assignedPerson, setAssignedPerson] = useState('Srinath K.');
+  const [assignedPerson, setAssignedPerson] = useState('Lead Safety Inspector');
   const [priority, setPriority] = useState('HIGH');
-  const [deadlineDate, setDeadlineDate] = useState('2026-08-30');
+  const [deadlineDate, setDeadlineDate] = useState(() => new Date(Date.now() + 86400000).toISOString().split('T')[0]);
   const [deadlineTime, setDeadlineTime] = useState('18:00');
   const [instructions, setInstructions] = useState('');
 
@@ -41,53 +41,37 @@ export const TakeAction: React.FC<TakeActionProps> = ({ triggerNotification, tri
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [createdActionCard, setCreatedActionCard] = useState<any | null>(null);
 
-  const teamsList = ['Maintenance Team', 'Electrical Team', 'Operations Team', 'Safety Team'];
-  const personsList = ['Srinath K.', 'Praveen P.', 'Hari S.', 'Ramesh K.'];
+  const teamsList = ['Maintenance Team', 'Electrical Team', 'Operations Team', 'Safety Team', 'Instrument Engineering'];
+  const [personsList, setPersonsList] = useState<string[]>(['Lead Safety Inspector', 'On-Duty Officer', 'Maintenance Lead']);
   
   const fetchEvents = async () => {
     setLoading(true);
     try {
-      const res = await fetch(apiUrl('/api/events'));
+      const [res, usersRes] = await Promise.all([
+        fetch(apiUrl('/api/events')),
+        fetch(apiUrl('/api/users'))
+      ]);
       if (!res.ok) throw new Error();
       const data = await res.json();
       setEvents(data);
       if (data.length > 0) {
         setSelectedEventId(data[0].id);
       }
-    } catch (err) {
-      console.warn("API offline, seeding local validated events list for Action Dispatcher.");
-      const mockEvents = [
-        {
-          id: 'ALT-1024',
-          site: 'Refinery Unit 2',
-          location: 'Vessel V-301 platform',
-          activity: 'Energy Isolation / Valve Work',
-          description: 'Oil leakage detected near the processing unit creating a potential slip and fire hazard.',
-          hazard: 'Oil Leakage',
-          sif_probability: 92.0,
-          life_saving_rule: 'Energy Isolation',
-          status: 'Confirmed',
-          sif_risk_score: 9.2,
-          risk_level: 'CRITICAL'
-        },
-        {
-          id: 'ALT-1025',
-          site: 'Refinery Unit 4',
-          location: 'Coker Deck',
-          activity: 'Working at Height',
-          description: 'Technician was observed working at an elevated coker deck deck without securing safety harness lanyard.',
-          hazard: 'PPE Violation',
-          sif_probability: 72.0,
-          life_saving_rule: 'Working at Height',
-          status: 'Needs Review',
-          sif_risk_score: 7.2,
-          risk_level: 'HIGH'
+
+      if (usersRes.ok) {
+        const uList = await usersRes.json();
+        if (Array.isArray(uList) && uList.length > 0) {
+          const names = uList.map((u: any) => u.name).filter(Boolean);
+          if (names.length > 0) {
+            setPersonsList(names);
+            setAssignedPerson(names[0]);
+          }
         }
-      ] as any[];
-      setEvents(mockEvents);
-      if (mockEvents.length > 0) {
-        setSelectedEventId(mockEvents[0].id);
       }
+    } catch (err) {
+      console.warn("API error loading events:", err);
+      setEvents([]);
+      setSelectedEventId('');
     } finally {
       setLoading(false);
     }

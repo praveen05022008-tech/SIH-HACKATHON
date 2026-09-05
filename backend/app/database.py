@@ -1,7 +1,9 @@
 import logging
 import sys
 import os
-from sqlalchemy import create_engine
+import ssl
+from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -21,43 +23,76 @@ logger = logging.getLogger("mayan-safe.database")
 
 Base = declarative_base()
 
+def normalize_db_url(raw_url: str):
+    """Normalize database connection URL for PyMySQL and TiDB Cloud compatibility."""
+    if not raw_url:
+        return raw_url, {}
+
+    # 1. Use pymysql driver
+    if raw_url.startswith("mysql+mysqldb://"):
+        norm = raw_url.replace("mysql+mysqldb://", "mysql+pymysql://", 1)
+    elif raw_url.startswith("mysql://"):
+        norm = raw_url.replace("mysql://", "mysql+pymysql://", 1)
+    else:
+        norm = raw_url
+
+    parsed = urlparse(norm)
+    qs = parse_qs(parsed.query)
+
+    # 2. PyMySQL doesn't support 'ssl_mode' query parameter
+    qs.pop("ssl_mode", None)
+
+    # 3. TiDB Serverless / MySQL /sys is a read-only system database; route user data to /test
+    path = parsed.path
+    if path.rstrip("/") in ["", "/sys"]:
+        path = "/test"
+
+    new_query = urlencode(qs, doseq=True)
+    cleaned_url = urlunparse(parsed._replace(path=path, query=new_query))
+
+    connect_args = {}
+    if "tidbcloud.com" in cleaned_url.lower() and "ssl_ca" not in cleaned_url:
+        if os.path.exists("/etc/ssl/cert.pem"):
+            connect_args["ssl"] = {"ca": "/etc/ssl/cert.pem"}
+        else:
+            connect_args["ssl"] = ssl.create_default_context()
+
+    return cleaned_url, connect_args
+
 def get_engine():
     db_url = config.DATABASE_URL
-    is_sqlite = config.IS_SQLITE
+    cleaned_url, connect_args = normalize_db_url(db_url)
     
-    # Try connecting to primary Enterprise DB (TiDB Cloud / PostgreSQL / MySQL)
-    try:
-        if not is_sqlite:
-            logger.info(f"Attempting connection to Primary Enterprise DB: {db_url.split('@')[-1] if '@' in db_url else db_url}")
-            engine = create_engine(
-                db_url,
-                pool_size=20,
-                max_overflow=30,
-                pool_pre_ping=True,
-                pool_recycle=1800
-            )
-            with engine.connect() as conn:
-                logger.info("Successfully connected to SIF-SHIELD AI Enterprise Database.")
-            return engine
-    except Exception as e:
-        logger.error(f"Failed to connect to primary database: {e}. Utilizing high-performance SQLite engine.")
+    logger.info(f"Connecting to TiDB Cloud Enterprise Database: {cleaned_url.split('@')[-1] if '@' in cleaned_url else cleaned_url}")
     
-    # SQLite fallback engine with multi-threading
-    logger.info("Initializing SQLite database connection.")
     engine = create_engine(
-        config.SQLITE_FALLBACK_URL,
-        connect_args={"check_same_thread": False}
+        cleaned_url,
+        connect_args=connect_args,
+        pool_size=10,
+        max_overflow=20,
+        pool_pre_ping=True,
+        pool_recycle=1800
     )
+    
+    try:
+        with engine.connect() as conn:
+            logger.info("Successfully connected to TiDB Cloud Enterprise Database.")
+    except Exception as e:
+        if "<PASSWORD>" in db_url:
+            logger.warning("TiDB Cloud connection notice: '<PASSWORD>' placeholder found in DATABASE_URL. Please set your actual cluster password in backend/app/.env to enable database operations.")
+        else:
+            logger.error(f"Failed to connect to TiDB Cloud: {e}. Please check your credentials and network connectivity.")
+            
     return engine
 
 engine = get_engine()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-from sqlalchemy import text
-
 def init_db():
-    Base.metadata.create_all(bind=engine)
     try:
+        # Ensure tables exist
+        from backend.app import models
+        Base.metadata.create_all(bind=engine)
         with engine.connect() as conn:
             try:
                 conn.execute(text("ALTER TABLE safety_directives ADD COLUMN target_scope VARCHAR(50) DEFAULT 'ALL'"))
@@ -70,21 +105,10 @@ def init_db():
             except Exception:
                 pass
     except Exception as e:
-        logger.warning(f"Column migration check note: {e}")
-
-    # Check if DB has users, if not seed it
-    try:
-        from backend.app import models, seed
-        db = SessionLocal()
-        try:
-            user_cnt = db.query(models.User).count()
-            if user_cnt == 0:
-                logger.info("Fresh database detected. Auto-seeding initial safety intelligence dataset...")
-                seed.seed_database()
-        finally:
-            db.close()
-    except Exception as e:
-        logger.warning(f"Initial seed verification: {e}")
+        if "<PASSWORD>" in config.DATABASE_URL:
+            logger.info("Database schema initialization deferred until valid TiDB password is provided in .env.")
+        else:
+            logger.warning(f"Database initialization note: {e}")
 
 init_db()
 
@@ -94,4 +118,3 @@ def get_db():
         yield db
     finally:
         db.close()
-

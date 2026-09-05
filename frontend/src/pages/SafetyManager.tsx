@@ -33,12 +33,14 @@ interface SafetyManagerProps {
   triggerNotification: (msg: string) => void;
   triggerStateRefresh: boolean;
   onNavigateTo?: (page: string) => void;
+  userName?: string;
 }
 
 export const SafetyManager: React.FC<SafetyManagerProps> = ({
   triggerNotification,
   triggerStateRefresh,
-  onNavigateTo
+  onNavigateTo,
+  userName = 'HSE Safety Manager'
 }) => {
   const [officers, setOfficers] = useState<OfficerProfile[]>([]);
   const [tasks, setTasks] = useState<OfficerTask[]>([]);
@@ -120,192 +122,14 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
         setHighRiskEvents(evtData.filter(e => (e.sif_risk_score ?? 5.0) >= 6.5 || e.sif_probability >= 50));
       }
     } catch (err) {
-      console.warn('Backend API manager fetch failed, using built-in mock manager state.', err);
-      loadMockData();
+      console.warn('Backend API manager fetch error:', err);
+      setOfficers([]);
+      setTasks([]);
+      setDirectives([]);
+      setHighRiskEvents([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadMockData = () => {
-    const mockOfficers: OfficerProfile[] = [
-      {
-        id: 1,
-        officer_name: 'Capt. Arvind Sen',
-        officer_code: 'OFF-101',
-        email: 'officer@refinery.safe',
-        phone: '+91 98450 11001',
-        radio_channel: 'Ch 1 (VHF Command)',
-        site: 'Digboi Refinery D',
-        unit: 'FCCU',
-        shift: 'Shift A (06:00 - 14:00)',
-        status: 'On Duty',
-        certifications: ['LOTO Auditor', 'Heavy Lift Supervisor', 'NEBOSH IGC', 'High-Pressure Gas Specialist'],
-        experience_years: 12,
-        max_capacity: 8,
-        open_reviews_count: 4,
-        active_tasks_count: 2,
-        completed_tasks_count: 15,
-        total_tasks_count: 17,
-        workload_score: 75,
-        compliance_rate: 98.4
-      },
-      {
-        id: 2,
-        officer_name: 'Priya Sharma',
-        officer_code: 'OFF-102',
-        email: 'reviewer@refinery.safe',
-        phone: '+91 98450 11002',
-        radio_channel: 'Ch 2 (VHF Refinery)',
-        site: 'Digboi Refinery D',
-        unit: 'CDU',
-        shift: 'Shift B (14:00 - 22:00)',
-        status: 'In Field',
-        certifications: ['Confined Space Entry Lead', 'Gas Tester Certified', 'Working at Height Auditor'],
-        experience_years: 8,
-        max_capacity: 6,
-        open_reviews_count: 2,
-        active_tasks_count: 1,
-        completed_tasks_count: 11,
-        total_tasks_count: 12,
-        workload_score: 50,
-        compliance_rate: 97.2
-      },
-      {
-        id: 3,
-        officer_name: 'Rajesh Verma',
-        officer_code: 'OFF-103',
-        email: 'r.verma@refinery.safe',
-        phone: '+91 98450 11003',
-        radio_channel: 'Ch 6 (Offshore KG)',
-        site: 'Offshore Rig 04',
-        unit: 'Substructure & BOP',
-        shift: 'Night Vigil (22:00 - 06:00)',
-        status: 'On Duty',
-        certifications: ['BOSIET Offshore', 'Well-Control Barrier Certified', 'Emergency Response Commander'],
-        experience_years: 10,
-        max_capacity: 7,
-        open_reviews_count: 3,
-        active_tasks_count: 2,
-        completed_tasks_count: 9,
-        total_tasks_count: 11,
-        workload_score: 71,
-        compliance_rate: 99.0
-      },
-      {
-        id: 4,
-        officer_name: 'Ananya Das',
-        officer_code: 'OFF-104',
-        email: 'a.das@refinery.safe',
-        phone: '+91 98450 11004',
-        radio_channel: 'Ch 3 (Process Safety)',
-        site: 'Drilling Site B',
-        unit: 'Mud Pump Area',
-        shift: 'Shift A (06:00 - 14:00)',
-        status: 'In Field',
-        certifications: ['Energy Isolation Master', 'Hot Work Permit Issuer', 'Incident Investigator'],
-        experience_years: 7,
-        max_capacity: 6,
-        open_reviews_count: 2,
-        active_tasks_count: 1,
-        completed_tasks_count: 8,
-        total_tasks_count: 9,
-        workload_score: 50,
-        compliance_rate: 96.5
-      },
-      {
-        id: 5,
-        officer_name: 'Vikramjit Singh',
-        officer_code: 'OFF-105',
-        email: 'v.singh@refinery.safe',
-        phone: '+91 98450 11005',
-        radio_channel: 'Ch 4 (Drill Floor)',
-        site: 'Drilling Site A',
-        unit: 'Derrick & Mast',
-        shift: 'Shift B (14:00 - 22:00)',
-        status: 'Standby',
-        certifications: ['Rigging & Slinging Lead', 'Dropping Objects Preventer', 'Scaffolding Inspector'],
-        experience_years: 9,
-        max_capacity: 7,
-        open_reviews_count: 1,
-        active_tasks_count: 0,
-        completed_tasks_count: 14,
-        total_tasks_count: 14,
-        workload_score: 14,
-        compliance_rate: 100.0
-      },
-      {
-        id: 6,
-        officer_name: 'Debojit Borah',
-        officer_code: 'OFF-106',
-        email: 'd.borah@refinery.safe',
-        phone: '+91 98450 11006',
-        radio_channel: 'Ch 5 (Storage Terminal)',
-        site: 'Numaligarh Terminal',
-        unit: 'Tank Farm 03',
-        shift: 'Shift A (06:00 - 14:00)',
-        status: 'On Duty',
-        certifications: ['Hydrocarbon Leak Detector', 'Atmospheric Monitoring', 'Fire Safety Expert'],
-        experience_years: 6,
-        max_capacity: 5,
-        open_reviews_count: 1,
-        active_tasks_count: 1,
-        completed_tasks_count: 6,
-        total_tasks_count: 7,
-        workload_score: 40,
-        compliance_rate: 94.8
-      }
-    ];
-
-    setOfficers(mockOfficers);
-    setTasks([
-      {
-        id: 1,
-        task_id: 'TSK-101',
-        title: 'Priority Verification of LOTO Isolation on CDU High-Pressure Header',
-        task_type: 'SIF Precursor Audit',
-        site: 'Digboi Refinery D',
-        unit: 'CDU Area',
-        priority: 'CRITICAL',
-        assigned_officer_id: 1,
-        assigned_officer_name: 'Capt. Arvind Sen',
-        assigned_by: 'Dr. Vikram Roy (Head of HSE)',
-        instructions: 'Spot-check all 14 isolation padlock tags at valve rack V-204 to verify physical bleed-off.',
-        status: 'In Progress',
-        due_date: new Date(Date.now() + 86400000).toISOString(),
-        created_at: new Date(Date.now() - 3600000 * 4).toISOString()
-      },
-      {
-        id: 2,
-        task_id: 'TSK-102',
-        title: 'Mast Scaffold Safety Hook & Dual Lanyard Verification',
-        task_type: 'Stop Work Verification',
-        site: 'Drilling Site A',
-        unit: 'Derrick Substructure',
-        priority: 'HIGH',
-        assigned_officer_id: 5,
-        assigned_officer_name: 'Vikramjit Singh',
-        assigned_by: 'Dr. Vikram Roy (Head of HSE)',
-        instructions: 'Confirm contractor technicians on 12m work platform have secured inertia reel self-retracting lifelines.',
-        status: 'Assigned',
-        due_date: new Date(Date.now() + 86400000 * 2).toISOString(),
-        created_at: new Date(Date.now() - 3600000 * 8).toISOString()
-      }
-    ]);
-
-    setDirectives([
-      {
-        id: 1,
-        directive_id: 'DIR-501',
-        title: 'Mandatory Double Block & Bleed Verification for All Valve Disconnects',
-        message: 'Effective immediately across all drilling and refinery sites: Single-valve isolations on lines >150 PSI are strictly prohibited without written HSE Lead exemption.',
-        priority: 'URGENT',
-        target_sites: 'All Operational Sites',
-        issued_by: 'Dr. Vikram Roy (Head of HSE)',
-        acknowledge_count: 5,
-        created_at: new Date(Date.now() - 86400000).toISOString()
-      }
-    ]);
   };
 
   useEffect(() => {
@@ -408,7 +232,7 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
         priority: taskForm.priority,
         assigned_officer_id: taskForm.assigned_officer_id,
         assigned_officer_name: assignedOff ? assignedOff.officer_name : 'Safety Officer',
-        assigned_by: 'Dr. Vikram Roy (Head of HSE)',
+        assigned_by: userName || 'HSE Safety Manager',
         instructions: taskForm.instructions,
         status: 'Assigned',
         due_date: new Date(Date.now() + taskForm.due_days * 86400000).toISOString(),
@@ -460,7 +284,7 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
         target_scope: directiveForm.target_scope,
         target_name: directiveForm.target_name,
         target_sites: directiveForm.target_sites,
-        issued_by: 'Dr. Vikram Roy (Head of HSE)',
+        issued_by: userName || 'HSE Safety Manager',
         acknowledge_count: 0,
         created_at: new Date().toISOString()
       };
@@ -665,6 +489,14 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
         </button>
       </div>
 
+      {loading ? (
+        <div className="bg-white border border-slate-200 rounded-2xl p-16 shadow-xs flex flex-col items-center justify-center text-slate-500">
+          <RefreshCcw className="h-8 w-8 animate-spin text-[#008779] mb-3" />
+          <p className="text-sm font-bold text-slate-800">Loading HSE Safety Manager Command Center...</p>
+          <p className="text-xs text-slate-400 mt-1">Retrieving deployed officers, inspection tasks, and emergency directives</p>
+        </div>
+      ) : (
+        <>
       {/* TAB 1: WORKFORCE & ALLOTMENTS */}
       {activeTab === 'workforce' && (
         <div className="space-y-4">
@@ -1042,7 +874,7 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                               user_email: 'officer@refinery.safe',
-                              user_name: 'Capt. Arvind Sen',
+                              user_name: 'Safety Officer',
                               site: 'Drilling Site A',
                               role: 'Safety Lead'
                             })
@@ -1118,6 +950,8 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
             ))}
           </div>
         </div>
+      )}
+      </>
       )}
 
       {/* ALLOTMENT MODAL */}
@@ -1397,7 +1231,7 @@ export const SafetyManager: React.FC<SafetyManagerProps> = ({
                       let defaultSites = 'All Operational Sites';
                       if (scope === 'TEAM') defaultName = 'Rig Safety Team (Drilling)';
                       else if (scope === 'SITE') defaultName = 'Digboi Refinery D';
-                      else if (scope === 'OFFICER') defaultName = officers[0]?.officer_name || 'Capt. Arvind Sen';
+                      else if (scope === 'OFFICER') defaultName = officers[0]?.officer_name || 'Safety Officer';
                       else if (scope === 'SHIFT') defaultName = 'Shift A (06:00 - 14:00)';
                       
                       setDirectiveForm({

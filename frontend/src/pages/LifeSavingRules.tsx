@@ -31,19 +31,9 @@ export const LifeSavingRules: React.FC<LSRProps> = ({ triggerStateRefresh }) => 
       setRules(data);
       if (data.length > 0) setSelectedRule(data[0]);
     } catch (err) {
-      console.warn('LSR API failed, loading mock life saving rules stats.');
-      const mockRules: LifeSavingRuleStat[] = [
-        { name: 'Energy Isolation', reports_count: 212, sif_count: 68, precursor_density: 'High', common_barrier_failure: 'Isolation verification not performed', top_site: 'Refinery A' },
-        { name: 'Working at Height', reports_count: 189, sif_count: 54, precursor_density: 'High', common_barrier_failure: 'Fall protection harness not anchored', top_site: 'Refinery D' },
-        { name: 'Confined Space', reports_count: 145, sif_count: 42, precursor_density: 'High', common_barrier_failure: 'Gas clearance test omitted before entry', top_site: 'Refinery B' },
-        { name: 'Line of Fire', reports_count: 234, sif_count: 39, precursor_density: 'Medium', common_barrier_failure: 'Lifting exclusion zone not barricaded', top_site: 'Refinery C' },
-        { name: 'Lifting Operations', reports_count: 112, sif_count: 31, precursor_density: 'Medium', common_barrier_failure: 'Lifting exclusion zone not barricaded', top_site: 'Refinery E' },
-        { name: 'Electrical Safety', reports_count: 86, sif_count: 24, precursor_density: 'Medium', common_barrier_failure: 'Isolation verification not performed', top_site: 'Refinery A' },
-        { name: 'Hot Work', reports_count: 156, sif_count: 15, precursor_density: 'Low', common_barrier_failure: 'Gas clearance test omitted before entry', top_site: 'Refinery C' },
-        { name: 'Vehicle Safety', reports_count: 114, sif_count: 3, precursor_density: 'Low', common_barrier_failure: 'Adherence to procedures', top_site: 'Refinery B' }
-      ];
-      setRules(mockRules);
-      setSelectedRule(mockRules[0]);
+      console.warn('LSR API error:', err);
+      setRules([]);
+      setSelectedRule(null);
     } finally {
       setLoading(false);
     }

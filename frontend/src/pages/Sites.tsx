@@ -28,44 +28,8 @@ export const Sites: React.FC<SitesProps> = ({ triggerStateRefresh }) => {
       const data = await res.json();
       setDetails(data);
     } catch (err) {
-      console.warn('Site Details API failed, loading mock drilldown stats.');
-      // Create high-fidelity mock drilldown structure
-      const mockDetails = {
-        site_name: selectedSite,
-        total_reports: selectedSite === 'Refinery A' ? 384 : 212,
-        sif_potential: selectedSite === 'Refinery A' ? 98 : 38,
-        precursor_density: selectedSite === 'Refinery A' ? 'High' : 'Medium',
-        top_rules: ['Energy Isolation', 'Working at Height', 'Confined Space'],
-        hierarchy: {
-          "Refinery Turnaround 2026": {
-            "CDU Area": {
-              "Mechanical Maintenance": {
-                "CDU Turnaround Maintenance Package": {
-                  "Maintenance / Valve Work": [
-                    { id: "EVT-10291", job: "Isolate and remove valve V-204", rule: "Energy Isolation", sif_probability: 94.0, status: "Needs Review" },
-                    { id: "EVT-10298", job: "Blind installation at accumulator inlet", rule: "Energy Isolation", sif_probability: 86.5, status: "Confirmed" }
-                  ]
-                },
-                "Pipe Insulation Works": {
-                  "Working at Height": [
-                    { id: "EVT-10299", job: "Install insulation cladding on main column", rule: "Working at Height", sif_probability: 72.0, status: "Needs Review" }
-                  ]
-                }
-              }
-            },
-            "FCCU Area": {
-              "Piping & Fabrication": {
-                "Feed Line Expansion Package": {
-                  "Hot Work / Welding": [
-                    { id: "EVT-10305", job: "Conduct tie-in welding on preheater pipe line", rule: "Hot Work", sif_probability: 63.8, status: "Confirmed" }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      };
-      setDetails(mockDetails);
+      console.warn('Site Details API error:', err);
+      setDetails(null);
     } finally {
       setLoading(false);
     }

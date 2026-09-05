@@ -1,0 +1,143 @@
+my project name is "RAKSHA"
+
+
+LOGIN PAGE :
+the login page should be the contain the username and the password it for already and for the new register they should register by the full detail like (name ,id no, phone number ,address, username and the password and the role )
+
+after they register the login should be store in the database and it should be accept by the admin after they register only the person can acess the portal
+
+
+IN THIS THERE ARE FOUR ROLE :
+i will give in the flow
+1 . employee
+2 . manager
+3 . officer
+4 . admin
+
+in the i will give the detail for all the role
+
+EMPLOYEE:
+
+in the employee it should be contain the dashboard ,the my report,etcc in the sidebar
+-> in the DASHBOARD:
+
+it should be contain the welcome page and below it contain three box (my total report , completed and the incomplete )it should be automatically calculate by the web .and below upto this dashboard we finish after i will added
+
+-> the next option is ISSUE REPORT :
+
+in this i will report the issue by typing and selecting will tell after ok it should be work in the NLP methon it should the text
+
+-> the next option is MY REPORT :
+
+in this i will track the my report only which was submitted by mee.
+
+Unsafe Act 
+
+ Unsafe Condition 
+
+ Near Miss with this the prblm should be seperate
+
+
+
+MANAGER:
+
+in the manager it contain dashboard, officer name list ,employee list ,etcc
+->DASHBOARD:
+
+in the dashboard the welcome page should be there and below it should be four tab (total , completed , incomplete and overdue ) it should be calculated automatically
+
+in the dashboard that contain the pie chart for that and % also i want in that and below that the issue list that should be in (if the today is the deadline for the issue to be fix is that should be only be display ok.
+
+-> LIST :
+
+in this it should contain two column officer list and the employee list (if i click the employee it should be display the employee list in the last it contain the view button if i click that it should show the detail in the popup box and also show the how many issue he report and and complete and incomplete) and for officer it show the officer list and and atlast show the view button if i click that the popup box should be open and show the detail and how many issue they taken and how my they completed and incompled and how many the manager assign and how many he reject that should also be shown.
+
+->THE ISSUE PAGE :
+
+in this what are the issue is give by the employee it should be present and i want the option called assigned if i click that it should ask which officer it should assign and if the officer accept that issue it should be tracked by the manager and the employee if not accepted it should be there for 30 min if the officer is not accepted after 30 min it should be automatically removed and i will assign to another person it is same for all .
+
+->TRACKING:
+
+the assigned should be tracked here ok
+
+->RE CHECK:
+
+in this page the officer will report after the issue is checked and we want to re check it and it we give the it is completed only it should be finish ok.
+
+OFFICER:
+
+in the officer the dashboard, issue , progress to be submit, etcc.
+
+->DASHBOARD:
+
+in the dashboard the welcome box should be there and the below they should be contain 4 boxes (total issue, completed, incomplete, overdue) this should be calculate automatically.
+
+in that page i want the pie chart for the action at all .
+
+further i will tell .
+
+->TAKEN ISSUE:
+1.in this the officer have accept the issue right that should be shown in that page in this page at the last there should be a option called view if i click that the progess should be there andd in that page submit also should be there if i click that i can submit that and it will be forward to the manager so that they can re check 
+
+
+
+4.ADMIN:
+
+in the admin he the master to this web in this conatin some 
+
+->DASHBOARD:
+
+in the dashboard it should contain the welcome box and in the below contain some boxes (total employee, total officer, total manager )
+
+some graph should be there in the 
+4. ADMIN:
+
+in the admin he is the master of this web and he can manage the complete system.
+
+-> USER MANAGEMENT:
+in this page the admin should see all the new registered users.
+the newly registered users should be shown as pending.
+admin should have approve and reject option.
+if admin approve the user then only the user can login and access their portal.
+if admin reject the user they should not be able to access the portal.
+admin should be able to see the details of the user like name, id no, phone number, address and role.
+admin should be able to activate and deactivate the user account.
+
+-> ROLE MANAGEMENT:
+admin should be able to see all four roles.
+the four roles are:
+employee
+manager
+officer
+admin
+admin should be able to assign or change the role of a user if required.
+each role should only be able to access their own portal and authorized pages.
+
+-> ALL REPORTS:
+in this page admin should be able to see all the reports submitted by all employees.
+admin should be able to filter the reports by:
+employee
+manager
+officer
+issue type
+status
+date
+admin should be able to view the complete details of each report.
+
+-> AUDIT LOG:
+in this page all important activities in the web should be stored.
+it should show who created the report, who assigned the issue, who accepted it, who updated the progress and who completed or rejected it.
+it should contain the date and time of each activity.
+admin should be able to view the complete history of an issue.
+
+
+
+upto now this are things to be add and further i will add some more according to the project 
+
+RAKSHA – Basic Tech Stack
+Frontend: React.js 
+Styling: CSS / Tailwind CSS 
+Backend: Python + FastAPI 
+Database: Duck DB,neon 
+AI/ML:  NLP + Chatbot(Agentic AI)
+

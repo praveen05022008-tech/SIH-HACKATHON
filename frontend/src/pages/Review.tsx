@@ -20,6 +20,7 @@ import {
   Send,
   AlertTriangle,
   FileCheck2,
+  Camera,
   X
 } from 'lucide-react';
 import { RiskBadge } from '../components/UIElements';
@@ -71,69 +72,9 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted,
         setSelectedEvent(null);
       }
     } catch (err) {
-      console.warn('Queue API failed, loading mock review items.');
-      const mockQueue: SafetyEvent[] = [
-        {
-          id: 'EVT-10291',
-          timestamp: new Date().toISOString(),
-          site: 'Refinery A',
-          unit: 'CDU',
-          location: 'CDU - Area 4',
-          activity: 'Maintenance / Valve Work',
-          description: 'During maintenance activity near the crude unit, a worker was observed entering the work area while the associated energy isolation was not independently verified. The line was believed to be depressurised but isolation status was unclear.',
-          hazard: 'Unexpected energy release',
-          energy_source: 'Pressure',
-          barrier: 'Double Block and Bleed Isolation / LOTO Locks',
-          barrier_failure: 'Isolation verification not performed',
-          exposure: 'Personnel entering active work zone',
-          consequence: 'Severe trauma due to high pressure release',
-          sif_probability: 94.0,
-          confidence: 88.0,
-          life_saving_rule: 'Energy Isolation',
-          status: 'Needs Review',
-          reviewer: null,
-          evidence: 'Original safety report.',
-          l1_milestone: 'Refinery Turnaround 2026',
-          l2_unit: 'CDU Area',
-          l3_discipline: 'Mechanical Maintenance',
-          l4_work_package: 'CDU Turnaround Maintenance Package',
-          l5_activity: 'Maintenance / Valve Work',
-          l6_job: 'Isolate valve line V-204'
-        },
-        {
-          id: 'EVT-10292',
-          timestamp: new Date(Date.now() - 3600000 * 3).toISOString(),
-          site: 'Refinery B',
-          unit: 'FCCU',
-          location: 'FCCU - Reactor Deck',
-          activity: 'Working at Height',
-          description: 'A contractor was observed climbing the ladder to the reactor deck at FCCU without hooking safety lanyards onto the horizontal lifeline. Height is approximately 8 meters.',
-          hazard: 'Fall from elevated work platform',
-          energy_source: 'Gravity',
-          barrier: 'Fall Protection Harness / Scaffold Handrails',
-          barrier_failure: 'Fall protection harness not anchored',
-          exposure: 'Technician working at elevated level',
-          consequence: 'Severe trauma due to high-altitude fall',
-          sif_probability: 91.0,
-          confidence: 90.0,
-          life_saving_rule: 'Working at Height',
-          status: 'Needs Review',
-          reviewer: null,
-          evidence: 'Original safety report.',
-          l1_milestone: 'Routine Maintenance Schedule',
-          l2_unit: 'FCCU Area',
-          l3_discipline: 'Structural Engineering',
-          l4_work_package: 'Reactor Platform Inspections',
-          l5_activity: 'Working at Height',
-          l6_job: 'Inspect reactor deck structural weld joints'
-        }
-      ];
-      setQueue(mockQueue);
-      if (mockQueue.length > 0) {
-        setSelectedEvent(mockQueue[0]);
-        setSifChoice(mockQueue[0].sif_probability >= 50.0 ? 'SIF Potential' : 'Non-SIF');
-        setLsrChoice(mockQueue[0].life_saving_rule);
-      }
+      console.warn('Queue API error:', err);
+      setQueue([]);
+      setSelectedEvent(null);
     } finally {
       setLoading(false);
     }
@@ -311,7 +252,7 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted,
             </div>
             <div>
               <div className="text-[10px] uppercase font-bold text-slate-400">Active Officer</div>
-              <div className="text-xs font-black text-white">{reviewerName || 'Capt. Arvind Sen'}</div>
+              <div className="text-xs font-black text-white">{reviewerName || 'Safety Officer'}</div>
             </div>
           </div>
         </div>
@@ -425,6 +366,23 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted,
                         "{selectedEvent.description}"
                       </p>
                     </div>
+
+                    {/* Attached Photo Evidence */}
+                    {selectedEvent.photo_url && (
+                      <div className="mb-4 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 flex items-center gap-1.5">
+                          <Camera className="h-3.5 w-3.5 text-[#008779]" /> Attached Photo Evidence (Cloudinary)
+                        </span>
+                        <a href={selectedEvent.photo_url} target="_blank" rel="noreferrer" className="inline-block group">
+                          <img 
+                            src={selectedEvent.photo_url} 
+                            alt="Observation evidence" 
+                            className="h-36 max-w-full object-cover rounded-xl border border-slate-300 group-hover:opacity-90 transition shadow-2xs"
+                          />
+                          <span className="text-[10px] text-[#008779] font-bold mt-1 block group-hover:underline">View Full Resolution ↗</span>
+                        </a>
+                      </div>
+                    )}
 
                     {/* AI Risk Predictor Inline Panel */}
                     <div className="mb-4 p-4 bg-[#F7F9FC] border border-[#E6ECEB] rounded-2xl space-y-3 text-xs">

@@ -2,7 +2,7 @@ import os
 import sys
 import datetime
 import random
-from fastapi import FastAPI, Depends, HTTPException, Query, status, File, UploadFile, Header
+from fastapi import FastAPI, Depends, HTTPException, Query, status, File, UploadFile, Header, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -38,7 +38,10 @@ app.add_middleware(
 )
 
 # Initialize DB tables
-models.Base.metadata.create_all(bind=database.engine)
+try:
+    models.Base.metadata.create_all(bind=database.engine)
+except Exception:
+    pass
 
 # Dependency to get db session
 get_db = database.get_db
@@ -51,7 +54,7 @@ def read_root():
         "organization": "Oil India Limited (OIL) & Refineries",
         "version": "2.0.0",
         "engine": "GATI Calibrated Neural NLP",
-        "database_type": "SQLite Fallback" if "sqlite" in str(database.engine.url) else "TiDB Cloud"
+        "database_type": "TiDB Cloud"
     }
 
 # ==========================================
@@ -106,6 +109,109 @@ def set_hf_token(payload: Dict[str, str]):
         print("Notice saving .env:", e)
 
     return {"success": True, "message": "Hugging Face token successfully configured and saved!"}
+
+import base64
+try:
+    import cloudinary
+    import cloudinary.uploader
+except ImportError:
+    cloudinary = None
+
+def get_cloudinary_config():
+    if not cloudinary:
+        return False
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME") or getattr(config, "CLOUDINARY_CLOUD_NAME", "")
+    api_key = os.getenv("CLOUDINARY_API_KEY") or getattr(config, "CLOUDINARY_API_KEY", "569737981981872")
+    api_secret = os.getenv("CLOUDINARY_API_SECRET") or getattr(config, "CLOUDINARY_API_SECRET", "TpQm-JkWcqPn--7oeQWaUXoBA54")
+    
+    if cloud_name and api_key and api_secret:
+        cloudinary.config(
+            cloud_name=cloud_name,
+            api_key=api_key,
+            api_secret=api_secret,
+            secure=True
+        )
+        return True
+    return False
+
+@app.get("/api/cloudinary/status")
+def get_cloudinary_status():
+    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME") or getattr(config, "CLOUDINARY_CLOUD_NAME", "")
+    api_key = os.getenv("CLOUDINARY_API_KEY") or getattr(config, "CLOUDINARY_API_KEY", "569737981981872")
+    return {
+        "configured": bool(cloud_name and api_key),
+        "cloud_name": cloud_name or None,
+        "api_key": api_key[:4] + "****" if api_key else None
+    }
+
+@app.post("/api/cloudinary/config")
+async def save_cloudinary_config(payload: Dict[str, Any] = Body(...)):
+    cloud_name = payload.get("cloud_name", "").strip()
+    api_key = payload.get("api_key", "").strip()
+    api_secret = payload.get("api_secret", "").strip()
+    
+    if cloud_name:
+        os.environ["CLOUDINARY_CLOUD_NAME"] = cloud_name
+        config.CLOUDINARY_CLOUD_NAME = cloud_name
+    if api_key:
+        os.environ["CLOUDINARY_API_KEY"] = api_key
+        config.CLOUDINARY_API_KEY = api_key
+    if api_secret:
+        os.environ["CLOUDINARY_API_SECRET"] = api_secret
+        config.CLOUDINARY_API_SECRET = api_secret
+        
+    return {"success": True, "message": "Cloudinary settings saved!"}
+
+@app.post("/api/upload")
+@app.post("/api/cloudinary/upload")
+async def upload_image_to_cloudinary(
+    file: Optional[UploadFile] = File(None),
+    data_url: Optional[str] = Form(None)
+):
+    try:
+        has_config = get_cloudinary_config()
+        file_content = None
+        
+        if file:
+            file_content = await file.read()
+        elif data_url:
+            file_content = data_url
+            
+        if not file_content:
+            raise HTTPException(status_code=400, detail="No image file or data provided")
+
+        if has_config and cloudinary:
+            upload_result = cloudinary.uploader.upload(
+                file_content,
+                folder="mayan_safe_observations",
+                resource_type="auto"
+            )
+            return {
+                "success": True,
+                "url": upload_result.get("secure_url"),
+                "public_id": upload_result.get("public_id"),
+                "format": upload_result.get("format"),
+                "provider": "cloudinary"
+            }
+        else:
+            # Safe seamless local fallback if cloud_name is still being configured
+            if isinstance(file_content, bytes):
+                b64 = base64.b64encode(file_content).decode("utf-8")
+                mime = file.content_type if file and file.content_type else "image/jpeg"
+                data_url = f"data:{mime};base64,{b64}"
+                return {
+                    "success": True,
+                    "url": data_url,
+                    "provider": "local"
+                }
+            return {
+                "success": True,
+                "url": str(file_content),
+                "provider": "local"
+            }
+    except Exception as e:
+        print("Cloudinary Upload Error:", e)
+        raise HTTPException(status_code=500, detail=f"Image upload failed: {str(e)}")
 
 @app.post("/api/voice/transcribe")
 async def transcribe_voice(
@@ -281,6 +387,57 @@ def login(payload: schemas.UserLogin, db: Session = Depends(get_db)):
         "token": f"token-{user.role.lower()}-{user.id}"
     }
 
+# GET /api/auth/me and POST /api/auth/verify
+@app.get("/api/auth/me")
+@app.post("/api/auth/verify")
+def get_current_user_profile(
+    authorization: Optional[str] = Header(None),
+    x_user_email: Optional[str] = Header(None, alias="X-User-Email"),
+    email: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    target_email = None
+    target_id = None
+    
+    if authorization:
+        auth_header = authorization.replace("Bearer ", "").strip()
+        if auth_header.startswith("token-"):
+            parts = auth_header.split("-")
+            if len(parts) >= 3 and parts[-1].isdigit():
+                target_id = int(parts[-1])
+        elif "@" in auth_header:
+            target_email = auth_header
+            
+    if not target_id and not target_email:
+        target_email = (x_user_email or email or "").strip()
+        
+    user = None
+    if target_id:
+        user = db.query(models.User).filter(models.User.id == target_id).first()
+    elif target_email:
+        user = db.query(models.User).filter(models.User.email.ilike(target_email)).first()
+        
+    if not user:
+        raise HTTPException(status_code=401, detail="Session expired or user not found. Please log in again.")
+        
+    if user.approval_status != "Approved":
+        raise HTTPException(status_code=403, detail=f"Account status is {user.approval_status}.")
+        
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account has been deactivated.")
+        
+    return {
+        "id": user.id,
+        "email": user.email,
+        "name": user.name,
+        "role": user.role,
+        "id_number": user.id_number or "",
+        "phone": user.phone or "",
+        "address": user.address or "",
+        "approval_status": user.approval_status,
+        "token": f"token-{user.role.lower()}-{user.id}"
+    }
+
 # ==========================================
 # SYSTEM ADMIN MASTER CONTROL ENDPOINTS
 # ==========================================
@@ -358,7 +515,8 @@ def get_admin_dashboard(db: Session = Depends(get_db)):
         }
     }
 
-# GET /api/admin/users
+# GET /api/admin/users and /api/users
+@app.get("/api/users")
 @app.get("/api/admin/users")
 def get_admin_users(
     role: Optional[str] = None,
@@ -425,7 +583,7 @@ def approve_user(user_id: int, db: Session = Depends(get_db)):
     audit = models.AuditEvent(
         event_id=f"USR-{user.id}",
         action="User Approved",
-        actor_name="DevOps System Admin",
+        actor_name="System Admin",
         actor_role="Admin",
         details=f"Admin approved registration for user '{user.name}' ({user.email}, Role: {user.role}, ID: {user.id_number}). Access granted to portal.",
         user_email="admin@refinery.safe"
@@ -449,7 +607,7 @@ def reject_user(user_id: int, db: Session = Depends(get_db)):
     audit = models.AuditEvent(
         event_id=f"USR-{user.id}",
         action="User Rejected",
-        actor_name="DevOps System Admin",
+        actor_name="System Admin",
         actor_role="Admin",
         details=f"Admin rejected registration for user '{user.name}' ({user.email}, Role: {user.role}, ID: {user.id_number}). Access denied.",
         user_email="admin@refinery.safe"
@@ -473,7 +631,7 @@ def toggle_user_active(user_id: int, db: Session = Depends(get_db)):
     audit = models.AuditEvent(
         event_id=f"USR-{user.id}",
         action=f"User {status_label}",
-        actor_name="DevOps System Admin",
+        actor_name="System Admin",
         actor_role="Admin",
         details=f"Admin {status_label.lower()} account for '{user.name}' ({user.email}, Role: {user.role}).",
         user_email="admin@refinery.safe"
@@ -507,7 +665,7 @@ def change_user_role(user_id: int, payload: schemas.UserRoleChangePayload, db: S
     audit = models.AuditEvent(
         event_id=f"USR-{user.id}",
         action="User Role Changed",
-        actor_name="DevOps System Admin",
+        actor_name="System Admin",
         actor_role="Admin",
         details=f"Admin updated role for '{user.name}' ({user.email}) from '{old_role}' to '{new_role}'.",
         user_email="admin@refinery.safe"
@@ -517,6 +675,37 @@ def change_user_role(user_id: int, payload: schemas.UserRoleChangePayload, db: S
     db.refresh(user)
     
     return {"success": True, "role": user.role, "message": f"Role for '{user.name}' successfully changed to {user.role}."}
+
+# DELETE /api/admin/users/{user_id} and /api/users/{user_id}
+@app.delete("/api/users/{user_id}")
+@app.delete("/api/admin/users/{user_id}")
+def delete_user(user_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    if user.email == "admin@refinery.safe":
+        raise HTTPException(status_code=400, detail="The master system admin account cannot be deleted.")
+        
+    user_name = user.name
+    user_email = user.email
+    
+    # Also clean up any associated OfficerProfile
+    db.query(models.OfficerProfile).filter(models.OfficerProfile.email == user_email).delete(synchronize_session=False)
+    db.delete(user)
+    
+    audit = models.AuditEvent(
+        event_id=f"USR-{user_id}",
+        action="User Deleted",
+        actor_name="System Admin",
+        actor_role="Admin",
+        details=f"Admin permanently deleted user account '{user_name}' ({user_email}).",
+        user_email="admin@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    
+    return {"success": True, "message": f"User '{user_name}' deleted successfully."}
 
 # GET /api/admin/reports
 @app.get("/api/admin/reports")
@@ -601,6 +790,7 @@ def get_admin_reports(
             "stop_work_issued": ev.stop_work_issued,
             "action_id": ev.action_id,
             "resolution_notes": ev.resolution_notes,
+            "photo_url": ev.photo_url,
             "timestamp": ev.timestamp.isoformat() if ev.timestamp else datetime.datetime.utcnow().isoformat()
         }
         for ev in events
@@ -1385,6 +1575,33 @@ def reset_and_seed_db():
 # GET /api/manager/officers
 @app.get("/api/manager/officers")
 def get_manager_officers(db: Session = Depends(get_db)):
+    # Auto-sync approved Officer users to OfficerProfile table if not already present
+    officer_users = db.query(models.User).filter(
+        models.User.role.in_(["Officer", "Safety Officer"]),
+        models.User.approval_status == "Approved"
+    ).all()
+    
+    for u in officer_users:
+        existing_profile = db.query(models.OfficerProfile).filter(models.OfficerProfile.email == u.email).first()
+        if not existing_profile:
+            new_prof = models.OfficerProfile(
+                officer_name=u.name,
+                officer_code=u.id_number or f"OFF-{u.id:03d}",
+                email=u.email,
+                phone=u.phone or "+91 98450 11000",
+                radio_channel="Ch 2 (VHF)",
+                site="Refinery A",
+                unit="CDU",
+                shift="Shift A (06:00 - 14:00)",
+                status="On Duty",
+                certifications="LOTO Auditor, Gas Safety Specialist, Incident Lead",
+                experience_years=5,
+                max_capacity=8
+            )
+            db.add(new_prof)
+    if officer_users:
+        db.commit()
+
     officers = db.query(models.OfficerProfile).all()
     results = []
     
@@ -1544,7 +1761,7 @@ def create_manager_task(payload: schemas.OfficerTaskCreatePayload, db: Session =
         priority=payload.priority,
         assigned_officer_id=officer.id,
         assigned_officer_name=officer.officer_name,
-        assigned_by="Dr. Vikram Roy (Head of HSE)",
+        assigned_by=payload.assigned_by or "HSE Safety Manager",
         instructions=payload.instructions,
         status="Assigned",
         due_date=due_date,
@@ -1556,7 +1773,7 @@ def create_manager_task(payload: schemas.OfficerTaskCreatePayload, db: Session =
     audit = models.AuditEvent(
         event_id=task_id,
         action="Manager Task Allotment",
-        details=f"HSE Manager dispatched safety inspection '{payload.title}' ({payload.priority} Priority) to Officer '{officer.officer_name}' at {payload.site}.",
+        details=f"{payload.assigned_by or 'HSE Manager'} dispatched safety inspection '{payload.title}' ({payload.priority} Priority) to Officer '{officer.officer_name}' at {payload.site}.",
         user_email="manager@refinery.safe"
     )
     db.add(audit)
@@ -1632,7 +1849,7 @@ def broadcast_safety_directive(payload: schemas.SafetyDirectivePayload, db: Sess
         target_scope=target_scope,
         target_name=target_name,
         target_sites=target_sites,
-        issued_by="Dr. Vikram Roy (Head of HSE)",
+        issued_by=payload.issued_by or "HSE Safety Manager",
         acknowledge_count=0
     )
     db.add(directive)
@@ -1640,7 +1857,7 @@ def broadcast_safety_directive(payload: schemas.SafetyDirectivePayload, db: Sess
     audit = models.AuditEvent(
         event_id=directive_id,
         action="Safety Directive Broadcast",
-        details=f"HSE Manager broadcasted '{payload.title}' to {target_scope}: '{target_name}'. Priority: {payload.priority}.",
+        details=f"{payload.issued_by or 'HSE Manager'} broadcasted '{payload.title}' to {target_scope}: '{target_name}'. Priority: {payload.priority}.",
         user_email="manager@refinery.safe"
     )
     db.add(audit)
@@ -1654,7 +1871,8 @@ def broadcast_safety_directive(payload: schemas.SafetyDirectivePayload, db: Sess
         "message": f"Safety Directive {directive_id} broadcasted to {target_name} ({target_scope})."
     }
 
-# GET /api/manager/directives
+# GET /api/manager/directives and /api/safety-directives
+@app.get("/api/safety-directives")
 @app.get("/api/manager/directives")
 def get_safety_directives(db: Session = Depends(get_db)):
     directives = db.query(models.SafetyDirective).order_by(models.SafetyDirective.created_at.desc()).limit(25).all()

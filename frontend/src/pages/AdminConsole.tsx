@@ -34,7 +34,8 @@ import {
   Building2,
   MapPin,
   FileCheck2,
-  Info
+  Info,
+  Trash2
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -266,6 +267,28 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   const pendingUsers = useMemo(() => {
     return users.filter(u => u.approval_status === 'Pending');
   }, [users]);
+
+  const handleDeleteUser = async (userId: number, userName: string) => {
+    if (!window.confirm(`Are you sure you want to permanently delete user "${userName}"?`)) return;
+    try {
+      const res = await fetch(apiUrl(`/api/admin/users/${userId}`), {
+        method: 'DELETE'
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setUserActionMessage(`User "${userName}" has been deleted.`);
+        triggerNotification?.(`User Deleted: ${userName}`);
+        fetchUsers();
+        fetchDashboardData();
+        fetchAuditLogs();
+        setTimeout(() => setUserActionMessage(null), 4000);
+      } else {
+        alert(data.detail || 'Failed to delete user');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   // ── Filtered Users ─────────────────────────────────────────────────────────
   const filteredUsers = useMemo(() => {
@@ -1192,6 +1215,17 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                                 <span>Details</span>
                               </button>
 
+                              {/* Delete User Button (not for Master Admin) */}
+                              {user.email !== 'admin@refinery.safe' && (
+                                <button
+                                  onClick={() => handleDeleteUser(user.id, user.name)}
+                                  title="Delete User Account"
+                                  className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl text-xs transition cursor-pointer"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+
                             </div>
                           </td>
                         </tr>
@@ -1378,6 +1412,13 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                               <option value="Manager">Set to Manager</option>
                               <option value="Admin">Set to Admin</option>
                             </select>
+                            <button
+                              onClick={() => handleDeleteUser(u.id, u.name)}
+                              title="Delete User"
+                              className="p-1 text-rose-500 hover:bg-rose-50 rounded-lg transition"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
                           </div>
                         )}
                       </td>
@@ -1917,6 +1958,23 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                 ✕
               </button>
             </div>
+
+            {/* Attached Photo Evidence */}
+            {selectedReportDetail.photo_url && (
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5">
+                <div className="text-[10px] font-extrabold uppercase text-[#008779] flex items-center gap-1">
+                  <span>📸 Uploaded Photo Evidence (Cloudinary)</span>
+                </div>
+                <a href={selectedReportDetail.photo_url} target="_blank" rel="noreferrer" className="inline-block group">
+                  <img 
+                    src={selectedReportDetail.photo_url} 
+                    alt="Report snapshot" 
+                    className="h-32 max-w-full rounded-xl object-cover border border-slate-200 shadow-2xs group-hover:opacity-90 transition"
+                  />
+                  <span className="text-[10px] text-[#008779] font-bold mt-1 block group-hover:underline">Open Original Photo ↗</span>
+                </a>
+              </div>
+            )}
 
             {/* Narrative */}
             <div className="p-4 bg-slate-50 rounded-2xl space-y-1">

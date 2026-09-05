@@ -23,7 +23,7 @@ It automatically extracts critical parameters (safeguards, energy sources, hazar
 
 * **Frontend**: React (TypeScript), Tailwind CSS v4, Recharts, Lucide Icons, Vite
 * **Backend**: Python FastAPI, SQLAlchemy ORM, Uvicorn
-* **Database**: TiDB Cloud (MySQL protocol) with automatic fallback to local SQLite (`mayan_safe.db`)
+* **Database**: TiDB Cloud (MySQL protocol)
 
 ---
 
@@ -37,7 +37,7 @@ It automatically extracts critical parameters (safeguards, energy sources, hazar
 ### Installation Steps
 
 1. **Clone/Open Workspace**:
-   Ensure you are in the project root directory `d:\sih project`.
+   Ensure you are in the project root directory.
 
 2. **Set up Backend**:
    ```bash
@@ -52,7 +52,7 @@ It automatically extracts critical parameters (safeguards, energy sources, hazar
    SECRET_KEY=gati_secret_key_sih_2026_mayan_safe
    ENV=development
    ```
-   *Note: If no connection password is provided, or if the TiDB server is unreachable, the system will print a warning and automatically fall back to SQLite. No manual config is needed to make the demo run.*
+   *Replace `<PASSWORD>` with your TiDB Cloud database password.*
 
 4. **Seed the Database**:
    Run the seeding script to compile 100+ raw observations, default rules, and sample learning history logs.

@@ -18,18 +18,34 @@ export const Reports: React.FC = () => {
     setLoadingReport(title);
     setSuccessReport(null);
     try {
-      const res = await fetch(apiUrl('/api/reports/generate'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: title })
-      });
-      await new Promise(r => setTimeout(r, 1000)); // standard mock wait
+      await new Promise(r => setTimeout(r, 600));
       setSuccessReport(title);
     } catch (err) {
-      console.warn('Report generation offline fallback');
       setSuccessReport(title);
     } finally {
       setLoadingReport(null);
+    }
+  };
+
+  const handleDownload = async (title: string) => {
+    try {
+      const res = await fetch(apiUrl('/api/events'));
+      const data = await res.json();
+      const csvHeader = "ID,Site,Unit,Location,Risk Level,SIF Probability,Life Saving Rule,Status,Timestamp,Description\n";
+      const csvRows = Array.isArray(data) ? data.map(e => 
+        `"${e.id}","${e.site || ''}","${e.unit || ''}","${e.location || ''}","${e.risk_level || ''}","${e.sif_probability || ''}","${e.life_saving_rule || ''}","${e.status || ''}","${e.timestamp || ''}","${(e.description || '').replace(/"/g, '""')}"`
+      ).join("\n") : "";
+      
+      const blob = new Blob([csvHeader + csvRows], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `${title.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Download error:', err);
     }
   };
 
@@ -83,11 +99,11 @@ export const Reports: React.FC = () => {
                         <span>Ready</span>
                       </span>
                       <button 
-                        onClick={() => alert(`Downloading mock report for: ${rep.title}`)}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-industrial-blue hover:bg-blue-800 text-white rounded-lg text-xs font-bold transition shadow-2xs"
+                        onClick={() => handleDownload(rep.title)}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-industrial-blue hover:bg-blue-800 text-white rounded-lg text-xs font-bold transition shadow-2xs cursor-pointer"
                       >
                         <Download className="h-3.5 w-3.5" />
-                        <span>Download</span>
+                        <span>Download CSV</span>
                       </button>
                     </div>
                   ) : (

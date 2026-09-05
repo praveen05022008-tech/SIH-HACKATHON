@@ -143,9 +143,14 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [receipt, setReceipt] = useState<any | null>(null);
   const [myReports, setMyReports] = useState<SafetyEvent[]>([]);
+  const [loadingReports, setLoadingReports] = useState(true);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [previewImageModal, setPreviewImageModal] = useState<string | null>(null);
 
   // Safety Directives state (Interconnected from Safety Manager)
   const [directives, setDirectives] = useState<SafetyDirective[]>([]);
+  const [loadingDirectives, setLoadingDirectives] = useState(true);
   const [acknowledgedIds, setAcknowledgedIds] = useState<Set<string>>(new Set());
 
   // Categorized options
@@ -238,6 +243,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
 
   // Fetch worker's personal reports strictly isolated to reporter_email
   const fetchMyReports = async () => {
+    setLoadingReports(true);
     try {
       const res = await fetch(apiUrl(`/api/events?reporter_email=${encodeURIComponent(userEmail)}`));
       if (!res.ok) throw new Error();
@@ -313,10 +319,13 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
           l6_job: 'Check valve isolation'
         }
       ]);
+    } finally {
+      setLoadingReports(false);
     }
   };
 
   const fetchDirectives = async () => {
+    setLoadingDirectives(true);
     try {
       const res = await fetch(apiUrl('/api/manager/directives'));
       if (res.ok) {
@@ -325,6 +334,8 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
       }
     } catch (err) {
       console.warn('Failed to fetch directives for worker portal:', err);
+    } finally {
+      setLoadingDirectives(false);
     }
   };
 
@@ -335,7 +346,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_email: userEmail,
-          user_name: user?.name || 'Ramesh Kumar (Drilling Tech)',
+          user_name: user?.name || 'Field Employee',
           site: site,
           role: 'Field Worker'
         })
@@ -487,15 +498,35 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-        triggerNotification("Report photo attachment uploaded");
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPhotoPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    setUploadingPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(apiUrl('/api/upload'), {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setPhotoUrl(data.url);
+        triggerNotification(`✓ Evidence image uploaded to ${data.provider === 'cloudinary' ? 'Cloudinary' : 'Secure Storage'}`);
+      } else {
+        setPhotoUrl(null);
+      }
+    } catch (err) {
+      console.warn('Image upload fallback:', err);
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -523,7 +554,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
       equipment_involved: equipment,
       energy_source: energySource,
       people_involved: peopleInvolved,
-      photo_url: photoPreview || 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=500',
+      photo_url: photoUrl || photoPreview || null,
       audio_transcript: voiceTranscript || null,
       reporter_email: userEmail
     };
@@ -651,6 +682,66 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Active HSE Directives Broadcast Bar */}
+      {loadingDirectives ? (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center justify-center gap-2 text-slate-400 shadow-2xs">
+          <Loader2 className="h-4 w-4 animate-spin text-[#008779]" />
+          <span className="text-xs font-semibold">Checking active HSE safety directives...</span>
+        </div>
+      ) : directives.length > 0 ? (
+        <div className="space-y-3">
+          {directives.slice(0, 2).map((dir) => {
+            const isAck = acknowledgedIds.has(dir.directive_id);
+            return (
+              <div 
+                key={dir.directive_id}
+                className="bg-gradient-to-r from-red-500/10 via-amber-500/10 to-red-500/5 border-2 border-red-500/40 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-xs"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-red-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                    <Radio className="h-5 w-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-red-600 text-white">
+                        {dir.priority} DIRECTIVE
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-500">{dir.directive_id} • Target: {dir.target_name}</span>
+                    </div>
+                    <h4 className="text-xs font-black text-slate-900 mt-1">{dir.title}</h4>
+                    <p className="text-[11px] text-slate-600 mt-0.5">{dir.message}</p>
+                  </div>
+                </div>
+
+                <div className="shrink-0 flex items-center gap-2">
+                  <button
+                    onClick={() => handleAcknowledgeDirective(dir)}
+                    disabled={isAck}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition cursor-pointer ${
+                      isAck
+                        ? 'bg-emerald-600 text-white shadow-xs cursor-default'
+                        : 'bg-red-600 hover:bg-red-700 text-white shadow-xs'
+                    }`}
+                  >
+                    {isAck ? (
+                      <>
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        <span>Acknowledged</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check className="h-3.5 w-3.5" />
+                        <span>Acknowledge Protocol</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
@@ -944,28 +1035,44 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 type="file"
                 accept="image/*"
                 onChange={handleFileUpload}
-                className="absolute inset-0 opacity-0 cursor-pointer"
+                disabled={uploadingPhoto}
+                className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed"
               />
               {!photoPreview ? (
                 <div className="flex flex-col items-center">
                   <Upload className="h-6 w-6 text-[#008779] mb-2" />
-                  <span className="text-xs font-bold text-slate-700">Attach Photo/Video Snapshot</span>
-                  <span className="text-[10px] text-slate-400 mt-1">Upload an image to attach evidence to your report</span>
+                  <span className="text-xs font-bold text-slate-700">Attach Photo/Video Snapshot (Cloudinary)</span>
+                  <span className="text-[10px] text-slate-400 mt-1">Upload an image to attach high-resolution evidence</span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center">
                   <img 
                     src={photoPreview} 
                     alt="Upload Preview" 
-                    className="h-28 rounded-xl object-cover mb-2 border border-[#E6ECEB] shadow-xs" 
+                    className="h-28 rounded-xl object-cover mb-2 border border-[#E6ECEB] shadow-xs cursor-zoom-in"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPreviewImageModal(photoUrl || photoPreview);
+                    }}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setPhotoPreview(null)}
-                    className="text-[10px] text-red-600 hover:underline font-bold"
-                  >
-                    Remove Photo
-                  </button>
+                  <div className="flex items-center gap-2">
+                    {uploadingPhoto ? (
+                      <span className="text-[10px] text-[#008779] font-bold animate-pulse">Uploading to Cloudinary...</span>
+                    ) : (
+                      <span className="text-[10px] text-emerald-600 font-bold">✓ Ready</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPhotoPreview(null);
+                        setPhotoUrl(null);
+                      }}
+                      className="text-[10px] text-red-600 hover:underline font-bold"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -1081,6 +1188,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
             <thead className="bg-[#F4F7F6] text-slate-400 uppercase tracking-wider text-[9px] font-bold">
               <tr>
                 <th className="px-4 py-3 rounded-l-xl">Report Code</th>
+                <th className="px-4 py-3">Photo Evidence</th>
                 <th className="px-4 py-3">Category & Hazard</th>
                 <th className="px-4 py-3">Location & Shift</th>
                 <th className="px-4 py-3">Observation Summary</th>
@@ -1089,9 +1197,18 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 text-xs text-slate-700">
-              {myReports.length === 0 ? (
+              {loadingReports ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-6 text-slate-400 text-xs">
+                  <td colSpan={7} className="text-center py-10 text-slate-500">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Loader2 className="h-6 w-6 animate-spin text-[#008779]" />
+                      <span className="text-xs font-semibold text-slate-600">Retrieving submitted observations...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : myReports.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-6 text-slate-400 text-xs">
                     No submitted reports found for {userEmail}.
                   </td>
                 </tr>
@@ -1100,6 +1217,18 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                   <tr key={r.id} className="hover:bg-[#E8F6F4]/30 transition">
                     <td className="px-4 py-3 font-extrabold text-slate-900">
                       {r.report_code || r.id}
+                    </td>
+                    <td className="px-4 py-3">
+                      {r.photo_url ? (
+                        <img 
+                          src={r.photo_url} 
+                          alt="Evidence" 
+                          onClick={() => setPreviewImageModal(r.photo_url || null)}
+                          className="h-9 w-9 rounded-lg object-cover border border-[#E6ECEB] cursor-zoom-in hover:scale-105 transition shadow-2xs"
+                        />
+                      ) : (
+                        <span className="text-[10px] text-slate-400 italic">No snap</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="font-bold text-slate-800">{r.report_type || 'Unsafe Condition'}</div>
@@ -1193,6 +1322,41 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cloudinary Evidence Image Full-Size Lightbox Modal */}
+      {previewImageModal && (
+        <div 
+          onClick={() => setPreviewImageModal(null)}
+          className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+        >
+          <div className="relative max-w-4xl max-h-[90vh] bg-white rounded-3xl p-3 shadow-2xl border border-slate-700" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Cloudinary Evidence Snapshot</span>
+              <button
+                onClick={() => setPreviewImageModal(null)}
+                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <img 
+              src={previewImageModal} 
+              alt="Full Resolution Evidence" 
+              className="max-h-[75vh] w-auto rounded-2xl object-contain mx-auto shadow-sm"
+            />
+            <div className="mt-2 text-center text-[11px] text-slate-400">
+              <a 
+                href={previewImageModal} 
+                target="_blank" 
+                rel="noreferrer"
+                className="text-[#008779] font-bold hover:underline"
+              >
+                Open Original Image ↗
+              </a>
             </div>
           </div>
         </div>
