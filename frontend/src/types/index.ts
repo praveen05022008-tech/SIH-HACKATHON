@@ -224,11 +224,15 @@ export interface OfficerTask {
   priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | string;
   assigned_officer_id: number;
   assigned_officer_name: string;
+  assigned_officer_email?: string | null;
   assigned_by: string;
   instructions: string;
-  status: 'Assigned' | 'In Progress' | 'Completed' | 'Overdue' | string;
-  due_date: string;
+  status: 'Assigned' | 'In Progress' | 'Submitted' | 'Completed' | 'Overdue' | string;
   findings?: string | null;
+  submitted_findings?: string | null;
+  manager_notes?: string | null;
+  submitted_at?: string | null;
+  due_date?: string | null;
   related_event_id?: string | null;
   created_at: string;
   completed_at?: string | null;
@@ -318,6 +322,8 @@ export interface AuditLogEntry {
   details: string;
   user_email: string;
   timestamp: string;
+  login_time?: string | null;
+  logout_time?: string | null;
 }
 
 

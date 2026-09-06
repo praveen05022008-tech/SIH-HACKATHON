@@ -35,7 +35,11 @@ import {
   MapPin,
   FileCheck2,
   Info,
-  Trash2
+  Trash2,
+  Phone,
+  Camera,
+  LogIn,
+  LogOut
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -114,10 +118,11 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   const [auditActionFilter, setAuditActionFilter] = useState<string>('All');
   const [auditIssueIdFilter, setAuditIssueIdFilter] = useState<string>('');
   const [auditSearchQuery, setAuditSearchQuery] = useState<string>('');
+  const [selectedAuditDetail, setSelectedAuditDetail] = useState<AuditLogEntry | null>(null);
 
   // ── Fetch Dashboard Data ───────────────────────────────────────────────────
-  const fetchDashboardData = () => {
-    setLoadingDashboard(true);
+  const fetchDashboardData = (showSpinner = false) => {
+    if (showSpinner || !dashboardData) setLoadingDashboard(true);
     fetch(apiUrl('/api/admin/dashboard'))
       .then(res => res.ok ? res.json() : null)
       .then(data => {
@@ -128,56 +133,56 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   };
 
   // ── Fetch Users List ───────────────────────────────────────────────────────
-  const fetchUsers = () => {
-    setLoadingUsers(true);
+  const fetchUsers = (showSpinner = false) => {
+    if (showSpinner || users.length === 0) setLoadingUsers(true);
     fetch(apiUrl('/api/admin/users'))
       .then(res => res.ok ? res.json() : [])
-      .then(data => setUsers(data))
+      .then(data => setUsers(Array.isArray(data) ? data : []))
       .catch(err => console.error('Error fetching users:', err))
       .finally(() => setLoadingUsers(false));
   };
 
   // ── Fetch All Reports ──────────────────────────────────────────────────────
-  const fetchReports = () => {
-    setLoadingReports(true);
+  const fetchReports = (showSpinner = false) => {
+    if (showSpinner || reports.length === 0) setLoadingReports(true);
     fetch(apiUrl('/api/admin/reports?limit=200'))
       .then(res => res.ok ? res.json() : [])
-      .then(data => setReports(data))
+      .then(data => setReports(Array.isArray(data) ? data : []))
       .catch(err => console.error('Error fetching reports:', err))
       .finally(() => setLoadingReports(false));
   };
 
   // ── Fetch Audit Logs ───────────────────────────────────────────────────────
-  const fetchAuditLogs = () => {
-    setLoadingAudits(true);
+  const fetchAuditLogs = (showSpinner = false) => {
+    if (showSpinner || auditLogs.length === 0) setLoadingAudits(true);
     fetch(apiUrl('/api/admin/audit-logs?limit=300'))
       .then(res => res.ok ? res.json() : [])
-      .then(data => setAuditLogs(data))
+      .then(data => setAuditLogs(Array.isArray(data) ? data : []))
       .catch(err => console.error('Error fetching audit logs:', err))
       .finally(() => setLoadingAudits(false));
   };
 
-  // Load initial data and keep polling in background every 6 seconds
+  // Load initial data on mount (no rapid 6s loop that blinks the screen)
   useEffect(() => {
-    fetchDashboardData();
-    fetchUsers();
-    fetchReports();
-    fetchAuditLogs();
-
-    const interval = setInterval(() => {
-      fetchUsers();
-      fetchDashboardData();
-    }, 6000);
-
-    return () => clearInterval(interval);
+    fetchDashboardData(true);
+    fetchUsers(true);
+    fetchReports(true);
+    fetchAuditLogs(true);
   }, []);
 
-  // Reload tab-specific data when tab changes
+  // Sync activeTab when initialTab prop changes from sidebar navigation
   useEffect(() => {
-    if (activeTab === 'dashboard') fetchDashboardData();
-    if (activeTab === 'users' || activeTab === 'roles' || activeTab === 'requests') fetchUsers();
-    if (activeTab === 'reports') fetchReports();
-    if (activeTab === 'audit') fetchAuditLogs();
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  // Reload tab-specific data smoothly when tab changes
+  useEffect(() => {
+    if (activeTab === 'dashboard') fetchDashboardData(false);
+    if (activeTab === 'users' || activeTab === 'roles' || activeTab === 'requests') fetchUsers(false);
+    if (activeTab === 'reports') fetchReports(false);
+    if (activeTab === 'audit') fetchAuditLogs(false);
   }, [activeTab]);
 
   // ── User Actions: Approve, Reject, Toggle Active, Change Role ──────────────
@@ -270,46 +275,62 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
   // ── Delete Report ────────────────────────────────────────────────────────
   const handleDeleteReport = async (reportId: string, reportCode: string) => {
-    if (!window.confirm(`Permanently delete report ${reportCode}? This cannot be undone.`)) return;
+    // Optimistically remove from web state immediately
+    setReports(prev => prev.filter(r => 
+      r.id !== reportId && 
+      r.id.toString() !== reportId && 
+      r.report_code !== reportCode && 
+      r.report_code !== `#${reportCode}` && 
+      r.report_code !== reportCode.replace('#', '') && 
+      r.id !== reportCode
+    ));
+    setUserActionMessage(`Report "${reportCode}" has been permanently deleted.`);
+    triggerNotification?.(`Report Deleted: ${reportCode}`);
+    setTimeout(() => setUserActionMessage(null), 4000);
+
     try {
-      const res = await fetch(apiUrl(`/api/admin/reports/${reportId}`), {
+      const targetIdentifier = reportId || reportCode;
+      const res = await fetch(apiUrl(`/api/admin/reports/${encodeURIComponent(targetIdentifier)}`), {
         method: 'DELETE'
       });
       if (res.ok) {
-        setUserActionMessage(`Report "${reportCode}" has been permanently deleted.`);
-        triggerNotification?.(`Report Deleted: ${reportCode}`);
         fetchReports();
         fetchDashboardData();
         fetchAuditLogs();
-        setTimeout(() => setUserActionMessage(null), 4000);
       } else {
         const data = await res.json().catch(() => ({}));
-        alert(data.detail || 'Failed to delete report');
+        console.error('Delete report error:', data);
+        fetchReports();
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error deleting report:', err);
+      fetchReports();
     }
   };
 
   const handleDeleteUser = async (userId: number, userName: string) => {
-    if (!window.confirm(`Are you sure you want to permanently delete user "${userName}"?`)) return;
+    // Optimistically remove from web state immediately
+    setUsers(prev => prev.filter(u => u.id !== userId));
+    setUserActionMessage(`User "${userName}" has been permanently deleted.`);
+    triggerNotification?.(`User Deleted: ${userName}`);
+    setTimeout(() => setUserActionMessage(null), 4000);
+
     try {
       const res = await fetch(apiUrl(`/api/admin/users/${userId}`), {
         method: 'DELETE'
       });
-      const data = await res.json();
       if (res.ok) {
-        setUserActionMessage(`User "${userName}" has been deleted.`);
-        triggerNotification?.(`User Deleted: ${userName}`);
         fetchUsers();
         fetchDashboardData();
         fetchAuditLogs();
-        setTimeout(() => setUserActionMessage(null), 4000);
       } else {
-        alert(data.detail || 'Failed to delete user');
+        const data = await res.json().catch(() => ({}));
+        console.error('Delete user error:', data);
+        fetchUsers();
       }
     } catch (err) {
-      console.error(err);
+      console.error('Error deleting user:', err);
+      fetchUsers();
     }
   };
 
@@ -443,51 +464,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
         </div>
       )}
 
-      {/* ── 1. MASTER HEADER & TOP-LEVEL NAVIGATION ────────────────────────── */}
-      <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200">
-                Master Administrator
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
-                ● Live Fleet Control
-              </span>
-            </div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
-              <span>Admin Master Management Center</span>
-            </h1>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Centralized authority for user onboarding approvals, role governance, fleet reporting intelligence, and audit traceability.
-            </p>
-          </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => {
-                fetchDashboardData();
-                fetchUsers();
-                fetchReports();
-                fetchAuditLogs();
-                triggerNotification?.('Admin: Synchronized all fleet data.');
-              }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              <span>Sync All</span>
-            </button>
-            {onResetDb && (
-              <button
-                onClick={onResetDb}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition cursor-pointer"
-              >
-                <span>Reset Database</span>
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* ===================================================================== */}
       {/* ── TAB 1: ADMIN DASHBOARD ─────────────────────────────────────────── */}
@@ -702,8 +679,18 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                         </div>
                         <div className="text-[11px] text-slate-500 flex items-center gap-3 mt-0.5 font-mono">
                           <span>{u.email}</span>
-                          {u.phone && u.phone !== '—' && <span className="font-sans text-slate-400">📱 {u.phone}</span>}
-                          {u.address && u.address !== '—' && <span className="font-sans text-slate-400">📍 {u.address}</span>}
+                          {u.phone && u.phone !== '—' && (
+                            <span className="font-sans text-slate-400 flex items-center gap-1">
+                              <Phone className="h-3 w-3 inline text-slate-400" />
+                              {u.phone}
+                            </span>
+                          )}
+                          {u.address && u.address !== '—' && (
+                            <span className="font-sans text-slate-400 flex items-center gap-1">
+                              <MapPin className="h-3 w-3 inline text-slate-400" />
+                              {u.address}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -829,10 +816,10 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => { fetchUsers(); fetchDashboardData(); }}
+                  onClick={() => { fetchUsers(true); fetchDashboardData(true); }}
                   className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
                 >
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <RefreshCw className={`h-3.5 w-3.5 ${loadingUsers ? 'animate-spin text-[#008779]' : ''}`} />
                   <span>Sync Requests</span>
                 </button>
                 <button
@@ -890,9 +877,19 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                               <div className="font-extrabold text-slate-900 text-sm">{user.name}</div>
                               <div className="text-[11px] text-slate-500 font-mono mt-0.5">{user.email}</div>
                               {(user.phone || user.address) && (
-                                <div className="text-[10px] text-slate-400 mt-0.5 flex gap-2">
-                                  {user.phone && user.phone !== '—' && <span>📱 {user.phone}</span>}
-                                  {user.address && user.address !== '—' && <span>📍 {user.address}</span>}
+                                <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-2">
+                                  {user.phone && user.phone !== '—' && (
+                                    <span className="flex items-center gap-1">
+                                      <Phone className="h-2.5 w-2.5 inline text-slate-400" />
+                                      {user.phone}
+                                    </span>
+                                  )}
+                                  {user.address && user.address !== '—' && (
+                                    <span className="flex items-center gap-1">
+                                      <MapPin className="h-2.5 w-2.5 inline text-slate-400" />
+                                      {user.address}
+                                    </span>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -982,10 +979,11 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
               </div>
 
               <button
-                onClick={fetchUsers}
+                onClick={() => fetchUsers(true)}
+                disabled={loadingUsers}
                 className="self-start md:self-auto px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
               >
-                <RefreshCw className="h-3.5 w-3.5" />
+                <RefreshCw className={`h-3.5 w-3.5 ${loadingUsers ? 'animate-spin text-[#008779]' : ''}`} />
                 <span>Refresh Users</span>
               </button>
             </div>
@@ -1054,7 +1052,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
-                  {loadingUsers ? (
+                  {loadingUsers && users.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-8 text-center text-slate-400">
                         <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-[#008779]" />
@@ -1661,10 +1659,11 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
               </div>
 
               <button
-                onClick={fetchAuditLogs}
+                onClick={() => fetchAuditLogs(true)}
+                disabled={loadingAudits}
                 className="self-start md:self-auto px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
               >
-                <RefreshCw className="h-3.5 w-3.5" />
+                <RefreshCw className={`h-3.5 w-3.5 ${loadingAudits ? 'animate-spin text-[#008779]' : ''}`} />
                 <span>Refresh Logs</span>
               </button>
             </div>
@@ -1739,11 +1738,11 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
               <table className="w-full text-left text-xs text-slate-700">
                 <thead className="bg-slate-50 border-b border-slate-200 text-[10.5px] font-black uppercase tracking-wider text-slate-500">
                   <tr>
-                    <th className="py-3 px-4">Date & Time</th>
-                    <th className="py-3 px-4">Activity / Action</th>
-                    <th className="py-3 px-4">Actor & Role</th>
-                    <th className="py-3 px-4">Event / Issue ID</th>
-                    <th className="py-3 px-4">Full Details</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Date</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Name</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Role</th>
+                    <th className="py-3.5 px-4 whitespace-nowrap">Login Time</th>
+                    <th className="py-3.5 px-4">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium">
@@ -1768,61 +1767,97 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                       const isAssignment = audit.action.includes('Assigned') || audit.action.includes('Allotment');
                       const isAcceptance = audit.action.includes('Accepted') || audit.action.includes('Verified');
                       const isProgress = audit.action.includes('Progress');
-                      const isCompletion = audit.action.includes('Completed');
+                      const isCompletion = audit.action.includes('Completed') || audit.action.includes('Finished');
                       const isRejection = audit.action.includes('Rejected');
                       const isUserApproval = audit.action.includes('User Approved');
 
+                      const formattedDate = new Date(audit.timestamp).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'numeric',
+                        day: 'numeric'
+                      });
+
+                      const loginDisplay = audit.login_time 
+                        ? new Date(audit.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                        : new Date(audit.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
                       return (
-                        <tr key={audit.id} className="hover:bg-slate-50/70 transition">
+                        <tr key={audit.id} className="hover:bg-slate-50/70 transition border-b border-slate-100">
                           
-                          {/* Date & Time */}
-                          <td className="py-3 px-4 font-mono whitespace-nowrap text-slate-600">
-                            <div className="font-bold text-slate-900">
-                              {new Date(audit.timestamp).toLocaleDateString()}
-                            </div>
-                            <div className="text-[10px] text-slate-400">
-                              {new Date(audit.timestamp).toLocaleTimeString()}
+                          {/* 1. Date */}
+                          <td className="py-3.5 px-4 font-mono whitespace-nowrap text-slate-900 font-bold text-xs">
+                            {formattedDate}
+                          </td>
+
+                          {/* 2. Name */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <div className="flex items-center gap-2.5">
+                              <div className="h-8 w-8 rounded-xl bg-slate-100 text-slate-700 font-black text-xs flex items-center justify-center border border-slate-200 uppercase shrink-0">
+                                {audit.actor_name ? audit.actor_name.charAt(0) : 'U'}
+                              </div>
+                              <div>
+                                <div className="font-extrabold text-slate-900 text-xs">{audit.actor_name}</div>
+                                <div className="text-[10px] text-slate-400 font-mono">{audit.user_email || '—'}</div>
+                              </div>
                             </div>
                           </td>
 
-                          {/* Activity / Action Badge */}
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                              isCreation ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                              : isAssignment ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                              : isAcceptance ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                              : isProgress ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                              : isCompletion ? 'bg-teal-100 text-teal-800 border border-teal-200'
-                              : isRejection ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                              : isUserApproval ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                              : 'bg-slate-100 text-slate-700 border border-slate-200'
+                          {/* 3. Role */}
+                          <td className="py-3.5 px-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                              audit.actor_role.includes('Admin')
+                                ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                : audit.actor_role.includes('Manager')
+                                ? 'bg-teal-100 text-teal-800 border border-teal-200'
+                                : audit.actor_role.includes('Officer')
+                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                : 'bg-amber-100 text-amber-800 border border-amber-200'
                             }`}>
-                              <span>{audit.action}</span>
+                              {audit.actor_role}
                             </span>
                           </td>
 
-                          {/* Actor & Role */}
-                          <td className="py-3 px-4">
-                            <div className="font-extrabold text-slate-900">{audit.actor_name}</div>
-                            <span className="text-[9.5px] font-bold text-slate-500 uppercase">
-                              {audit.actor_role} ({audit.user_email.split('@')[0]})
-                            </span>
+                          {/* 4. Login Time */}
+                          <td className="py-3.5 px-4 whitespace-nowrap font-mono text-xs">
+                            <div className="flex items-center gap-1.5 text-slate-700 font-semibold">
+                              <LogIn className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                              <span>{loginDisplay}</span>
+                            </div>
                           </td>
 
-                          {/* Event / Issue ID with click to filter */}
-                          <td className="py-3 px-4 font-mono font-bold">
-                            <button
-                              onClick={() => setAuditIssueIdFilter(audit.event_id)}
-                              title="Click to view complete history for this issue"
-                              className="text-blue-600 hover:underline cursor-pointer"
-                            >
-                              {audit.event_id}
-                            </button>
-                          </td>
+                          {/* 5. Action (with View Button to open popup modal) */}
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                  isCreation ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : isAssignment ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                  : isAcceptance ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                  : isProgress ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                  : isCompletion ? 'bg-teal-100 text-teal-800 border border-teal-200'
+                                  : isRejection ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                  : isUserApproval ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                }`}>
+                                  {audit.action}
+                                </span>
 
-                          {/* Details */}
-                          <td className="py-3 px-4 text-slate-600 max-w-md">
-                            <div className="line-clamp-2">{audit.details}</div>
+                                {audit.event_id && audit.event_id !== 'GENERAL' && (
+                                  <span className="font-mono text-[10.5px] font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                                    {audit.event_id}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* View Button */}
+                              <button
+                                onClick={() => setSelectedAuditDetail(audit)}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer shrink-0"
+                              >
+                                <Eye className="h-3.5 w-3.5" />
+                                <span>View</span>
+                              </button>
+                            </div>
                           </td>
 
                         </tr>
@@ -1891,30 +1926,47 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
             </div>
 
             {/* Actions from Modal */}
-            {selectedUserDetail.approval_status === 'Pending' && (
-              <div className="flex gap-2 pt-2 border-t border-slate-100">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-100">
+              {selectedUserDetail.email !== 'admin@refinery.safe' && (
                 <button
                   onClick={() => {
-                    handleApproveUser(selectedUserDetail.id, selectedUserDetail.name);
+                    const uId = selectedUserDetail.id;
+                    const uName = selectedUserDetail.name;
                     setSelectedUserDetail(null);
+                    handleDeleteUser(uId, uName);
                   }}
-                  className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
+                  className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5"
+                  title="Permanently delete user account"
                 >
-                  <Check className="h-4 w-4" />
-                  <span>Approve Registration</span>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Delete User</span>
                 </button>
-                <button
-                  onClick={() => {
-                    handleRejectUser(selectedUserDetail.id, selectedUserDetail.name);
-                    setSelectedUserDetail(null);
-                  }}
-                  className="flex-1 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <X className="h-4 w-4" />
-                  <span>Reject Registration</span>
-                </button>
-              </div>
-            )}
+              )}
+              {selectedUserDetail.approval_status === 'Pending' && (
+                <div className="flex gap-2 flex-1 justify-end">
+                  <button
+                    onClick={() => {
+                      handleApproveUser(selectedUserDetail.id, selectedUserDetail.name);
+                      setSelectedUserDetail(null);
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <Check className="h-4 w-4" />
+                    <span>Approve Registration</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleRejectUser(selectedUserDetail.id, selectedUserDetail.name);
+                      setSelectedUserDetail(null);
+                    }}
+                    className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <X className="h-4 w-4" />
+                    <span>Reject</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1950,8 +2002,9 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
             {/* Attached Photo Evidence */}
             {selectedReportDetail.photo_url && (
               <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl space-y-1.5">
-                <div className="text-[10px] font-extrabold uppercase text-[#008779] flex items-center gap-1">
-                  <span>📸 Uploaded Photo Evidence (Cloudinary)</span>
+                <div className="text-[10px] font-extrabold uppercase text-[#008779] flex items-center gap-1.5">
+                  <Camera className="h-3.5 w-3.5 text-[#008779]" />
+                  <span>Uploaded Photo Evidence (Cloudinary)</span>
                 </div>
                 <a href={selectedReportDetail.photo_url} target="_blank" rel="noreferrer" className="inline-block group">
                   <img 
@@ -2008,8 +2061,22 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
               </div>
             </div>
 
-            {/* Quick Filter in Audit */}
-            <div className="pt-2 border-t border-slate-100 flex justify-end">
+            {/* Quick Filter in Audit & Delete Option */}
+            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+              <button
+                onClick={() => {
+                  const idToDel = selectedReportDetail.id.toString();
+                  const codeToDel = selectedReportDetail.report_code;
+                  setSelectedReportDetail(null);
+                  handleDeleteReport(idToDel, codeToDel);
+                }}
+                className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition cursor-pointer flex items-center gap-1.5"
+                title="Permanently delete this report"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete Report</span>
+              </button>
+
               <button
                 onClick={() => {
                   setAuditIssueIdFilter(selectedReportDetail.id);
@@ -2020,6 +2087,135 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
               >
                 <History className="h-3.5 w-3.5" />
                 <span>View Complete Issue History in Audit Log →</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* ── MODAL: AUDIT LOG DETAIL ────────────────────────────────────────── */}
+      {/* ===================================================================== */}
+      {selectedAuditDetail && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl space-y-5 border border-slate-200 animate-in fade-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-2xl bg-[#E8F6F4] text-[#008779] flex items-center justify-center font-bold">
+                  <History className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">Audit Action Details</h3>
+                  <p className="text-xs text-slate-400 font-medium font-mono">
+                    Activity Record #{selectedAuditDetail.id}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedAuditDetail(null)}
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Content Details */}
+            <div className="space-y-4 text-xs">
+              
+              {/* Action Banner */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-black uppercase text-slate-400 block mb-0.5">
+                    Activity Type
+                  </span>
+                  <span className="font-extrabold text-slate-900 text-sm">
+                    {selectedAuditDetail.action}
+                  </span>
+                </div>
+                {selectedAuditDetail.event_id && selectedAuditDetail.event_id !== 'GENERAL' && (
+                  <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-xl border border-blue-200">
+                    {selectedAuditDetail.event_id}
+                  </span>
+                )}
+              </div>
+
+              {/* Grid: Actor, Role, Date, Login Time */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-2xl">
+                  <span className="text-[10px] font-black uppercase text-slate-400 block mb-0.5">
+                    Actor Name
+                  </span>
+                  <span className="font-extrabold text-slate-900 text-xs block">
+                    {selectedAuditDetail.actor_name}
+                  </span>
+                  <div className="text-[10px] text-slate-400 font-mono mt-0.5 truncate">
+                    {selectedAuditDetail.user_email || '—'}
+                  </div>
+                </div>
+
+                <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-2xl">
+                  <span className="text-[10px] font-black uppercase text-slate-400 block mb-0.5">
+                    Role
+                  </span>
+                  <span className="font-extrabold text-teal-700 text-xs uppercase block">
+                    {selectedAuditDetail.actor_role}
+                  </span>
+                </div>
+
+                <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-2xl">
+                  <span className="text-[10px] font-black uppercase text-slate-400 block mb-0.5">
+                    Date & Timestamp
+                  </span>
+                  <span className="font-mono font-bold text-slate-800 text-xs block">
+                    {new Date(selectedAuditDetail.timestamp).toLocaleDateString()} {new Date(selectedAuditDetail.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+
+                <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-2xl">
+                  <span className="text-[10px] font-black uppercase text-slate-400 block mb-0.5">
+                    Login Time
+                  </span>
+                  <span className="font-mono font-bold text-emerald-700 text-xs flex items-center gap-1">
+                    <LogIn className="h-3 w-3" />
+                    {selectedAuditDetail.login_time 
+                      ? new Date(selectedAuditDetail.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                      : new Date(selectedAuditDetail.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                </div>
+              </div>
+
+              {/* What They Did / Full Action Details Narrative */}
+              <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-2xl space-y-1.5">
+                <span className="text-[10.5px] font-black uppercase text-emerald-900 tracking-wider flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5 text-emerald-700" />
+                  What They Have Done (Action Narrative)
+                </span>
+                <p className="text-xs text-slate-800 font-medium leading-relaxed whitespace-pre-wrap">
+                  {selectedAuditDetail.details}
+                </p>
+              </div>
+
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              {selectedAuditDetail.event_id && selectedAuditDetail.event_id !== 'GENERAL' && (
+                <button
+                  onClick={() => {
+                    setAuditIssueIdFilter(selectedAuditDetail.event_id);
+                    setSelectedAuditDetail(null);
+                  }}
+                  className="px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Filter Timeline for {selectedAuditDetail.event_id}
+                </button>
+              )}
+              <button
+                onClick={() => setSelectedAuditDetail(null)}
+                className="ml-auto px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Close
               </button>
             </div>
           </div>

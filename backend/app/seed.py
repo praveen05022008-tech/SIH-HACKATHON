@@ -157,21 +157,123 @@ def seed_database():
     Base.metadata.create_all(bind=engine)
     print("Cleaned existing tables and created fresh schemas.")
 
-    # 2. Seed Default Users (ONLY System Admin seeded)
-    admin_user = models.User(
-        email="admin@refinery.safe",
-        name="System Admin",
-        password_hash="password123",
-        role="Admin",
-        id_number="ADM-001",
-        phone="+91 98000 00001",
-        address="Central Operations Tower, Level 4",
-        approval_status="Approved",
-        is_active=True
-    )
-    db.add(admin_user)
+    # 2. Seed Default Users Directory
+    default_users = [
+        models.User(
+            email="admin@refinery.safe",
+            name="System Admin",
+            password_hash="password123",
+            role="Admin",
+            id_number="ADM-001",
+            phone="+91 98000 00001",
+            address="Central Operations Tower, Level 4",
+            approval_status="Approved",
+            is_active=True
+        ),
+        models.User(
+            email="praveen@gmail.com",
+            name="Praveen",
+            password_hash="password123",
+            role="Manager",
+            id_number="MGR-101",
+            phone="+91 98765 43210",
+            address="Operations Division, Drilling Site A",
+            approval_status="Approved",
+            is_active=True
+        ),
+        models.User(
+            email="officer@refinery.safe",
+            name="Capt. Arvind Sen",
+            password_hash="password123",
+            role="Officer",
+            id_number="OFF-101",
+            phone="+91 98450 11001",
+            address="Drilling Site A - Rig Floor 01",
+            approval_status="Approved",
+            is_active=True
+        ),
+        models.User(
+            email="reviewer@refinery.safe",
+            name="Priya Sharma",
+            password_hash="password123",
+            role="Officer",
+            id_number="OFF-102",
+            phone="+91 98450 11002",
+            address="Digboi Refinery D - CDU Complex",
+            approval_status="Approved",
+            is_active=True
+        ),
+        models.User(
+            email="worker@refinery.safe",
+            name="Rajesh Kumar",
+            password_hash="password123",
+            role="Employee",
+            id_number="EMP-201",
+            phone="+91 98200 44551",
+            address="Refinery A Complex - Maintenance Team",
+            approval_status="Approved",
+            is_active=True
+        ),
+        models.User(
+            email="lokesh@refinery.safe",
+            name="Lokesh Nath",
+            password_hash="password123",
+            role="Officer",
+            id_number="OFF-103",
+            phone="+91 98333 77112",
+            address="Refinery A - CDU Area Station",
+            approval_status="Approved",
+            is_active=True
+        ),
+        models.User(
+            email="manasa@refinery.safe",
+            name="Manasa Gogoi",
+            password_hash="password123",
+            role="Officer",
+            id_number="OFF-104",
+            phone="+91 98111 88223",
+            address="Drilling Site C - Wellhead Area",
+            approval_status="Approved",
+            is_active=True
+        ),
+        models.User(
+            email="priyus18o7@gmail.com",
+            name="Priyanshu Roy",
+            password_hash="password123",
+            role="Employee",
+            id_number="EMP-202",
+            phone="+91 98999 55443",
+            address="Assam Operations Base, Drilling Fleet",
+            approval_status="Approved",
+            is_active=True
+        ),
+        models.User(
+            email="ananya.das@refinery.safe",
+            name="Ananya Das",
+            password_hash="password123",
+            role="Employee",
+            id_number="EMP-203",
+            phone="+91 98444 33221",
+            address="Refinery B - FCCU Inspection Unit",
+            approval_status="Pending",
+            is_active=True
+        ),
+        models.User(
+            email="vikram.singh@contractor.safe",
+            name="Vikram Singh",
+            password_hash="password123",
+            role="Employee",
+            id_number="CON-401",
+            phone="+91 98555 66778",
+            address="Contractor Scaffolding & Rigging Services",
+            approval_status="Pending",
+            is_active=True
+        )
+    ]
+    for u in default_users:
+        db.add(u)
     db.commit()
-    print("Users seeded successfully: ONLY System Admin seeded.")
+    print("Users seeded successfully: Admin, Managers, Officers, Employees, and Pending registrants.")
 
     # 2b. Seed Officer Profiles
     officer_profiles = [

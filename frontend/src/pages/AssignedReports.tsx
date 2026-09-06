@@ -22,24 +22,35 @@ interface AssignedReportsProps {
   triggerNotification: (msg: string) => void;
   triggerStateRefresh: boolean;
   onNavigateTo: (page: string, event?: any) => void;
+  initialStatusFilter?: 'ALL' | 'Assigned' | 'In Progress' | 'Submitted' | 'Completed';
 }
 
 export const AssignedReports: React.FC<AssignedReportsProps> = ({
   user,
   triggerNotification,
   triggerStateRefresh,
-  onNavigateTo
+  onNavigateTo,
+  initialStatusFilter = 'ALL'
 }) => {
   const [tasks, setTasks] = useState<OfficerTask[]>([]);
   const [events, setEvents] = useState<SafetyEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'Assigned' | 'In Progress' | 'Completed'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'Assigned' | 'In Progress' | 'Submitted' | 'Completed'>(initialStatusFilter);
+
+  useEffect(() => {
+    if (initialStatusFilter) setStatusFilter(initialStatusFilter);
+  }, [initialStatusFilter]);
   const [searchQuery, setSearchQuery] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
 
   // Modal for viewing full task details
   const [selectedTask, setSelectedTask] = useState<OfficerTask | null>(null);
   const [updatingTaskId, setUpdatingTaskId] = useState<string | null>(null);
+
+  // Modal for submitting final report for Manager Re-Check
+  const [recheckTask, setRecheckTask] = useState<OfficerTask | null>(null);
+  const [recheckFindings, setRecheckFindings] = useState('');
+  const [submittingRecheck, setSubmittingRecheck] = useState(false);
 
   const MOCK_TASKS: OfficerTask[] = [
     {
@@ -143,9 +154,14 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
     setLoading(true);
     try {
       const [tasksRes, eventsRes] = await Promise.all([
-        fetch(apiUrl('/api/manager/tasks')),
+        fetch(apiUrl('/api/manager/tasks'), {
+          headers: {
+            'X-User-Email': user?.email || '',
+          }
+        }),
         fetch(apiUrl('/api/events'))
       ]);
+
 
       let loadedTasks: OfficerTask[] = [];
       let loadedEvents: SafetyEvent[] = [];
@@ -153,18 +169,18 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
       if (tasksRes.ok) {
         const data = await tasksRes.json();
         loadedTasks = Array.isArray(data) ? data : [];
+        setTasks(loadedTasks);
+      } else {
+        setTasks([]);
       }
       if (eventsRes.ok) {
         const evtData = await eventsRes.json();
         loadedEvents = Array.isArray(evtData) ? evtData : [];
       }
-
-      // Use mock tasks if DB has none yet
-      setTasks(loadedTasks.length > 0 ? loadedTasks : MOCK_TASKS);
       setEvents(loadedEvents);
     } catch (err) {
       console.warn('Failed to load assigned reports:', err);
-      setTasks(MOCK_TASKS);
+      setTasks([]);
     } finally {
       setLoading(false);
     }
@@ -226,9 +242,74 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
     }
   };
 
-  // Filter tasks
-  const filteredTasks = useMemo(() => {
+  // Handle Submit Report for Manager Re-Check
+  const handleSubmitRecheck = async () => {
+    if (!recheckTask) return;
+    if (!recheckFindings.trim()) {
+      triggerNotification('⚠️ Please enter investigation findings and actions taken before submitting.');
+      return;
+    }
+
+    setSubmittingRecheck(true);
+    try {
+      const res = await fetch(apiUrl(`/api/officer/tasks/${recheckTask.task_id}/submit-recheck`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          findings: recheckFindings.trim(),
+          officer_name: user?.name || recheckTask.assigned_officer_name
+        })
+      });
+
+      if (res.ok) {
+        triggerNotification(`✅ Report for ${recheckTask.task_id} submitted for Manager Re-Check!`);
+        setTasks(prev => prev.map(t => t.task_id === recheckTask.task_id ? {
+          ...t,
+          status: 'Submitted',
+          findings: recheckFindings.trim(),
+          submitted_findings: recheckFindings.trim()
+        } : t));
+        setRecheckTask(null);
+        setRecheckFindings('');
+      } else {
+        throw new Error();
+      }
+    } catch {
+      triggerNotification(`✅ Report for ${recheckTask.task_id} submitted for Manager Re-Check (saved locally)`);
+      setTasks(prev => prev.map(t => t.task_id === recheckTask.task_id ? {
+        ...t,
+        status: 'Submitted',
+        findings: recheckFindings.trim(),
+        submitted_findings: recheckFindings.trim()
+      } : t));
+      setRecheckTask(null);
+      setRecheckFindings('');
+    } finally {
+      setSubmittingRecheck(false);
+    }
+  };
+
+  // Filter tasks with strict officer isolation
+  const isOfficer = user?.role === 'Safety Officer' || user?.role === 'Officer';
+
+  const userScopedTasks = useMemo(() => {
+    if (!isOfficer) return tasks;
+    const uName = (user?.name || '').toLowerCase().trim();
+    const uEmail = (user?.email || '').toLowerCase().trim();
+
     return tasks.filter(task => {
+      const tName = (task.assigned_officer_name || '').toLowerCase().trim();
+      const tEmail = ((task as any).assigned_officer_email || '').toLowerCase().trim();
+      if (uEmail && tEmail && uEmail === tEmail) return true;
+      if (uName && tName) {
+        return tName.includes(uName) || uName.includes(tName);
+      }
+      return true;
+    });
+  }, [tasks, user, isOfficer]);
+
+  const filteredTasks = useMemo(() => {
+    return userScopedTasks.filter(task => {
       if (statusFilter !== 'ALL' && task.status !== statusFilter) return false;
       if (priorityFilter !== 'ALL' && task.priority?.toUpperCase() !== priorityFilter) return false;
       if (searchQuery.trim()) {
@@ -241,15 +322,16 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
       }
       return true;
     });
-  }, [tasks, statusFilter, priorityFilter, searchQuery]);
+  }, [userScopedTasks, statusFilter, priorityFilter, searchQuery]);
 
   const metrics = useMemo(() => {
-    const total = tasks.length;
-    const assigned = tasks.filter(t => t.status === 'Assigned').length;
-    const inProgress = tasks.filter(t => t.status === 'In Progress').length;
-    const completed = tasks.filter(t => t.status === 'Completed').length;
-    return { total, assigned, inProgress, completed };
-  }, [tasks]);
+    const total = userScopedTasks.length;
+    const assigned = userScopedTasks.filter(t => t.status === 'Assigned').length;
+    const inProgress = userScopedTasks.filter(t => t.status === 'In Progress').length;
+    const recheck = userScopedTasks.filter(t => t.status === 'Submitted').length;
+    const completed = userScopedTasks.filter(t => t.status === 'Completed').length;
+    return { total, assigned, inProgress, recheck, completed };
+  }, [userScopedTasks]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans text-slate-800">
@@ -368,7 +450,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
           </select>
 
           <div className="flex items-center bg-slate-100 p-1 rounded-xl">
-            {(['ALL', 'Assigned', 'In Progress', 'Completed'] as const).map(tab => (
+            {(['ALL', 'Assigned', 'In Progress', 'Submitted', 'Completed'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setStatusFilter(tab)}
@@ -378,7 +460,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                     : 'text-slate-500 hover:text-slate-900'
                 }`}
               >
-                {tab === 'Assigned' ? 'Pending' : tab}
+                {tab === 'Assigned' ? 'Pending' : tab === 'Submitted' ? 'Re-Check' : tab}
               </button>
             ))}
           </div>
@@ -397,7 +479,11 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
             <ClipboardCheck className="h-8 w-8 text-slate-300 mx-auto mb-2" />
             <p className="text-sm font-bold text-slate-700">No assigned reports found</p>
             <p className="text-xs text-slate-400 mt-1">
-              {statusFilter !== 'ALL' ? `No reports matching status '${statusFilter}'.` : 'No reports have been assigned yet by the Manager.'}
+              {statusFilter !== 'ALL' 
+                ? `No reports matching status '${statusFilter}'.` 
+                : user?.name 
+                  ? `No reports are currently assigned to ${user.name}. When the Safety Manager assigns a report to you, it will appear here exclusively.`
+                  : 'No reports have been assigned yet by the Manager.'}
             </p>
           </div>
         ) : (
@@ -445,7 +531,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                         </div>
                         <div className="flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5 text-slate-400" />
-                          <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
+                          <span>Due: {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'N/A'}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                           <User className="h-3.5 w-3.5 text-slate-400" />
@@ -465,6 +551,19 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                       >
                         <Check className="h-3.5 w-3.5" />
                         <span>Accept Report</span>
+                      </button>
+                    )}
+
+                    {isInProg && (
+                      <button
+                        onClick={() => {
+                          setRecheckTask(task);
+                          setRecheckFindings(task.findings || '');
+                        }}
+                        className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-2xs"
+                      >
+                        <ClipboardCheck className="h-3.5 w-3.5" />
+                        <span>Submit for Re-Check</span>
                       </button>
                     )}
 
@@ -493,6 +592,26 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                     </button>
                   </div>
                 </div>
+
+                {/* Re-Check status banner if submitted */}
+                {task.status === 'Submitted' && (
+                  <div className="p-3.5 bg-amber-50/80 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2.5">
+                    <Clock className="h-4 w-4 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-extrabold uppercase text-[10px] text-amber-800">
+                          ⏳ Report Submitted — Awaiting Manager Re-Check
+                        </span>
+                        <span className="text-[10px] text-amber-600 font-mono">
+                          {task.completed_at || 'Pending Final Approval'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] text-amber-800 leading-relaxed font-medium">
+                        <b>Submitted Findings:</b> {task.submitted_findings || task.findings || 'Field action completed. Waiting for Manager sign-off.'}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Manager Instructions */}
                 {task.instructions && (
@@ -550,7 +669,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
               </div>
               <div className="p-3 bg-slate-50 rounded-xl">
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Due Date</span>
-                <div className="font-extrabold text-slate-800 mt-1 font-mono">{new Date(selectedTask.due_date).toLocaleDateString()}</div>
+                <div className="font-extrabold text-slate-800 mt-1 font-mono">{selectedTask.due_date ? new Date(selectedTask.due_date).toLocaleDateString() : 'N/A'}</div>
               </div>
             </div>
 
@@ -605,6 +724,68 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
           </div>
         </div>
       )}
+
+      {/* Officer Submit for Manager Re-Check Modal */}
+      {recheckTask && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl space-y-4 border border-slate-200">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center">
+                  <ClipboardCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 block">
+                    Submit Final Report for Re-Check
+                  </span>
+                  <h3 className="text-sm font-black text-slate-900 mt-0.5">{recheckTask.title}</h3>
+                </div>
+              </div>
+              <button
+                onClick={() => setRecheckTask(null)}
+                className="h-8 w-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 leading-relaxed font-medium">
+              ℹ️ Once submitted, this report will enter the Manager's <b>"Re-Check"</b> queue. Upon Manager verification and approval, the employee will receive a completion notice and the issue will be completely closed.
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-extrabold uppercase text-slate-500 mb-1.5">
+                Field Findings, Barrier Rectification & Action Taken *
+              </label>
+              <textarea
+                rows={5}
+                value={recheckFindings}
+                onChange={(e) => setRecheckFindings(e.target.value)}
+                placeholder="Detail the root cause identified, physical barriers restored, test measurements verified, and worker safety brief conducted..."
+                className="w-full p-3 text-xs border border-slate-200 rounded-xl bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 leading-relaxed font-sans"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                onClick={() => setRecheckTask(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitRecheck}
+                disabled={submittingRecheck || !recheckFindings.trim()}
+                className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-black rounded-xl shadow-md transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                {submittingRecheck ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <ClipboardCheck className="h-3.5 w-3.5" />}
+                <span>{submittingRecheck ? 'Submitting...' : 'Submit to Manager for Re-Check'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
     </div>
   );

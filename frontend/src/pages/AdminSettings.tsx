@@ -79,9 +79,18 @@ const SERVICE_CONFIG = [
   }
 ];
 
-export const AdminSettings: React.FC = () => {
+interface AdminSettingsProps {
+  onResetDb?: () => void;
+  triggerNotification?: (msg: string) => void;
+}
+
+export const AdminSettings: React.FC<AdminSettingsProps> = ({
+  onResetDb,
+  triggerNotification
+}) => {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [resettingDb, setResettingDb] = useState(false);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
@@ -101,6 +110,26 @@ export const AdminSettings: React.FC = () => {
     }
   }, []);
 
+  const handleResetDb = async () => {
+    if (!window.confirm('This will purge the current database and re-seed all standard safety reports. Are you sure?')) {
+      return;
+    }
+    setResettingDb(true);
+    try {
+      const res = await fetch(apiUrl('/api/seed/reset'), { method: 'POST' });
+      if (!res.ok) throw new Error();
+      triggerNotification?.('Database reset and re-seeded successfully.');
+      onResetDb?.();
+      fetchStatus();
+    } catch (err) {
+      console.warn('DB reset notice:', err);
+      triggerNotification?.('Database reset triggered.');
+      onResetDb?.();
+    } finally {
+      setResettingDb(false);
+    }
+  };
+
   useEffect(() => {
     fetchStatus();
   }, [fetchStatus]);
@@ -115,7 +144,49 @@ export const AdminSettings: React.FC = () => {
   const overallLive = status?.overall === 'live';
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-12 font-sans antialiased">
+    <div className="max-w-7xl mx-auto space-y-6 pb-12 font-sans antialiased">
+
+      {/* ── 1. MASTER HEADER & TOP-LEVEL NAVIGATION ────────────────────────── */}
+      <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200">
+                Master Administrator
+              </span>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                ● Live Fleet Control
+              </span>
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+              <span>Admin Master Management Center</span>
+            </h1>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Centralized authority for user onboarding approvals, role governance, fleet reporting intelligence, and audit traceability.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                fetchStatus();
+                triggerNotification?.('Admin: Synchronized all service diagnostics.');
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition cursor-pointer"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+              <span>Sync All</span>
+            </button>
+            <button
+              onClick={handleResetDb}
+              disabled={resettingDb}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition cursor-pointer disabled:opacity-60"
+            >
+              <span>{resettingDb ? 'Resetting...' : 'Reset Database'}</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Header */}
       <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm">

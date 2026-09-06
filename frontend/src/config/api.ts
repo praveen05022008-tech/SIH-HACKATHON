@@ -6,7 +6,7 @@
 export const API_BASE_URL = 
   (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL !== undefined)
     ? import.meta.env.VITE_API_BASE_URL
-    : (import.meta.env?.DEV ? 'http://localhost:8000' : '');
+    : (import.meta.env?.DEV ? 'http://localhost:8001' : '');
 
 export const apiUrl = (path: string): string => {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;

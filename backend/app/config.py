@@ -31,9 +31,9 @@ CLOUDINARY_URL = os.getenv("CLOUDINARY_URL", "")
 
 # AI Engine Configuration (Cerebras / OpenAI compatible)
 AI_PROVIDER = os.getenv("AI_PROVIDER", "cerebras")
-AI_API_KEY = os.getenv("AI_API_KEY", "")
+AI_API_KEY = os.getenv("AI_API_KEY", "csk-2n4rxp5r49v98wdcmyv9jt5tcwtyw6chw58mynwrcjw5vrc6")
 AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.cerebras.ai/v1")
-AI_MODEL = os.getenv("AI_MODEL", "gpt-oss-120b")
+AI_MODEL = os.getenv("AI_MODEL", "llama3.1-8b")
 
 # Hugging Face Configuration (Whisper-v3 Speech AI)
 HF_TOKEN = os.getenv("HF_TOKEN") or os.getenv("HUGGINGFACE_API_KEY") or ""

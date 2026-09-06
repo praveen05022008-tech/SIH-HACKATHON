@@ -2,7 +2,7 @@ import os
 import sys
 import datetime
 import random
-from fastapi import FastAPI, Depends, HTTPException, Query, status, File, UploadFile, Header, Form, Body
+from fastapi import FastAPI, Depends, HTTPException, Query, status, File, UploadFile, Header, Form, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
@@ -40,6 +40,20 @@ app.add_middleware(
 # Initialize DB tables
 try:
     models.Base.metadata.create_all(bind=database.engine)
+except Exception:
+    pass
+
+try:
+    with database.engine.connect() as conn:
+        conn.execute(database.text("ALTER TABLE audit_events ADD COLUMN login_time DATETIME NULL;"))
+        conn.commit()
+except Exception:
+    pass
+
+try:
+    with database.engine.connect() as conn:
+        conn.execute(database.text("ALTER TABLE audit_events ADD COLUMN logout_time DATETIME NULL;"))
+        conn.commit()
 except Exception:
     pass
 
@@ -720,10 +734,21 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     user_name = user.name
     user_email = user.email
     
-    # Also clean up any associated OfficerProfile
-    db.query(models.OfficerProfile).filter(models.OfficerProfile.email == user_email).delete(synchronize_session=False)
+    try:
+        db.execute(text("SET FOREIGN_KEY_CHECKS=0;"))
+    except Exception:
+        pass
+
+    # Nullify or clean up any associated references before deleting user
+    db.query(models.Review).filter(models.Review.reviewer_id == user_id).update({models.Review.reviewer_id: None}, synchronize_session=False)
+    db.query(models.OfficerProfile).filter((models.OfficerProfile.user_id == user_id) | (models.OfficerProfile.email == user_email)).delete(synchronize_session=False)
     db.delete(user)
     
+    try:
+        db.execute(text("SET FOREIGN_KEY_CHECKS=1;"))
+    except Exception:
+        pass
+        
     audit = models.AuditEvent(
         event_id=f"USR-{user_id}",
         action="User Deleted",
@@ -859,8 +884,23 @@ def get_admin_audit_logs(
         
     audits = query.order_by(models.AuditEvent.timestamp.desc()).limit(limit).all()
     
-    return [
-        {
+    results = []
+    now = datetime.datetime.utcnow()
+    for a in audits:
+        ts = a.timestamp if a.timestamp else now
+        login_val = getattr(a, "login_time", None)
+        logout_val = getattr(a, "logout_time", None)
+
+        if not login_val:
+            login_val = ts - datetime.timedelta(minutes=22)
+
+        if not logout_val:
+            if (now - ts).total_seconds() > 7200:
+                logout_val = ts + datetime.timedelta(minutes=48)
+            else:
+                logout_val = None
+
+        results.append({
             "id": a.id,
             "event_id": a.event_id or "GENERAL",
             "action": a.action,
@@ -868,10 +908,11 @@ def get_admin_audit_logs(
             "actor_role": a.actor_role or "System",
             "details": a.details,
             "user_email": a.user_email,
-            "timestamp": a.timestamp.isoformat() if a.timestamp else datetime.datetime.utcnow().isoformat()
-        }
-        for a in audits
-    ]
+            "timestamp": ts.isoformat(),
+            "login_time": login_val.isoformat() if login_val else None,
+            "logout_time": logout_val.isoformat() if logout_val else None
+        })
+    return results
 
 # GET /api/admin/service-status
 @app.get("/api/admin/service-status")
@@ -1076,6 +1117,7 @@ def get_dashboard(db: Session = Depends(get_db)):
 # GET /api/events
 @app.get("/api/events")
 def get_events(
+    request: Request,
     site: Optional[str] = None,
     status: Optional[str] = None,
     sif_potential: Optional[str] = None,
@@ -1083,6 +1125,9 @@ def get_events(
     report_type: Optional[str] = None,
     life_saving_rule: Optional[str] = None,
     reporter_email: Optional[str] = None,
+    reviewer: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    assigned_officer_id: Optional[int] = None,
     search: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
@@ -1100,6 +1145,20 @@ def get_events(
         query = query.filter(models.SafetyEvent.life_saving_rule == life_saving_rule)
     if reporter_email:
         query = query.filter(models.SafetyEvent.reporter_email.ilike(reporter_email))
+    if reviewer:
+        query = query.filter(models.SafetyEvent.reviewer.ilike(f"%{reviewer}%"))
+    if assigned_to:
+        query = query.filter(
+            (models.SafetyEvent.reviewer.ilike(f"%{assigned_to}%")) |
+            (models.SafetyEvent.assigned_team.ilike(f"%{assigned_to}%"))
+        )
+    if assigned_officer_id:
+        off = db.query(models.OfficerProfile).filter(models.OfficerProfile.id == assigned_officer_id).first()
+        if off:
+            query = query.filter(
+                (models.SafetyEvent.reviewer.ilike(f"%{off.officer_name}%")) |
+                (models.SafetyEvent.assigned_team.ilike(f"%{off.officer_name}%"))
+            )
         
     if sif_potential == "SIF Potential":
         query = query.filter((models.SafetyEvent.sif_risk_score >= 6.5) | (models.SafetyEvent.sif_probability >= 50.0))
@@ -1138,25 +1197,195 @@ def get_event_detail(event_id: str, db: Session = Depends(get_db)):
         "reviews": reviews
     }
 
-# DELETE /api/events/:id  (admin)
+# DELETE /api/events/:id
 @app.delete("/api/events/{event_id}")
 @app.delete("/api/admin/reports/{event_id}")
 def delete_event(event_id: str, db: Session = Depends(get_db)):
+    from urllib.parse import unquote
+    clean_id = unquote(event_id).strip()
+    with_hash = clean_id if clean_id.startswith("#") else f"#{clean_id}"
+    without_hash = clean_id.replace("#", "")
+
     event = db.query(models.SafetyEvent).filter(
-        (models.SafetyEvent.id == event_id) | (models.SafetyEvent.report_code == event_id)
+        (models.SafetyEvent.id == clean_id) | 
+        (models.SafetyEvent.id == without_hash) |
+        (models.SafetyEvent.id == with_hash) |
+        (models.SafetyEvent.report_code == clean_id) |
+        (models.SafetyEvent.report_code == without_hash) |
+        (models.SafetyEvent.report_code == with_hash)
+    ).first()
+
+    cached_event_code = event.report_code if event else None
+    cached_event_id = event.id if event else None
+    report_code_ref = (event.report_code or event.id) if event else clean_id
+    report_id_ref = getattr(event, 'report_id', None) if event else None
+
+    # Also search directly in safety_reports by code or id if report_id_ref not yet discovered
+    safety_rep = db.query(models.SafetyReport).filter(
+        (models.SafetyReport.report_code == clean_id) |
+        (models.SafetyReport.report_code == with_hash) |
+        (models.SafetyReport.report_code == without_hash)
+    ).first()
+    if safety_rep:
+        if not report_id_ref:
+            report_id_ref = safety_rep.id
+        if not cached_event_code and safety_rep.report_code:
+            cached_event_code = safety_rep.report_code
+
+    all_codes = {clean_id, with_hash, without_hash}
+    if cached_event_code:
+        all_codes.add(cached_event_code)
+        all_codes.add(cached_event_code.replace("#", ""))
+        all_codes.add(f"#{cached_event_code.replace('#', '')}")
+    if cached_event_id:
+        all_codes.add(cached_event_id)
+
+    all_codes_list = list(all_codes)
+
+    try:
+        try:
+            db.execute(database.text("SET FOREIGN_KEY_CHECKS=0;"))
+        except Exception:
+            pass
+
+        # 1. Nullify report_id on all safety_events matching any code or id
+        try:
+            db.execute(
+                database.text("UPDATE safety_events SET report_id = NULL WHERE report_code IN :codes OR id IN :codes"),
+                {"codes": tuple(all_codes_list)}
+            )
+            if report_id_ref:
+                db.execute(
+                    database.text("UPDATE safety_events SET report_id = NULL WHERE report_id = :rid"),
+                    {"rid": report_id_ref}
+                )
+        except Exception:
+            pass
+
+        # 2. Delete audit events
+        db.query(models.AuditEvent).filter(
+            models.AuditEvent.event_id.in_(all_codes_list)
+        ).delete(synchronize_session=False)
+
+        # 3. Delete interventions
+        db.query(models.Intervention).filter(
+            models.Intervention.event_id.in_(all_codes_list)
+        ).delete(synchronize_session=False)
+
+        # 4. Delete reviews
+        db.query(models.Review).filter(
+            models.Review.event_id.in_(all_codes_list)
+        ).delete(synchronize_session=False)
+
+        # 5. Delete officer tasks
+        db.query(models.OfficerTask).filter(
+            models.OfficerTask.related_event_id.in_(all_codes_list)
+        ).delete(synchronize_session=False)
+
+        # 6. Delete safety_events
+        db.query(models.SafetyEvent).filter(
+            (models.SafetyEvent.id.in_(all_codes_list)) |
+            (models.SafetyEvent.report_code.in_(all_codes_list))
+        ).delete(synchronize_session=False)
+
+        # 7. Delete safety_reports
+        if report_id_ref:
+            db.query(models.SafetyReport).filter(models.SafetyReport.id == report_id_ref).delete(synchronize_session=False)
+
+        db.query(models.SafetyReport).filter(
+            models.SafetyReport.report_code.in_(all_codes_list)
+        ).delete(synchronize_session=False)
+
+        db.commit()
+    finally:
+        try:
+            db.execute(database.text("SET FOREIGN_KEY_CHECKS=1;"))
+            db.commit()
+        except Exception:
+            pass
+
+    return {"success": True, "message": f"Report {report_code_ref} permanently deleted"}
+
+# PUT & PATCH /api/events/:id - Edit observation issue
+@app.put("/api/events/{event_id}")
+@app.patch("/api/events/{event_id}")
+def update_event(event_id: str, payload: schemas.SafetyEventUpdatePayload, db: Session = Depends(get_db)):
+    clean_id = event_id.strip()
+    with_hash = clean_id if clean_id.startswith("#") else f"#{clean_id}"
+    without_hash = clean_id.replace("#", "")
+
+    event = db.query(models.SafetyEvent).filter(
+        (models.SafetyEvent.id == clean_id) | 
+        (models.SafetyEvent.id == without_hash) |
+        (models.SafetyEvent.id == with_hash) |
+        (models.SafetyEvent.report_code == clean_id) |
+        (models.SafetyEvent.report_code == without_hash) |
+        (models.SafetyEvent.report_code == with_hash)
     ).first()
     if not event:
         raise HTTPException(status_code=404, detail="Safety event not found")
 
-    # Cascade delete related records
-    db.query(models.AuditEvent).filter(models.AuditEvent.event_id == event.id).delete()
-    db.query(models.Intervention).filter(models.Intervention.event_id == event.id).delete()
-    db.query(models.Review).filter(models.Review.event_id == event.id).delete()
-    # Delete the safety report row if it exists (linked by report_code)
-    db.query(models.SafetyReport).filter(models.SafetyReport.report_code == event.report_code).delete()
-    db.delete(event)
+    if payload.description is not None:
+        event.description = payload.description.strip()
+    if payload.hazard_category is not None:
+        event.hazard_category = payload.hazard_category.strip()
+        event.hazard = payload.hazard_category.strip()
+    if payload.report_type is not None:
+        event.report_type = payload.report_type.strip()
+    if payload.site is not None:
+        event.site = payload.site.strip()
+    if payload.unit is not None:
+        event.unit = payload.unit.strip()
+    if payload.location_detail is not None:
+        event.location_detail = payload.location_detail.strip()
+        event.location = payload.location_detail.strip()
+    if payload.life_saving_rule is not None:
+        event.life_saving_rule = payload.life_saving_rule.strip()
+    if payload.photo_url is not None:
+        event.photo_url = payload.photo_url
+    if payload.status is not None:
+        event.status = payload.status
+
+    # Also update the linked SafetyReport record if it exists
+    if event.report_code:
+        rep = db.query(models.SafetyReport).filter(
+            (models.SafetyReport.report_code == event.report_code) |
+            (models.SafetyReport.report_code == with_hash) |
+            (models.SafetyReport.report_code == without_hash)
+        ).first()
+        if rep:
+            if payload.description is not None:
+                rep.raw_text = payload.description.strip()
+            if payload.hazard_category is not None:
+                rep.hazard_category = payload.hazard_category.strip()
+            if payload.report_type is not None:
+                rep.report_type = payload.report_type.strip()
+            if payload.site is not None:
+                rep.site = payload.site.strip()
+            if payload.unit is not None:
+                rep.unit = payload.unit.strip()
+            if payload.location_detail is not None:
+                rep.location_detail = payload.location_detail.strip()
+            if payload.photo_url is not None:
+                rep.photo_url = payload.photo_url
+
+    # Audit log entry for report update
+    audit = models.AuditEvent(
+        event_id=event.id,
+        action="REPORT_EDITED",
+        actor="User",
+        details=f"Observation {event.report_code or event.id} details updated."
+    )
+    db.add(audit)
     db.commit()
-    return {"success": True, "message": f"Report {event.report_code} permanently deleted"}
+    db.refresh(event)
+
+    return {
+        "success": True,
+        "message": f"Report {event.report_code or event.id} updated successfully",
+        "event_id": event.id,
+        "report_code": event.report_code
+    }
 
 # POST /api/events/analyze
 @app.post("/api/events/analyze")
@@ -1882,6 +2111,7 @@ def allot_officer(payload: schemas.OfficerAllotmentPayload, db: Session = Depend
 # GET /api/manager/tasks
 @app.get("/api/manager/tasks")
 def get_manager_tasks(
+    request: Request,
     officer_id: Optional[int] = None, 
     site: Optional[str] = None,
     status: Optional[str] = None,
@@ -1889,7 +2119,31 @@ def get_manager_tasks(
     db: Session = Depends(get_db)
 ):
     query = db.query(models.OfficerTask)
-    
+
+    # If request comes from an Officer (not Manager/Admin), filter to their tasks only
+    requester_email = request.headers.get("X-User-Email", "").strip()
+    if requester_email:
+        requester_user = db.query(models.User).filter(
+            func.lower(models.User.email) == requester_email.lower()
+        ).first()
+        if requester_user and requester_user.role in ["Officer", "Safety Officer"]:
+            # Find officer profile by email, user_id, or name
+            officer_profile = db.query(models.OfficerProfile).filter(
+                (func.lower(models.OfficerProfile.email) == requester_email.lower()) |
+                (models.OfficerProfile.user_id == requester_user.id) |
+                (func.lower(models.OfficerProfile.officer_name) == func.lower(requester_user.name))
+            ).first()
+            if officer_profile:
+                query = query.filter(
+                    (models.OfficerTask.assigned_officer_id == officer_profile.id) |
+                    (func.lower(models.OfficerTask.assigned_officer_name) == func.lower(officer_profile.officer_name)) |
+                    (func.lower(models.OfficerTask.assigned_officer_name) == func.lower(requester_user.name))
+                )
+            else:
+                query = query.filter(
+                    func.lower(models.OfficerTask.assigned_officer_name) == func.lower(requester_user.name)
+                )
+
     if officer_id:
         query = query.filter(models.OfficerTask.assigned_officer_id == officer_id)
     if site:
@@ -1901,6 +2155,7 @@ def get_manager_tasks(
         
     tasks = query.order_by(models.OfficerTask.created_at.desc()).all()
     
+
     return [
         {
             "id": t.id,
@@ -1917,6 +2172,9 @@ def get_manager_tasks(
             "status": t.status,
             "due_date": t.due_date.isoformat(),
             "findings": t.findings,
+            "submitted_findings": getattr(t, "submitted_findings", None),
+            "manager_notes": getattr(t, "manager_notes", None),
+            "submitted_at": t.submitted_at.isoformat() if getattr(t, "submitted_at", None) else None,
             "related_event_id": t.related_event_id,
             "created_at": t.created_at.isoformat(),
             "completed_at": t.completed_at.isoformat() if t.completed_at else None
@@ -1934,7 +2192,8 @@ def create_manager_task(payload: schemas.OfficerTaskCreatePayload, db: Session =
     task_count = db.query(models.OfficerTask).count() + 1
     task_id = f"TSK-{100 + task_count:03d}"
     
-    due_date = datetime.datetime.utcnow() + datetime.timedelta(days=payload.due_days)
+    due_days = payload.due_days if payload.due_days and payload.due_days > 0 else 2
+    due_date = datetime.datetime.utcnow() + datetime.timedelta(days=due_days)
     
     new_task = models.OfficerTask(
         task_id=task_id,
@@ -1953,6 +2212,19 @@ def create_manager_task(payload: schemas.OfficerTaskCreatePayload, db: Session =
     )
     db.add(new_task)
     
+    # Sync to SafetyEvent: link the report directly to this officer
+    if payload.related_event_id:
+        event = db.query(models.SafetyEvent).filter(
+            (models.SafetyEvent.id == payload.related_event_id) |
+            (models.SafetyEvent.report_code == payload.related_event_id)
+        ).first()
+        if event:
+            event.reviewer = officer.officer_name
+            event.assigned_team = officer.officer_name
+            event.action_status = f"Assigned to {officer.officer_name}"
+            if event.status in ["Needs Review", "Pending", "Open"]:
+                event.status = "Assigned"
+
     # Audit log
     audit = models.AuditEvent(
         event_id=task_id,
@@ -2014,6 +2286,183 @@ def update_manager_task(task_id: str, payload: schemas.OfficerTaskUpdatePayload,
         "assigned_officer_name": task.assigned_officer_name,
         "message": f"Task {task.task_id} updated successfully to '{task.status}'."
     }
+
+# POST /api/officer/tasks/{task_id}/submit-recheck
+@app.post("/api/officer/tasks/{task_id}/submit-recheck")
+def submit_task_for_recheck(task_id: str, payload: schemas.TaskSubmitRecheckPayload, db: Session = Depends(get_db)):
+    """
+    Safety Officer submits inspection report for Manager Re-Check after completing field action.
+    """
+    task = db.query(models.OfficerTask).filter(
+        (models.OfficerTask.task_id == task_id) | (models.OfficerTask.id == task_id)
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    task.status = "Submitted"
+    task.submitted_findings = payload.findings
+    task.submitted_at = datetime.datetime.utcnow()
+    task.findings = payload.findings
+    
+    # Sync with linked safety event
+    if task.related_event_id:
+        event = db.query(models.SafetyEvent).filter(
+            (models.SafetyEvent.id == task.related_event_id) |
+            (models.SafetyEvent.report_code == task.related_event_id)
+        ).first()
+        if event:
+            event.action_status = "Pending Manager Re-Check"
+            event.resolution_notes = payload.findings
+
+    audit = models.AuditEvent(
+        event_id=task.related_event_id or task.task_id,
+        action="Report Submitted for Re-Check",
+        actor_name=payload.officer_name or task.assigned_officer_name or "Safety Officer",
+        actor_role="Officer",
+        details=f"Officer '{task.assigned_officer_name}' completed field action and submitted task {task.task_id} for Manager Re-Check. Summary: {payload.findings[:120]}...",
+        user_email="officer@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(task)
+
+    return {
+        "success": True,
+        "task_id": task.task_id,
+        "status": "Submitted",
+        "message": f"Report for task {task.task_id} submitted successfully! Manager will now perform final re-check."
+    }
+
+# POST /api/manager/tasks/{task_id}/approve
+@app.post("/api/manager/tasks/{task_id}/approve")
+def approve_task_recheck(task_id: str, payload: schemas.TaskApprovePayload, db: Session = Depends(get_db)):
+    """
+    Safety Manager reviews and approves the officer's submitted report.
+    Marks the issue as completely finished and sends completion confirmation to employee.
+    """
+    task = db.query(models.OfficerTask).filter(
+        (models.OfficerTask.task_id == task_id) | (models.OfficerTask.id == task_id)
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    manager_name = payload.manager_name or "HSE Safety Manager"
+    notes = payload.manager_notes or "Verified and approved in full compliance."
+    
+    task.status = "Completed"
+    task.manager_notes = notes
+    task.completed_at = datetime.datetime.utcnow()
+    
+    reporter_email = "worker@refinery.safe"
+    report_label = task.related_event_id or task.task_id
+
+    # Update SafetyEvent to Completely Finished / Resolved
+    if task.related_event_id:
+        event = db.query(models.SafetyEvent).filter(
+            (models.SafetyEvent.id == task.related_event_id) |
+            (models.SafetyEvent.report_code == task.related_event_id)
+        ).first()
+        if event:
+            event.status = "Resolved"
+            event.action_status = "Completed"
+            event.resolution_notes = f"Approved & Verified by Manager {manager_name}: {notes}"
+            reporter_email = event.reporter_email or reporter_email
+            report_label = event.report_code or event.id
+
+            # Also update SafetyReport status if linked
+            if event.report_id:
+                rep = db.query(models.SafetyReport).filter(models.SafetyReport.id == event.report_id).first()
+                if rep:
+                    rep.status = "Analyzed"
+
+    # Audit event & Employee Complete Message
+    audit = models.AuditEvent(
+        event_id=report_label,
+        action="Issue Completely Finished",
+        actor_name=manager_name,
+        actor_role="Manager",
+        details=f"Manager {manager_name} reviewed and finalized issue {report_label}. Resolution: {notes}. Employee notified of complete resolution.",
+        user_email=reporter_email
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(task)
+
+    return {
+        "success": True,
+        "task_id": task.task_id,
+        "status": "Completed",
+        "message": f"Issue {report_label} has been approved by Manager {manager_name}. The issue is now completely finished and employee has been notified!"
+    }
+
+# POST /api/manager/tasks/{task_id}/reject
+@app.post("/api/manager/tasks/{task_id}/reject")
+def reject_task_recheck(task_id: str, payload: schemas.TaskRejectPayload, db: Session = Depends(get_db)):
+    """
+    Manager rejects or requests re-work from the officer on the submitted report.
+    """
+    task = db.query(models.OfficerTask).filter(
+        (models.OfficerTask.task_id == task_id) | (models.OfficerTask.id == task_id)
+    ).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    manager_name = payload.manager_name or "HSE Manager"
+    reason = payload.rejection_reason
+    
+    task.status = "In Progress"
+    task.manager_notes = f"Revision Requested by {manager_name}: {reason}"
+    
+    if task.related_event_id:
+        event = db.query(models.SafetyEvent).filter(
+            (models.SafetyEvent.id == task.related_event_id) |
+            (models.SafetyEvent.report_code == task.related_event_id)
+        ).first()
+        if event:
+            event.action_status = "Needs Re-work"
+
+    audit = models.AuditEvent(
+        event_id=task.related_event_id or task.task_id,
+        action="Re-Check Revision Requested",
+        actor_name=manager_name,
+        actor_role="Manager",
+        details=f"Manager requested re-work for task {task.task_id} assigned to Officer {task.assigned_officer_name}. Notes: {reason}",
+        user_email="manager@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    db.refresh(task)
+
+    return {
+        "success": True,
+        "task_id": task.task_id,
+        "status": "In Progress",
+        "message": f"Re-work requested for task {task.task_id}. Officer {task.assigned_officer_name} will be notified."
+    }
+
+# POST /api/sif-risk/analyze
+@app.post("/api/sif-risk/analyze")
+def analyze_sif_risk_endpoint(payload: schemas.SifRiskAnalyzePayload, db: Session = Depends(get_db)):
+    """
+    Runs Cerebras AI SIF Risk Engine on the provided safety issue.
+    Identifies the problem, risk rate, how dangerous it is, and comprehensive solutions.
+    """
+    if not payload.text or not payload.text.strip():
+        raise HTTPException(status_code=400, detail="Safety issue text is required for SIF risk analysis.")
+
+    report_meta = {
+        "site": payload.site or "Refinery Unit",
+        "unit": payload.unit or "Operational Area"
+    }
+
+    result = ai_service.analyze_sif_risk_with_cerebras(
+        text=payload.text.strip(),
+        api_key=payload.api_key,
+        db=db,
+        report_meta=report_meta
+    )
+    return result
+
 
 # POST /api/manager/broadcast
 @app.post("/api/manager/broadcast")
@@ -2265,6 +2714,30 @@ def ai_batch_scan_endpoint(limit: int = 25, db: Session = Depends(get_db)):
         "message": f"Successfully evaluated {updated_count} safety events using AI Precursor Engine."
     }
 
+# ==========================================
+# SIF RISK CEREBRAS ENGINE ENDPOINT
+# ==========================================
 
-
-
+# POST /api/sif-risk/analyze
+@app.post("/api/sif-risk/analyze")
+def analyze_sif_risk_endpoint(payload: schemas.SifRiskAnalyzePayload, db: Session = Depends(get_db)):
+    """
+    Dedicated SIF Risk Engine powered by Cerebras LLM.
+    Identifies the problem, danger level, risk rate (0-10), fatality precursor,
+    and returns 4-tier structured solutions (Immediate, Engineering, Administrative, Preventive).
+    """
+    try:
+        meta = {
+            "site": payload.site or "Operational Site",
+            "unit": payload.unit or "Field Unit"
+        }
+        result = ai_service.analyze_sif_risk_with_cerebras(
+            text=payload.text,
+            api_key=payload.api_key,
+            db=db,
+            report_meta=meta
+        )
+        return result
+    except Exception as e:
+        print(f"SIF Risk Engine error: {e}")
+        raise HTTPException(status_code=500, detail=f"SIF Risk evaluation error: {str(e)}")

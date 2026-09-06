@@ -207,7 +207,11 @@ export const Investigate: React.FC<InvestigateProps> = ({
     try {
       const [evtRes, taskRes] = await Promise.all([
         fetch(apiUrl('/api/events')),
-        fetch(apiUrl('/api/manager/tasks'))
+        fetch(apiUrl('/api/manager/tasks'), {
+          headers: {
+            'X-User-Email': user?.email || '',
+          }
+        })
       ]);
 
       let evts: SafetyEvent[] = [];
@@ -217,22 +221,27 @@ export const Investigate: React.FC<InvestigateProps> = ({
       if (taskRes.ok) tsks = await taskRes.json();
 
       const loadedEvts = Array.isArray(evts) ? evts : [];
-      const loadedTsks = Array.isArray(tsks) ? tsks : [];
+      let loadedTsks = Array.isArray(tsks) ? tsks : [];
 
-      // Use mock data if DB is empty
-      const finalEvts = loadedEvts.length > 0 ? loadedEvts : MOCK_EVENTS;
-      const finalTsks = loadedTsks.length > 0 ? loadedTsks : MOCK_TASKS;
+      const isOfficer = user?.role === 'Safety Officer' || user?.role === 'Officer';
+      const uName = (user?.name || '').toLowerCase().trim();
+      if (isOfficer && uName) {
+        loadedTsks = loadedTsks.filter(t => {
+          const tName = (t.assigned_officer_name || '').toLowerCase().trim();
+          return !tName || tName.includes(uName) || uName.includes(tName);
+        });
+      }
 
-      setEvents(finalEvts);
-      setTasks(finalTsks);
+      setEvents(loadedEvts);
+      setTasks(loadedTsks);
 
       // If selectedEvent passed via prop, select it
       if (selectedEvent) {
         const id = selectedEvent.id || selectedEvent.task_id || '';
         setCurrentId(id);
         if (selectedEvent.findings) setFindings(selectedEvent.findings);
-      } else if (finalEvts.length > 0) {
-        setCurrentId(finalEvts[0].id);
+      } else if (loadedEvts.length > 0) {
+        setCurrentId(loadedEvts[0].id);
       }
     } catch (err) {
       console.warn('Failed to load investigation targets:', err);

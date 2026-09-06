@@ -212,6 +212,8 @@ class AuditEvent(Base):
     details = Column(Text)
     user_email = Column(String(100))
     timestamp = Column(DateTime, default=datetime.datetime.utcnow)
+    login_time = Column(DateTime, nullable=True)
+    logout_time = Column(DateTime, nullable=True)
 
 class Intervention(Base):
     __tablename__ = "interventions"
@@ -266,13 +268,17 @@ class OfficerTask(Base):
     priority = Column(String(20), default="HIGH")  # CRITICAL, HIGH, MEDIUM, LOW
     assigned_officer_id = Column(Integer, ForeignKey("officer_profiles.id"), nullable=True)
     assigned_officer_name = Column(String(100), nullable=False)
+    assigned_officer_email = Column(String(100), nullable=True)  # for notifications
     assigned_by = Column(String(100), default="HSE Safety Manager")
     instructions = Column(Text, nullable=False)
-    status = Column(String(50), default="Assigned")  # Assigned, In Progress, Completed, Overdue
+    status = Column(String(50), default="Assigned")  # Assigned, In Progress, Submitted, Completed, Rejected, Overdue
     due_date = Column(DateTime, nullable=False)
     findings = Column(Text, nullable=True)
+    submitted_findings = Column(Text, nullable=True)   # Re-Check: officer's final report submission
+    manager_notes = Column(Text, nullable=True)         # Re-Check: manager's approval/rejection note
     related_event_id = Column(String(50), nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    submitted_at = Column(DateTime, nullable=True)      # When officer submitted for re-check
     completed_at = Column(DateTime, nullable=True)
     
     officer = relationship("OfficerProfile", back_populates="tasks")

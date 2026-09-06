@@ -27,7 +27,8 @@ import {
   HelpCircle,
   PhoneCall,
   CheckCircle,
-  X
+  X,
+  Hand
 } from 'lucide-react';
 import {
   PieChart,
@@ -290,8 +291,10 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
 
       {/* Top Welcome Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2">
-          <span>👋</span>
+        <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
+          <span className="inline-flex items-center justify-center text-amber-500 shrink-0">
+            <Hand className="h-6 w-6 sm:h-7 sm:w-7 animate-wave" />
+          </span>
           <span>Welcome, {user?.name || 'Arun Kumar'}!</span>
         </h1>
         <p className="text-xs text-slate-500 font-medium mt-1">
@@ -772,9 +775,9 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
               </div>
               <button
                 onClick={() => setShowAiModal(false)}
-                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-xs cursor-pointer"
+                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
@@ -835,9 +838,9 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
               </div>
               <button
                 onClick={() => setShowAlertsModal(false)}
-                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-xs cursor-pointer"
+                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
@@ -887,9 +890,9 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
               </div>
               <button
                 onClick={() => setShowTipsModal(false)}
-                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center text-xs cursor-pointer"
+                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center cursor-pointer"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 

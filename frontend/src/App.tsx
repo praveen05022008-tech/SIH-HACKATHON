@@ -18,7 +18,7 @@ import { Detail } from './pages/Detail';
 import { WorkerPortal } from './pages/WorkerPortal';
 import { TakeAction } from './pages/TakeAction';
 import { TrackActions } from './pages/TrackActions';
-import { SafetyManager } from './pages/SafetyManager';
+
 import { AdminSettings } from './pages/AdminSettings';
 import { MyReport } from './pages/MyReport';
 import { EmployeeDashboard } from './pages/EmployeeDashboard';
@@ -29,6 +29,8 @@ import { AssignOfficer } from './pages/AssignOfficer';
 import { ManagerActions } from './pages/ManagerActions';
 import { ManagerAnalytics } from './pages/ManagerAnalytics';
 import { ManagerAlerts } from './pages/ManagerAlerts';
+import { ManagerRecheck } from './pages/ManagerRecheck';
+import { SifRisk } from './pages/SifRisk';
 import { apiUrl } from './config/api';
 
 function App() {
@@ -52,7 +54,7 @@ function App() {
         const u = JSON.parse(savedUser);
         if (u.role === 'Employee' || u.role === 'Field Worker') return 'dashboard';
         if (u.role === 'Officer' || u.role === 'Safety Officer') return 'dashboard';
-        if (u.role === 'Manager' || u.role === 'Safety Manager') return 'manager';
+        if (u.role === 'Manager' || u.role === 'Safety Manager') return 'dashboard';
         if (u.role === 'Admin') return 'settings';
       }
     } catch {}
@@ -179,7 +181,7 @@ function App() {
     } else if (loggedInUser.role === 'Officer' || loggedInUser.role === 'Safety Officer') {
       defaultPage = 'dashboard';
     } else if (loggedInUser.role === 'Manager' || loggedInUser.role === 'Safety Manager') {
-      defaultPage = 'manager';
+      defaultPage = 'dashboard';
     } else if (loggedInUser.role === 'Admin') {
       defaultPage = 'settings';
     }
@@ -209,7 +211,7 @@ function App() {
     } else if (email === 'manager@refinery.safe' || email === 'manager@sifdemo.com') {
       name = 'HSE Manager / Lead';
       role = 'Safety Manager';
-      defaultPage = 'manager';
+      defaultPage = 'dashboard';
     } else if (email === 'admin@refinery.safe' || email === 'admin@sifdemo.com') {
       name = 'System Administrator';
       role = 'Admin';
@@ -303,9 +305,11 @@ function App() {
       investigate: 'Investigate Safety Issue',
       'ai-analysis': 'AI & NLP Safety Analysis',
       'assign-officer': 'Assign Officer to Report',
+      're-check': 'Re-Check Review & Final Sign-off Queue',
       'manager-actions': 'Actions & Corrective Review',
       'manager-analytics': 'Safety Analytics & Trends',
-      'manager-alerts': 'Safety Alerts & Escalations'
+      'manager-alerts': 'Safety Alerts & Escalations',
+      'sif-risk': 'SIF Risk Intelligence & Hazard Diagnostics (Cerebras AI)'
     };
     return titles[currentPage] || 'RAKSHA AI Platform';
   };
@@ -400,6 +404,14 @@ function App() {
             />
           )}
 
+          {currentPage === 'sif-risk' && !['Employee', 'Field Worker'].includes(user.role) && (
+            <SifRisk 
+              user={user}
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+            />
+          )}
+
           {currentPage === 'lsr' && !['Employee', 'Field Worker'].includes(user.role) && (
             <LifeSavingRules 
               triggerStateRefresh={triggerStateRefresh} 
@@ -421,6 +433,7 @@ function App() {
           {currentPage === 'review' && !['Employee', 'Field Worker'].includes(user.role) && (
             <Review 
               reviewerName={user.name} 
+              user={user}
               onReviewSubmitted={handleRefreshApp}
               triggerStateRefresh={triggerStateRefresh}
             />
@@ -436,23 +449,36 @@ function App() {
             <Reports />
           )}
 
-          {currentPage === 'manager' && (
-            <SafetyManager
-              triggerNotification={triggerNotification}
-              triggerStateRefresh={triggerStateRefresh}
-              userName={user?.name}
-              onNavigateTo={(page) => {
-                setSelectedEvent(null);
-                setCurrentPage(page);
-              }}
-            />
-          )}
+
 
           {currentPage === 'assign-officer' && (
             <AssignOfficer
               user={user}
               triggerNotification={triggerNotification}
               triggerStateRefresh={triggerStateRefresh}
+            />
+          )}
+
+          {currentPage === 're-check' && (!['Officer', 'Safety Officer'].includes(user.role)) && (
+            <ManagerRecheck
+              user={user}
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+            />
+          )}
+
+          {currentPage === 're-check' && ['Officer', 'Safety Officer'].includes(user.role) && (
+            <AssignedReports
+              user={user}
+              triggerNotification={triggerNotification}
+              triggerStateRefresh={triggerStateRefresh}
+              onNavigateTo={(page, event) => {
+                if (page === 'investigate' && event) {
+                  setSelectedEvent(event);
+                }
+                setCurrentPage(page);
+              }}
+              initialStatusFilter="Submitted"
             />
           )}
 
@@ -553,7 +579,10 @@ function App() {
           )}
 
           {currentPage === 'admin-settings' && (
-            <AdminSettings />
+            <AdminSettings
+              onResetDb={handleRefreshApp}
+              triggerNotification={triggerNotification}
+            />
           )}
 
           {(currentPage === 'report-issue' || currentPage === 'worker-portal') && (

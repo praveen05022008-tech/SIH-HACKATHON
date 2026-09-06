@@ -1,6 +1,6 @@
 import { apiUrl } from '../config/api';
-import React, { useEffect, useState } from 'react';
-import { SafetyEvent, OfficerTask } from '../types';
+import React, { useEffect, useState, useMemo } from 'react';
+import { SafetyEvent, OfficerTask, User } from '../types';
 import { 
   RefreshCcw, 
   ClipboardCheck, 
@@ -27,11 +27,12 @@ import { RiskBadge } from '../components/UIElements';
 
 interface ReviewProps {
   reviewerName: string;
+  user?: User | null;
   onReviewSubmitted: () => void;
   triggerStateRefresh: boolean;
 }
 
-export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted, triggerStateRefresh }) => {
+export const Review: React.FC<ReviewProps> = ({ reviewerName, user, onReviewSubmitted, triggerStateRefresh }) => {
   const [activeTab, setActiveTab] = useState<'triage' | 'tasks'>('triage');
 
   // Tab 1: Precursor Review Queue states
@@ -83,10 +84,14 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted,
   const fetchTasks = async () => {
     setTasksLoading(true);
     try {
-      const res = await fetch(apiUrl('/api/manager/tasks'));
+      const res = await fetch(apiUrl('/api/manager/tasks'), {
+        headers: {
+          'X-User-Email': user?.email || '',
+        }
+      });
       if (res.ok) {
         const data = await res.json();
-        setTasks(data);
+        setTasks(Array.isArray(data) ? data : []);
       }
     } catch (err) {
       console.warn('Failed to fetch tasks:', err);
@@ -215,14 +220,25 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted,
     'None'
   ];
 
-  const filteredTasks = tasks.filter(t => {
+  const officerTasks = useMemo(() => {
+    if (user?.role === 'Safety Officer' || user?.role === 'Officer') {
+      const uName = (user?.name || reviewerName || '').toLowerCase().trim();
+      return tasks.filter(t => {
+        const tName = (t.assigned_officer_name || '').toLowerCase().trim();
+        return !uName || !tName || tName.includes(uName) || uName.includes(tName);
+      });
+    }
+    return tasks;
+  }, [tasks, user, reviewerName]);
+
+  const filteredTasks = officerTasks.filter(t => {
     if (taskFilter === 'ACTIVE') return t.status !== 'Completed';
     if (taskFilter === 'COMPLETED') return t.status === 'Completed';
     return true;
   });
 
-  const activeTasksCount = tasks.filter(t => t.status !== 'Completed').length;
-  const completedTasksCount = tasks.filter(t => t.status === 'Completed').length;
+  const activeTasksCount = officerTasks.filter(t => t.status !== 'Completed').length;
+  const completedTasksCount = officerTasks.filter(t => t.status === 'Completed').length;
 
   return (
     <div className="space-y-6">
@@ -701,7 +717,7 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, onReviewSubmitted,
                     <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                       <div className="text-[10.5px] text-slate-400 font-semibold flex items-center gap-1">
                         <Calendar className="h-3.5 w-3.5" />
-                        <span>Due Date: {new Date(task.due_date).toLocaleDateString()}</span>
+                        <span>Due Date: {task.due_date ? new Date(task.due_date).toLocaleDateString() : 'N/A'}</span>
                       </div>
 
                       {isCompleted ? (

@@ -241,8 +241,10 @@ class OfficerTaskCreatePayload(BaseModel):
     assigned_officer_id: int
     assigned_by: Optional[str] = "HSE Safety Manager"
     instructions: str
-    due_days: int = 2
+    due_days: Optional[int] = 2
+    due_date: Optional[str] = None
     related_event_id: Optional[str] = None
+    assigned_officer_name: Optional[str] = None
 
 class OfficerTaskUpdatePayload(BaseModel):
     status: Optional[str] = None  # Assigned, In Progress, Completed, Overdue
@@ -290,3 +292,35 @@ class AIPipelinePayload(BaseModel):
 class AIChatPayload(BaseModel):
     message: str
     context_event_id: Optional[str] = None
+
+class SafetyEventUpdatePayload(BaseModel):
+    description: Optional[str] = None
+    hazard_category: Optional[str] = None
+    report_type: Optional[str] = None
+    site: Optional[str] = None
+    unit: Optional[str] = None
+    location_detail: Optional[str] = None
+    life_saving_rule: Optional[str] = None
+    photo_url: Optional[str] = None
+    status: Optional[str] = None
+
+class TaskSubmitRecheckPayload(BaseModel):
+    findings: str
+    evidence_url: Optional[str] = None
+    officer_name: Optional[str] = None
+
+class TaskApprovePayload(BaseModel):
+    manager_notes: Optional[str] = None
+    manager_name: Optional[str] = "HSE Manager"
+
+class TaskRejectPayload(BaseModel):
+    rejection_reason: str
+    manager_name: Optional[str] = "HSE Manager"
+
+class SifRiskAnalyzePayload(BaseModel):
+    text: str
+    api_key: Optional[str] = None
+    model: Optional[str] = None
+    site: Optional[str] = None
+    unit: Optional[str] = None
+

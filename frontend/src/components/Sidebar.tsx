@@ -84,6 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         return [
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { id: 'assigned-reports', label: 'Assigned Reports', icon: ClipboardCheck },
+          { id: 're-check', label: 'Re-Check', icon: CheckSquare },
           { id: 'investigate', label: 'Investigate', icon: Search },
           { id: 'sif', label: 'SIF Risk', icon: ShieldAlert },
           { id: 'ai-analysis', label: 'AI Analysis', icon: Cpu }
@@ -92,12 +93,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       case 'Safety Manager':
         return [
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-          { id: 'reports', label: 'Reports', icon: FileBarChart2 },
-          { id: 'sif', label: 'SIF Risk', icon: ShieldAlert },
           { id: 'assign-officer', label: 'Assign Officer', icon: UserCheck },
-          { id: 'manager-actions', label: 'Actions', icon: CheckSquare },
+          { id: 're-check', label: 'Re-Check', icon: CheckSquare, badge: 'QUEUE', badgeColor: 'bg-emerald-100 text-emerald-800' },
+          { id: 'sif-risk', label: 'SIF Risk (AI)', icon: ShieldAlert, badge: 'CEREBRAS', badgeColor: 'bg-orange-100 text-orange-700' },
           { id: 'manager-analytics', label: 'Analytics', icon: BarChart3 },
-          { id: 'manager-alerts', label: 'Alerts', icon: Bell }
+          { id: 'manager-alerts', label: 'Alerts', icon: Bell },
+          { id: 'reports', label: 'Reports', icon: FileBarChart2 }
         ];
       case 'Admin':
         return [

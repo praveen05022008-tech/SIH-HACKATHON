@@ -17,7 +17,11 @@ import {
   ChevronRight,
   Shield,
   History,
-  X
+  X,
+  Trash2,
+  Pencil,
+  Check,
+  AlertCircle
 } from 'lucide-react';
 import { apiUrl } from '../config/api';
 import { User, SafetyEvent } from '../types';
@@ -34,6 +38,126 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedReport, setSelectedReport] = useState<SafetyEvent | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  const [reportToDelete, setReportToDelete] = useState<SafetyEvent | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteNotice, setDeleteNotice] = useState<string | null>(null);
+
+  const handleDeleteReport = async () => {
+    if (!reportToDelete) return;
+    setDeleting(true);
+    const code = formatReportCode(reportToDelete.report_code, reportToDelete.id);
+    const targetId = reportToDelete.id;
+    const targetCode = reportToDelete.report_code;
+    const reportIdentifier = targetCode || targetId;
+
+    // Optimistically remove from web state immediately
+    setReports(prev => prev.filter(r => r.id !== targetId && r.report_code !== targetCode));
+    setDeleteNotice(`Report #${code} deleted successfully.`);
+    setTimeout(() => setDeleteNotice(null), 4500);
+    if (selectedReport?.id === targetId) {
+      setSelectedReport(null);
+    }
+    setReportToDelete(null);
+
+    try {
+      const res = await fetch(apiUrl(`/api/events/${encodeURIComponent(reportIdentifier)}`), {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error('Delete error from server:', err);
+      }
+    } catch (err) {
+      console.error('Error deleting report:', err);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const [editingReport, setEditingReport] = useState<SafetyEvent | null>(null);
+  const [editForm, setEditForm] = useState({
+    report_type: 'Unsafe Condition',
+    hazard_category: 'General Safety',
+    site: 'Drilling Site A',
+    unit: 'Rig Floor 01',
+    location_detail: '',
+    description: ''
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [actionNotice, setActionNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+
+  const handleOpenEdit = (report: SafetyEvent) => {
+    setEditingReport(report);
+    setEditForm({
+      report_type: report.report_type || 'Unsafe Condition',
+      hazard_category: report.hazard_category || report.life_saving_rule || 'General Safety',
+      site: report.site || 'Drilling Site A',
+      unit: report.unit || 'Rig Floor 01',
+      location_detail: report.location_detail || report.location || '',
+      description: report.description || ''
+    });
+    setMenuOpenId(null);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingReport) return;
+    setSavingEdit(true);
+    try {
+      const reportIdentifier = editingReport.report_code || editingReport.id;
+      const res = await fetch(apiUrl(`/api/events/${encodeURIComponent(reportIdentifier)}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm)
+      });
+      if (res.ok) {
+        setReports(prev => prev.map(r => {
+          if (r.id === editingReport.id || (r.report_code && r.report_code === editingReport.report_code)) {
+            return {
+              ...r,
+              report_type: editForm.report_type,
+              hazard_category: editForm.hazard_category,
+              hazard: editForm.hazard_category,
+              site: editForm.site,
+              unit: editForm.unit,
+              location_detail: editForm.location_detail,
+              location: editForm.location_detail,
+              description: editForm.description
+            };
+          }
+          return r;
+        }));
+        if (selectedReport && (selectedReport.id === editingReport.id || selectedReport.report_code === editingReport.report_code)) {
+          setSelectedReport(prev => prev ? {
+            ...prev,
+            report_type: editForm.report_type,
+            hazard_category: editForm.hazard_category,
+            hazard: editForm.hazard_category,
+            site: editForm.site,
+            unit: editForm.unit,
+            location_detail: editForm.location_detail,
+            location: editForm.location_detail,
+            description: editForm.description
+          } : null);
+        }
+        setActionNotice({
+          type: 'success',
+          message: `Report #${formatReportCode(editingReport.report_code, editingReport.id)} updated successfully.`
+        });
+        setTimeout(() => setActionNotice(null), 4500);
+        setEditingReport(null);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.detail || 'Failed to update report.');
+      }
+    } catch (err) {
+      console.error('Error updating report:', err);
+      alert('Network error while updating report.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const fetchMyReports = () => {
     if (!user?.email) return;
@@ -114,6 +238,39 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
 
   return (
     <div className="font-sans text-slate-800 space-y-6 max-w-[1400px] mx-auto pb-16">
+
+      {/* Action / Delete Feedback Notifications */}
+      {deleteNotice && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-2xl text-xs font-bold flex items-center justify-between shadow-xs animate-in fade-in">
+          <div className="flex items-center gap-2.5">
+            <Trash2 className="h-4 w-4 text-red-600 shrink-0" />
+            <span>{deleteNotice}</span>
+          </div>
+          <button onClick={() => setDeleteNotice(null)} className="text-red-400 hover:text-red-700 cursor-pointer">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {actionNotice && (
+        <div className={`p-4 rounded-2xl text-xs font-bold flex items-center justify-between shadow-xs animate-in fade-in ${
+          actionNotice.type === 'success' 
+            ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' 
+            : 'bg-red-50 border border-red-200 text-red-800'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            {actionNotice.type === 'success' ? (
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertTriangle className="h-4 w-4 text-red-600 shrink-0" />
+            )}
+            <span>{actionNotice.message}</span>
+          </div>
+          <button onClick={() => setActionNotice(null)} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
 
       {/* TOP HEADER (Clean white layout matching Picture 1) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -504,23 +661,83 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
                         )}
                       </td>
 
-                      {/* ACTION (Eye and More button side-by-side) */}
+                      {/* ACTION (Eye, Pencil, Trash2, and More button) */}
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1">
+                        <div className="inline-flex items-center gap-1.5 relative">
                           <button
                             onClick={() => setSelectedReport(report)}
                             title="View Details"
-                            className="p-1 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                            className="p-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition cursor-pointer"
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </button>
                           <button
-                            onClick={() => setSelectedReport(report)}
-                            title="More Actions"
-                            className="p-1 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                            onClick={() => handleOpenEdit(report)}
+                            title="Edit Observation"
+                            className="p-1.5 rounded-lg border border-blue-200 bg-blue-50/60 hover:bg-blue-100 text-blue-600 hover:text-blue-800 transition cursor-pointer"
                           >
-                            <MoreVertical className="h-3.5 w-3.5" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </button>
+                          <button
+                            onClick={() => setReportToDelete(report)}
+                            title="Delete Report"
+                            className="p-1.5 rounded-lg border border-red-200 bg-red-50/60 hover:bg-red-100 text-red-600 hover:text-red-800 transition cursor-pointer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+
+                          {/* Popover Dropdown Menu */}
+                          <div className="relative">
+                            <button
+                              onClick={() => setMenuOpenId(menuOpenId === report.id ? null : report.id)}
+                              title="More Actions"
+                              className="p-1.5 rounded-lg border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-500 hover:text-slate-800 transition cursor-pointer"
+                            >
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </button>
+
+                            {menuOpenId === report.id && (
+                              <>
+                                <div 
+                                  className="fixed inset-0 z-20" 
+                                  onClick={() => setMenuOpenId(null)} 
+                                />
+                                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-30 text-left animate-in fade-in zoom-in-95">
+                                  <button
+                                    onClick={() => {
+                                      setSelectedReport(report);
+                                      setMenuOpenId(null);
+                                    }}
+                                    className="w-full px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Eye className="h-3.5 w-3.5 text-slate-400" />
+                                    <span>View Details</span>
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      handleOpenEdit(report);
+                                      setMenuOpenId(null);
+                                    }}
+                                    className="w-full px-3 py-1.5 text-xs font-semibold text-blue-600 hover:bg-blue-50 flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5 text-blue-500" />
+                                    <span>Edit Observation</span>
+                                  </button>
+                                  <div className="border-t border-slate-100 my-1" />
+                                  <button
+                                    onClick={() => {
+                                      setReportToDelete(report);
+                                      setMenuOpenId(null);
+                                    }}
+                                    className="w-full px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                                    <span>Delete Permanently</span>
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </td>
 
@@ -574,9 +791,9 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
               </div>
               <button
                 onClick={() => setSelectedReport(null)}
-                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold cursor-pointer"
+                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
 
@@ -615,6 +832,265 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
                   />
                 </div>
               )}
+
+              {/* Bottom Action Controls inside Detail Modal */}
+              <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                <button
+                  onClick={() => {
+                    const rep = selectedReport;
+                    setSelectedReport(null);
+                    setReportToDelete(rep);
+                  }}
+                  className="px-3.5 py-2 border border-red-200 bg-red-50/70 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  <span>Delete</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setSelectedReport(null)}
+                    className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={() => {
+                      const rep = selectedReport;
+                      setSelectedReport(null);
+                      handleOpenEdit(rep);
+                    }}
+                    className="px-4 py-2 bg-[#005B54] hover:bg-[#004A44] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                    <span>Edit Observation</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT OBSERVATION MODAL */}
+      {editingReport && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-default"
+          onClick={() => setEditingReport(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl p-6 max-w-lg w-full max-h-[92vh] overflow-y-auto shadow-2xl space-y-4 animate-in fade-in zoom-in-95 border border-slate-100"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full">
+                  Edit Observation
+                </span>
+                <h3 className="text-base font-black text-slate-900 mt-1 flex items-center gap-2">
+                  <span>{formatReportCode(editingReport.report_code, editingReport.id)}</span>
+                  <span className="text-xs font-normal text-slate-400 font-mono">({editingReport.id})</span>
+                </h3>
+              </div>
+              <button
+                onClick={() => setEditingReport(null)}
+                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="space-y-4 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Observation Type
+                  </label>
+                  <select
+                    value={editForm.report_type}
+                    onChange={e => setEditForm({ ...editForm, report_type: e.target.value })}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                  >
+                    <option value="Unsafe Condition">Unsafe Condition</option>
+                    <option value="Unsafe Act">Unsafe Act</option>
+                    <option value="Near Miss">Near Miss</option>
+                    <option value="Incident">Incident</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Hazard Category
+                  </label>
+                  <select
+                    value={editForm.hazard_category}
+                    onChange={e => setEditForm({ ...editForm, hazard_category: e.target.value })}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                  >
+                    <option value="Working at Height">Working at Height</option>
+                    <option value="Energy Isolation / LOTO">Energy Isolation / LOTO</option>
+                    <option value="Confined Space">Confined Space</option>
+                    <option value="Hot Work / Fire Safety">Hot Work / Fire Safety</option>
+                    <option value="Line of Fire / Stored Energy">Line of Fire / Stored Energy</option>
+                    <option value="Lifting Operations">Lifting Operations</option>
+                    <option value="Chemical / Gas Release">Chemical / Gas Release</option>
+                    <option value="Electrical Safety">Electrical Safety</option>
+                    <option value="General Safety">General Safety</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Operational Site
+                  </label>
+                  <select
+                    value={editForm.site}
+                    onChange={e => setEditForm({ ...editForm, site: e.target.value })}
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 font-semibold text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                  >
+                    <option value="Refinery A">Refinery A</option>
+                    <option value="Drilling Site A">Drilling Site A</option>
+                    <option value="Drilling Site B">Drilling Site B</option>
+                    <option value="Digboi Refinery D">Digboi Refinery D</option>
+                    <option value="Offshore Rig 04">Offshore Rig 04</option>
+                    <option value="Numaligarh Terminal">Numaligarh Terminal</option>
+                    <option value="Barauni Unit E">Barauni Unit E</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                    Unit / Plant Area
+                  </label>
+                  <input
+                    type="text"
+                    value={editForm.unit}
+                    onChange={e => setEditForm({ ...editForm, unit: e.target.value })}
+                    placeholder="e.g. Rig Floor 01, CDU Area, FCCU"
+                    className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Specific Location Details
+                </label>
+                <input
+                  type="text"
+                  value={editForm.location_detail}
+                  onChange={e => setEditForm({ ...editForm, location_detail: e.target.value })}
+                  placeholder="e.g. Near Mud Pump Area, Substructure elevation +12m"
+                  className="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-1">
+                  Observation Narrative / Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  value={editForm.description}
+                  onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                  placeholder="Detail the hazard observed, context, equipment, or unsafe actions..."
+                  className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-800 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition leading-relaxed"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingReport(null)}
+                  className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingEdit}
+                  className="px-5 py-2.5 bg-[#005B54] hover:bg-[#004A44] disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md shadow-[#005B54]/20"
+                >
+                  {savingEdit ? (
+                    <>
+                      <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                      <span>Saving Changes...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-3.5 w-3.5" />
+                      <span>Save Changes</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {reportToDelete && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-default"
+          onClick={() => !deleting && setReportToDelete(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95 border border-slate-100"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 rounded-2xl bg-red-50 text-red-600 border border-red-200/60 flex items-center justify-center shrink-0">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-black text-slate-900">Delete Observation Report?</h3>
+                <p className="text-xs text-slate-400 font-mono mt-0.5">
+                  #{formatReportCode(reportToDelete.report_code, reportToDelete.id)}
+                </p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to permanently delete this observation? All linked precursor data, audits, and task records will be permanently removed. This action cannot be undone.
+            </p>
+
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-700">
+              <span className="font-bold text-slate-900 block mb-0.5">{reportToDelete.hazard_category || reportToDelete.report_type}</span>
+              <p className="text-slate-500 line-clamp-2 text-[11px]">{reportToDelete.description || 'No description'}</p>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setReportToDelete(null)}
+                className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={handleDeleteReport}
+                className="px-5 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-md shadow-red-600/20"
+              >
+                {deleting ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                    <span>Deleting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Delete Permanently</span>
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
@@ -634,9 +1110,9 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
               <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Photo Evidence</span>
               <button
                 onClick={() => setPreviewPhoto(null)}
-                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold cursor-pointer"
+                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer"
               >
-                ✕
+                <X className="h-4 w-4" />
               </button>
             </div>
             <div className="rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center max-h-[70vh]">
@@ -649,6 +1125,7 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
           </div>
         </div>
       )}
+
 
     </div>
   );
