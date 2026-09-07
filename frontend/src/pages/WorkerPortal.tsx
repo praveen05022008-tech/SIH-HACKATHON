@@ -664,305 +664,21 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
         {/* ── LEFT COLUMN: 4 FORM SECTIONS ── */}
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* SECTION 1: REPORT CATEGORY & HAZARD TYPE */}
+          {/* SECTION 1: PROBLEM OBSERVATION & AI CLASSIFICATION */}
           <div className="bg-white border border-slate-200/85 rounded-2xl p-5 shadow-2xs">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
                 <span className="h-6 w-6 rounded-full bg-[#00695C] text-white text-xs font-black flex items-center justify-center shrink-0 shadow-xs">
                   1
                 </span>
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                  Report Category & Hazard Type
-                </h3>
-              </div>
-              {aiClassification && (
-                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Sparkles className="h-3 w-3 text-emerald-600" />
-                  AI Sync: {aiClassification.report_type}
-                </span>
-              )}
-            </div>
-
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2.5">
-              Primary Category (AI Word Engine Auto-Categorizes or Select Manually)
-            </label>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-              {/* Unsafe Act */}
-              <button
-                type="button"
-                onClick={() => setReportType('Unsafe Act')}
-                className={`relative p-4 rounded-xl border-2 text-left transition cursor-pointer ${
-                  reportType === 'Unsafe Act'
-                    ? 'border-[#007A6C] bg-[#E8F6F4]'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
-                }`}
-              >
-                {reportType === 'Unsafe Act' && (
-                  <span className="absolute top-2.5 right-2.5 h-4 w-4 rounded-full bg-[#007A6C] text-white flex items-center justify-center">
-                    <Check className="h-2.5 w-2.5 stroke-[3]" />
-                  </span>
-                )}
-                <div className={`mb-2 ${reportType === 'Unsafe Act' ? 'text-[#007A6C]' : 'text-slate-500'}`}>
-                  <AlertTriangle className="h-5 w-5 stroke-[2]" />
-                </div>
-                <span className={`block text-xs font-bold ${reportType === 'Unsafe Act' ? 'text-[#007A6C]' : 'text-slate-800'}`}>
-                  Unsafe Act
-                </span>
-                <span className={`block text-[10px] font-medium mt-0.5 leading-tight ${reportType === 'Unsafe Act' ? 'text-[#007A6C]/85' : 'text-slate-400'}`}>
-                  Behavioral hazard / deviation
-                </span>
-              </button>
-
-              {/* Unsafe Condition */}
-              <button
-                type="button"
-                onClick={() => setReportType('Unsafe Condition')}
-                className={`relative p-4 rounded-xl border-2 text-left transition cursor-pointer ${
-                  reportType === 'Unsafe Condition'
-                    ? 'border-[#007A6C] bg-[#E8F6F4]'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
-                }`}
-              >
-                {reportType === 'Unsafe Condition' && (
-                  <span className="absolute top-2.5 right-2.5 h-4 w-4 rounded-full bg-[#007A6C] text-white flex items-center justify-center">
-                    <Check className="h-2.5 w-2.5 stroke-[3]" />
-                  </span>
-                )}
-                <div className={`mb-2 ${reportType === 'Unsafe Condition' ? 'text-[#007A6C]' : 'text-slate-500'}`}>
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 17c1.5-1 3-1 4.5 0 1.5 1 3 1 4.5 0 1.5-1 3-1 4.5 0 1.5 1 3 1 4.5 0" />
-                    <path d="M9 11l2-3 2 1.5 2.5-3.5" />
-                    <circle cx="15" cy="4" r="1.5" />
-                    <path d="M11 8l-2 5 3 2" />
-                  </svg>
-                </div>
-                <span className={`block text-xs font-bold ${reportType === 'Unsafe Condition' ? 'text-[#007A6C]' : 'text-slate-800'}`}>
-                  Unsafe Condition
-                </span>
-                <span className={`block text-[10px] font-medium mt-0.5 leading-tight ${reportType === 'Unsafe Condition' ? 'text-[#007A6C]/85' : 'text-slate-400'}`}>
-                  Physical defect / site hazard
-                </span>
-              </button>
-
-              {/* Near Miss */}
-              <button
-                type="button"
-                onClick={() => setReportType('Near Miss')}
-                className={`relative p-4 rounded-xl border-2 text-left transition cursor-pointer ${
-                  reportType === 'Near Miss'
-                    ? 'border-[#007A6C] bg-[#E8F6F4]'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
-                }`}
-              >
-                {reportType === 'Near Miss' && (
-                  <span className="absolute top-2.5 right-2.5 h-4 w-4 rounded-full bg-[#007A6C] text-white flex items-center justify-center">
-                    <Check className="h-2.5 w-2.5 stroke-[3]" />
-                  </span>
-                )}
-                <div className={`mb-2 ${reportType === 'Near Miss' ? 'text-[#007A6C]' : 'text-slate-500'}`}>
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="6" width="18" height="14" rx="2" />
-                    <path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-                    <line x1="12" y1="10" x2="12" y2="16" />
-                    <line x1="9" y1="13" x2="15" y2="13" />
-                  </svg>
-                </div>
-                <span className={`block text-xs font-bold ${reportType === 'Near Miss' ? 'text-[#007A6C]' : 'text-slate-800'}`}>
-                  Near Miss
-                </span>
-                <span className={`block text-[10px] font-medium mt-0.5 leading-tight ${reportType === 'Near Miss' ? 'text-[#007A6C]/85' : 'text-slate-400'}`}>
-                  Potentially avoided close-call
-                </span>
-              </button>
-            </div>
-
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-              Hazard Sub-Category
-            </label>
-            <div className="relative">
-              <select
-                value={hazardCategory}
-                onChange={e => setHazardCategory(e.target.value)}
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-white text-slate-800 font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] appearance-none pr-9 cursor-pointer"
-              >
-                {hazardCategories.map(hc => (
-                  <option key={hc} value={hc}>{hc}</option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 h-4 w-4" />
-            </div>
-          </div>
-
-          {/* SECTION 2: OPERATIONAL LOCATION DETAILS */}
-          <div className="bg-white border border-slate-200/85 rounded-2xl p-5 shadow-2xs">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="h-6 w-6 rounded-full bg-[#00695C] text-white text-xs font-black flex items-center justify-center shrink-0 shadow-xs">
-                2
-              </span>
-              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                Operational Location Details
-              </h3>
-            </div>
-
-            {/* Auto-Captured Geolocation Banner */}
-            <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border bg-slate-50/90 border-slate-200">
-              <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg bg-[#E8F6F4] text-[#007A6C] flex items-center justify-center shrink-0">
-                  <Navigation className="h-4 w-4" />
-                </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900">Auto-Detected GPS Location</span>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-800 uppercase tracking-wide">
-                      Auto-Captured
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 font-mono mt-0.5">
-                    {gpsLocation.text}
+                  <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                    Problem Observation & AI Word Analysis
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-medium">
+                    Speak or type your observation. AI automatically categorizes into Unsafe Act, Unsafe Condition, or Near Miss.
                   </p>
                 </div>
-              </div>
-              <button
-                type="button"
-                onClick={detectGpsLocation}
-                className="self-start sm:self-auto px-3 py-1.5 text-xs font-bold text-[#007A6C] hover:bg-[#E8F6F4] rounded-lg border border-[#A2D9D2] transition cursor-pointer flex items-center gap-1.5 shrink-0"
-              >
-                <LocateFixed className="h-3.5 w-3.5" />
-                <span>Re-detect GPS</span>
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Site / Plant / Facility
-                </label>
-                <div className="relative">
-                  <select
-                    value={site}
-                    onChange={e => setSite(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-white font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] appearance-none pr-9 cursor-pointer"
-                  >
-                    {sites.map(s => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 h-4 w-4" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Rig / Unit / Plant Area
-                </label>
-                <div className="relative">
-                  <select
-                    value={unit}
-                    onChange={e => setUnit(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-white font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] appearance-none pr-9 cursor-pointer"
-                  >
-                    {units.map(u => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 h-4 w-4" />
-                </div>
-              </div>
-            </div>
-
-            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-              Specific Location (Detail / Zone / Deck)
-            </label>
-            <input
-              type="text"
-              value={locationDetail}
-              onChange={e => setLocationDetail(e.target.value)}
-              placeholder="e.g., Substructure Platform Level 2, Near Valve Y-102 (or leave auto-captured GPS)"
-              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-white placeholder-slate-400 focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C]"
-            />
-          </div>
-
-          {/* SECTION 3: INCIDENT DETAILS & OPERATIONAL SHIFT */}
-          <div className="bg-white border border-slate-200/85 rounded-2xl p-5 shadow-2xs">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="h-6 w-6 rounded-full bg-[#00695C] text-white text-xs font-black flex items-center justify-center shrink-0 shadow-xs">
-                3
-              </span>
-              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                Incident Details & Operational Shift
-              </h3>
-            </div>
-
-            {/* Auto-Captured Timestamp Banner */}
-            <div className="mb-4 flex items-center justify-between p-3 rounded-xl border bg-slate-50/90 border-slate-200">
-              <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-lg bg-[#E8F6F4] text-[#007A6C] flex items-center justify-center shrink-0">
-                  <Clock className="h-4 w-4" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-900">Observation Timestamp</span>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-800 uppercase tracking-wide">
-                      Auto-Captured & Stamped
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-600 font-medium mt-0.5">
-                    {autoTimestampDisplay} • Automatically recorded at occurrence instant
-                  </p>
-                </div>
-              </div>
-              <span className="text-[10px] font-bold text-slate-400 bg-white border border-slate-200 px-2 py-1 rounded-md">
-                Auto-Locked
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Date & Time of Observation (Locked Auto-Stamping)
-                </label>
-                <div className="relative">
-                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                  <input
-                    type="datetime-local"
-                    value={dateTime}
-                    onChange={e => setDateTime(e.target.value)}
-                    className="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C]"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-                  Operational Shift
-                </label>
-                <div className="relative">
-                  <select
-                    value={shiftTiming}
-                    onChange={e => setShiftTiming(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-white font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] appearance-none pr-9 cursor-pointer"
-                  >
-                    {shiftTimings.map(st => (
-                      <option key={st} value={st}>{st}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 h-4 w-4" />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* SECTION 4: INCIDENT DESCRIPTION */}
-          <div className="bg-white border border-slate-200/85 rounded-2xl p-5 shadow-2xs">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <span className="h-6 w-6 rounded-full bg-[#00695C] text-white text-xs font-black flex items-center justify-center shrink-0 shadow-xs">
-                  4
-                </span>
-                <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
-                  Incident Description
-                </h3>
               </div>
 
               <button
@@ -1070,7 +786,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Sparkles className="h-4 w-4 text-[#007A6C]" />
-                    <span className="text-xs font-bold text-slate-900">AI Word Analysis Engine:</span>
+                    <span className="text-xs font-bold text-slate-900">AI Word Classification:</span>
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
                       aiClassification.report_type === 'Unsafe Act'
                         ? 'bg-amber-100 text-amber-900 border border-amber-300'
@@ -1096,7 +812,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 </p>
                 {aiClassification.matched_words && aiClassification.matched_words.length > 0 && (
                   <div className="flex items-center gap-1.5 pt-1 flex-wrap">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Trigger Keywords:</span>
+                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Trigger Keywords Detected:</span>
                     {aiClassification.matched_words.map(w => (
                       <span key={w} className="px-1.5 py-0.5 bg-white border border-emerald-200 text-emerald-800 rounded text-[10px] font-mono font-bold">
                         "{w}"
@@ -1106,9 +822,180 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 )}
               </div>
             )}
+          </div>
+
+          {/* SECTION 2: OPERATIONAL LOCATION DETAILS (AUTO-CAPTURED) */}
+          <div className="bg-white border border-slate-200/85 rounded-2xl p-5 shadow-2xs">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="h-6 w-6 rounded-full bg-[#00695C] text-white text-xs font-black flex items-center justify-center shrink-0 shadow-xs">
+                2
+              </span>
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                Operational Location (Auto-Captured GPS)
+              </h3>
+            </div>
+
+            {/* Auto-Captured Geolocation Banner */}
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded-xl border bg-slate-50/90 border-slate-200">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-lg bg-[#E8F6F4] text-[#007A6C] flex items-center justify-center shrink-0">
+                  <Navigation className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900">Auto-Detected GPS Location</span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-800 uppercase tracking-wide">
+                      Auto-Captured
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 font-mono mt-0.5">
+                    {gpsLocation.text}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={detectGpsLocation}
+                className="self-start sm:self-auto px-3 py-1.5 text-xs font-bold text-[#007A6C] hover:bg-[#E8F6F4] rounded-lg border border-[#A2D9D2] transition cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <LocateFixed className="h-3.5 w-3.5" />
+                <span>Re-detect GPS</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Site / Plant / Facility
+                </label>
+                <div className="relative">
+                  <select
+                    value={site}
+                    onChange={e => setSite(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-white font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] appearance-none pr-9 cursor-pointer"
+                  >
+                    {sites.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 h-4 w-4" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Rig / Unit / Plant Area
+                </label>
+                <div className="relative">
+                  <select
+                    value={unit}
+                    onChange={e => setUnit(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-white font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] appearance-none pr-9 cursor-pointer"
+                  >
+                    {units.map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 h-4 w-4" />
+                </div>
+              </div>
+            </div>
+
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+              Specific Location (Detail / Zone / Deck)
+            </label>
+            <input
+              type="text"
+              value={locationDetail}
+              onChange={e => setLocationDetail(e.target.value)}
+              placeholder="e.g., Substructure Platform Level 2, Near Valve Y-102 (or leave auto-captured GPS)"
+              className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-white placeholder-slate-400 focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C]"
+            />
+          </div>
+
+          {/* SECTION 3: INCIDENT DETAILS & OPERATIONAL SHIFT (AUTO-CAPTURED) */}
+          <div className="bg-white border border-slate-200/85 rounded-2xl p-5 shadow-2xs">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="h-6 w-6 rounded-full bg-[#00695C] text-white text-xs font-black flex items-center justify-center shrink-0 shadow-xs">
+                3
+              </span>
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                Observation Timestamp & Operational Shift
+              </h3>
+            </div>
+
+            {/* Auto-Captured Timestamp Banner */}
+            <div className="mb-4 flex items-center justify-between p-3 rounded-xl border bg-slate-50/90 border-slate-200">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-lg bg-[#E8F6F4] text-[#007A6C] flex items-center justify-center shrink-0">
+                  <Clock className="h-4 w-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-900">Observation Timestamp</span>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-emerald-100 text-emerald-800 uppercase tracking-wide">
+                      Auto-Captured & Stamped
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 font-medium mt-0.5">
+                    {autoTimestampDisplay} • Automatically recorded at occurrence instant
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold text-slate-400 bg-white border border-slate-200 px-2 py-1 rounded-md">
+                Auto-Locked
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Date & Time of Observation (Locked Auto-Stamping)
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <input
+                    type="datetime-local"
+                    value={dateTime}
+                    onChange={e => setDateTime(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50 text-slate-700 font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                  Operational Shift
+                </label>
+                <div className="relative">
+                  <select
+                    value={shiftTiming}
+                    onChange={e => setShiftTiming(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-xs bg-white font-medium focus:ring-2 focus:ring-[#007A6C]/20 focus:border-[#007A6C] appearance-none pr-9 cursor-pointer"
+                  >
+                    {shiftTimings.map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 h-4 w-4" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SECTION 4: PHOTO EVIDENCE & SUBMISSION */}
+          <div className="bg-white border border-slate-200/85 rounded-2xl p-5 shadow-2xs">
+            <div className="flex items-center gap-3 mb-4">
+              <span className="h-6 w-6 rounded-full bg-[#00695C] text-white text-xs font-black flex items-center justify-center shrink-0 shadow-xs">
+                4
+              </span>
+              <h3 className="text-xs font-black text-slate-900 uppercase tracking-wider">
+                Photo Evidence & Context
+              </h3>
+            </div>
 
             {/* Associated Equipment, Energy Source, People Involved */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
                   Associated Equipment
