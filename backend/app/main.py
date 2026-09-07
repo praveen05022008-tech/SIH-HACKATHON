@@ -1306,6 +1306,106 @@ def delete_event(event_id: str, db: Session = Depends(get_db)):
 
     return {"success": True, "message": f"Report {report_code_ref} permanently deleted"}
 
+# POST /api/admin/reports/batch-delete and /api/events/batch-delete
+@app.post("/api/admin/reports/batch-delete")
+@app.post("/api/events/batch-delete")
+def batch_delete_events(payload: schemas.BatchDeletePayload, db: Session = Depends(get_db)):
+    from urllib.parse import unquote
+    if not payload.report_ids:
+        return {"success": True, "count": 0, "message": "No reports selected for deletion"}
+
+    all_target_codes = set()
+    report_id_refs = set()
+
+    for item_id in payload.report_ids:
+        clean_id = unquote(str(item_id)).strip()
+        with_hash = clean_id if clean_id.startswith("#") else f"#{clean_id}"
+        without_hash = clean_id.replace("#", "")
+        all_target_codes.update([clean_id, with_hash, without_hash])
+
+    # Find safety events matching any of the codes
+    matching_events = db.query(models.SafetyEvent).filter(
+        (models.SafetyEvent.id.in_(list(all_target_codes))) |
+        (models.SafetyEvent.report_code.in_(list(all_target_codes)))
+    ).all()
+
+    for evt in matching_events:
+        if evt.report_code:
+            all_target_codes.update([evt.report_code, evt.report_code.replace("#", ""), f"#{evt.report_code.replace('#', '')}"])
+        if evt.id:
+            all_target_codes.add(evt.id)
+        if getattr(evt, 'report_id', None):
+            report_id_refs.add(evt.report_id)
+
+    # Also search directly in safety_reports by code
+    matching_reports = db.query(models.SafetyReport).filter(
+        models.SafetyReport.report_code.in_(list(all_target_codes))
+    ).all()
+
+    for rep in matching_reports:
+        if rep.id:
+            report_id_refs.add(rep.id)
+        if rep.report_code:
+            all_target_codes.update([rep.report_code, rep.report_code.replace("#", ""), f"#{rep.report_code.replace('#', '')}"])
+
+    codes_list = list(all_target_codes)
+
+    try:
+        try:
+            db.execute(database.text("SET FOREIGN_KEY_CHECKS=0;"))
+        except Exception:
+            pass
+
+        # 1. Nullify report_id on safety_events
+        try:
+            db.execute(
+                database.text("UPDATE safety_events SET report_id = NULL WHERE report_code IN :codes OR id IN :codes"),
+                {"codes": tuple(codes_list)}
+            )
+            if report_id_refs:
+                db.execute(
+                    database.text("UPDATE safety_events SET report_id = NULL WHERE report_id IN :rids"),
+                    {"rids": tuple(report_id_refs)}
+                )
+        except Exception:
+            pass
+
+        # 2. Delete audit events
+        db.query(models.AuditEvent).filter(models.AuditEvent.event_id.in_(codes_list)).delete(synchronize_session=False)
+
+        # 3. Delete interventions
+        db.query(models.Intervention).filter(models.Intervention.event_id.in_(codes_list)).delete(synchronize_session=False)
+
+        # 4. Delete reviews
+        db.query(models.Review).filter(models.Review.event_id.in_(codes_list)).delete(synchronize_session=False)
+
+        # 5. Delete officer tasks
+        db.query(models.OfficerTask).filter(models.OfficerTask.related_event_id.in_(codes_list)).delete(synchronize_session=False)
+
+        # 6. Delete safety_events
+        db.query(models.SafetyEvent).filter(
+            (models.SafetyEvent.id.in_(codes_list)) | (models.SafetyEvent.report_code.in_(codes_list))
+        ).delete(synchronize_session=False)
+
+        # 7. Delete safety_reports
+        if report_id_refs:
+            db.query(models.SafetyReport).filter(models.SafetyReport.id.in_(list(report_id_refs))).delete(synchronize_session=False)
+        db.query(models.SafetyReport).filter(models.SafetyReport.report_code.in_(codes_list)).delete(synchronize_session=False)
+
+        db.commit()
+    finally:
+        try:
+            db.execute(database.text("SET FOREIGN_KEY_CHECKS=1;"))
+            db.commit()
+        except Exception:
+            pass
+
+    return {
+        "success": True,
+        "count": len(payload.report_ids),
+        "message": f"Successfully deleted {len(payload.report_ids)} selected reports permanently."
+    }
+
 # PUT & PATCH /api/events/:id - Edit observation issue
 @app.put("/api/events/{event_id}")
 @app.patch("/api/events/{event_id}")

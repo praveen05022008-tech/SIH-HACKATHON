@@ -324,3 +324,6 @@ class SifRiskAnalyzePayload(BaseModel):
     site: Optional[str] = None
     unit: Optional[str] = None
 
+class BatchDeletePayload(BaseModel):
+    report_ids: List[str]
+

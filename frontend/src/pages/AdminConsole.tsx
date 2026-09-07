@@ -39,7 +39,8 @@ import {
   Phone,
   Camera,
   LogIn,
-  LogOut
+  LogOut,
+  CheckSquare
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -109,6 +110,8 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   const [reportDateFilter, setReportDateFilter] = useState<string>('All');
   const [reportSearchQuery, setReportSearchQuery] = useState<string>('');
   const [selectedReportDetail, setSelectedReportDetail] = useState<AdminReport | null>(null);
+  const [selectedReportCodes, setSelectedReportCodes] = useState<Set<string>>(new Set());
+  const [batchDeleting, setBatchDeleting] = useState(false);
 
   // ==========================================
   // 5. AUDIT LOG STATE
@@ -420,6 +423,90 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   const uniqueOfficers = useMemo(() => {
     return Array.from(new Set(reports.map(r => r.reviewer))).filter(r => r && r !== 'Unassigned');
   }, [reports]);
+
+  // ── Multi-Select & Batch Delete Reports ────────────────────────────────────
+  const isAllVisibleSelected = filteredReports.length > 0 && filteredReports.every(r => selectedReportCodes.has(r.report_code || r.id.toString()));
+
+  const handleToggleSelectReport = (code: string) => {
+    setSelectedReportCodes(prev => {
+      const next = new Set(prev);
+      if (next.has(code)) {
+        next.delete(code);
+      } else {
+        next.add(code);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    if (isAllVisibleSelected) {
+      setSelectedReportCodes(prev => {
+        const next = new Set(prev);
+        filteredReports.forEach(r => next.delete(r.report_code || r.id.toString()));
+        return next;
+      });
+    } else {
+      setSelectedReportCodes(prev => {
+        const next = new Set(prev);
+        filteredReports.forEach(r => next.add(r.report_code || r.id.toString()));
+        return next;
+      });
+    }
+  };
+
+  const handleDeselectAll = () => {
+    setSelectedReportCodes(new Set());
+  };
+
+  const handleBatchDeleteReports = async () => {
+    if (selectedReportCodes.size === 0) return;
+    const count = selectedReportCodes.size;
+    const codesToDelete = Array.from(selectedReportCodes);
+
+    // Optimistically remove from web state immediately
+    const toDeleteSet = new Set(codesToDelete);
+    setReports(prev => prev.filter(r => 
+      !toDeleteSet.has(r.report_code) && 
+      !toDeleteSet.has(r.id.toString()) && 
+      !toDeleteSet.has(r.report_code?.replace('#', '')) &&
+      !toDeleteSet.has(`#${r.report_code}`)
+    ));
+
+    setSelectedReportCodes(new Set());
+    setUserActionMessage(`Successfully deleted ${count} selected reports permanently.`);
+    triggerNotification?.(`Batch Deleted: ${count} Reports`);
+    setTimeout(() => setUserActionMessage(null), 4500);
+
+    setBatchDeleting(true);
+    try {
+      const res = await fetch(apiUrl('/api/admin/reports/batch-delete'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ report_ids: codesToDelete })
+      });
+      if (res.ok) {
+        fetchReports();
+        fetchDashboardData();
+        fetchAuditLogs();
+      } else {
+        // Fallback: delete one by one
+        await Promise.all(
+          codesToDelete.map(code => 
+            fetch(apiUrl(`/api/admin/reports/${encodeURIComponent(code)}`), { method: 'DELETE' }).catch(() => {})
+          )
+        );
+        fetchReports();
+        fetchDashboardData();
+        fetchAuditLogs();
+      }
+    } catch (err) {
+      console.error('Batch delete error:', err);
+      fetchReports();
+    } finally {
+      setBatchDeleting(false);
+    }
+  };
 
   // ── Filtered Audit Logs ────────────────────────────────────────────────────
   const filteredAuditLogs = useMemo(() => {
@@ -1515,12 +1602,60 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
             </div>
           </div>
 
+          {/* Batch Selection Action Bar */}
+          {selectedReportCodes.size > 0 && (
+            <div className="bg-rose-50 border border-rose-200 rounded-3xl p-4 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200 shadow-sm">
+              <div className="flex items-center gap-3 text-xs font-bold text-rose-900">
+                <div className="h-8 w-8 rounded-xl bg-rose-100 flex items-center justify-center text-rose-700">
+                  <CheckSquare className="h-4.5 w-4.5" />
+                </div>
+                <div>
+                  <span className="text-sm font-black text-rose-950">{selectedReportCodes.size}</span>
+                  <span className="text-rose-800 ml-1">report{selectedReportCodes.size > 1 ? 's' : ''} selected</span>
+                </div>
+                <span className="text-rose-300">|</span>
+                <button
+                  onClick={handleToggleSelectAll}
+                  className="text-rose-700 hover:text-rose-950 font-bold underline underline-offset-2 cursor-pointer transition text-xs"
+                >
+                  {isAllVisibleSelected ? 'Deselect All Visible' : `Select All Visible (${filteredReports.length})`}
+                </button>
+                <button
+                  onClick={handleDeselectAll}
+                  className="px-2.5 py-1 bg-white hover:bg-rose-100 text-rose-800 border border-rose-200 rounded-lg cursor-pointer transition text-xs font-semibold"
+                >
+                  Clear Selection
+                </button>
+              </div>
+
+              <button
+                onClick={handleBatchDeleteReports}
+                disabled={batchDeleting}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-black rounded-xl transition cursor-pointer flex items-center gap-2 shadow-sm"
+                title="Permanently delete all selected reports"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>Delete Selected ({selectedReportCodes.size})</span>
+              </button>
+            </div>
+          )}
+
           {/* Reports Table */}
           <div className="bg-white border border-[#E6ECEB] rounded-3xl overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs text-slate-700">
                 <thead className="bg-slate-50 border-b border-slate-200 text-[10.5px] font-black uppercase tracking-wider text-slate-500">
                   <tr>
+                    {/* Select All Checkbox Column */}
+                    <th className="py-3 pl-4 pr-1 w-12 text-center">
+                      <input
+                        type="checkbox"
+                        checked={isAllVisibleSelected}
+                        onChange={handleToggleSelectAll}
+                        className="h-4 w-4 rounded border-slate-300 text-[#008779] focus:ring-[#008779] cursor-pointer"
+                        title={isAllVisibleSelected ? "Deselect All" : "Select All"}
+                      />
+                    </th>
                     <th className="py-3 px-4">Report Code & Date</th>
                     <th className="py-3 px-4">Reporter (Employee)</th>
                     <th className="py-3 px-4">Assigned Officer</th>
@@ -1534,102 +1669,116 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                 <tbody className="divide-y divide-slate-100 font-medium">
                   {loadingReports ? (
                     <tr>
-                      <td colSpan={8} className="py-8 text-center text-slate-400">
+                      <td colSpan={9} className="py-8 text-center text-slate-400">
                         <RefreshCw className="h-5 w-5 animate-spin mx-auto mb-2 text-[#008779]" />
                         <span>Loading fleet reports...</span>
                       </td>
                     </tr>
                   ) : filteredReports.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-slate-400">
+                      <td colSpan={9} className="py-12 text-center text-slate-400">
                         <FileText className="h-8 w-8 mx-auto mb-2 text-slate-300 stroke-1" />
                         <div className="font-bold text-slate-700">No reports matched your filters</div>
                         <div className="text-[11px] text-slate-400 mt-0.5">Try resetting filter criteria.</div>
                       </td>
                     </tr>
                   ) : (
-                    filteredReports.map(report => (
-                      <tr key={report.id} className="hover:bg-slate-50/70 transition">
-                        
-                        {/* Report Code & Date */}
-                        <td className="py-3 px-4">
-                          <div className="font-extrabold text-slate-900 font-mono">{report.report_code}</div>
-                          <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
-                            <Clock className="h-2.5 w-2.5" />
-                            <span>{new Date(report.timestamp).toLocaleDateString()} {new Date(report.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                        </td>
+                    filteredReports.map(report => {
+                      const repKey = report.report_code || report.id.toString();
+                      const isSelected = selectedReportCodes.has(repKey);
+                      return (
+                        <tr key={report.id} className={`transition ${isSelected ? 'bg-rose-50/50 hover:bg-rose-50/70' : 'hover:bg-slate-50/70'}`}>
+                          
+                          {/* Row Selection Checkbox */}
+                          <td className="py-3 pl-4 pr-1 w-12 text-center">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelectReport(repKey)}
+                              className="h-4 w-4 rounded border-slate-300 text-[#008779] focus:ring-[#008779] cursor-pointer"
+                            />
+                          </td>
 
-                        {/* Employee (Reporter) */}
-                        <td className="py-3 px-4">
-                          <div className="font-extrabold text-slate-800 text-xs">
-                            {report.reporter_email.split('@')[0]}
-                          </div>
-                          <div className="text-[10px] text-slate-400 font-mono truncate max-w-[130px]">
-                            {report.reporter_email}
-                          </div>
-                        </td>
+                          {/* Report Code & Date */}
+                          <td className="py-3 px-4">
+                            <div className="font-extrabold text-slate-900 font-mono">{report.report_code}</div>
+                            <div className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                              <Clock className="h-2.5 w-2.5" />
+                              <span>{new Date(report.timestamp).toLocaleDateString()} {new Date(report.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </td>
 
-                        {/* Officer */}
-                        <td className="py-3 px-4">
-                          <span className={`text-xs font-bold ${report.reviewer !== 'Unassigned' ? 'text-slate-800' : 'text-slate-400 italic'}`}>
-                            {report.reviewer}
-                          </span>
-                        </td>
+                          {/* Employee (Reporter) */}
+                          <td className="py-3 px-4">
+                            <div className="font-extrabold text-slate-800 text-xs">
+                              {report.reporter_email.split('@')[0]}
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono truncate max-w-[130px]">
+                              {report.reporter_email}
+                            </div>
+                          </td>
 
-                        {/* Site & Unit */}
-                        <td className="py-3 px-4">
-                          <div className="font-bold text-slate-800">{report.site}</div>
-                          <div className="text-[10px] text-slate-400 truncate max-w-[120px]">{report.unit}</div>
-                        </td>
+                          {/* Officer */}
+                          <td className="py-3 px-4">
+                            <span className={`text-xs font-bold ${report.reviewer !== 'Unassigned' ? 'text-slate-800' : 'text-slate-400 italic'}`}>
+                              {report.reviewer}
+                            </span>
+                          </td>
 
-                        {/* Issue Type & LSR */}
-                        <td className="py-3 px-4">
-                          <div className="font-extrabold text-slate-800">{report.life_saving_rule}</div>
-                          <span className="text-[9.5px] font-bold text-slate-500 uppercase">
-                            {report.report_type}
-                          </span>
-                        </td>
+                          {/* Site & Unit */}
+                          <td className="py-3 px-4">
+                            <div className="font-bold text-slate-800">{report.site}</div>
+                            <div className="text-[10px] text-slate-400 truncate max-w-[120px]">{report.unit}</div>
+                          </td>
 
-                        {/* SIF Score */}
-                        <td className="py-3 px-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                            report.sif_risk_score >= 8.0 ? 'bg-rose-100 text-rose-800'
-                            : report.sif_risk_score >= 6.5 ? 'bg-amber-100 text-amber-800'
-                            : 'bg-emerald-100 text-emerald-800'
-                          }`}>
-                            {report.sif_risk_score}/10 ({report.risk_level})
-                          </span>
-                        </td>
+                          {/* Issue Type & LSR */}
+                          <td className="py-3 px-4">
+                            <div className="font-extrabold text-slate-800">{report.life_saving_rule}</div>
+                            <span className="text-[9.5px] font-bold text-slate-500 uppercase">
+                              {report.report_type}
+                            </span>
+                          </td>
 
-                        {/* Status */}
-                        <td className="py-3 px-4">
-                          <span className="text-[10.5px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
-                            {report.status}
-                          </span>
-                        </td>
+                          {/* SIF Score */}
+                          <td className="py-3 px-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                              report.sif_risk_score >= 8.0 ? 'bg-rose-100 text-rose-800'
+                              : report.sif_risk_score >= 6.5 ? 'bg-amber-100 text-amber-800'
+                              : 'bg-emerald-100 text-emerald-800'
+                            }`}>
+                              {report.sif_risk_score}/10 ({report.risk_level})
+                            </span>
+                          </td>
 
-                        {/* Actions: View + Delete */}
-                        <td className="py-3 px-4 text-right">
-                          <div className="inline-flex items-center gap-2">
-                            <button
-                              onClick={() => setSelectedReportDetail(report)}
-                              className="px-2.5 py-1.5 bg-[#008779] hover:bg-[#007064] text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-2xs"
-                            >
-                              View
-                            </button>
-                            <button
-                              onClick={() => handleDeleteReport(report.id.toString(), report.report_code)}
-                              title="Permanently delete report"
-                              className="p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 rounded-xl transition cursor-pointer border border-transparent hover:border-rose-200"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
-                          </div>
-                        </td>
+                          {/* Status */}
+                          <td className="py-3 px-4">
+                            <span className="text-[10.5px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md">
+                              {report.status}
+                            </span>
+                          </td>
 
-                      </tr>
-                    ))
+                          {/* Actions: View + Delete */}
+                          <td className="py-3 px-4 text-right">
+                            <div className="inline-flex items-center gap-2">
+                              <button
+                                onClick={() => setSelectedReportDetail(report)}
+                                className="px-2.5 py-1.5 bg-[#008779] hover:bg-[#007064] text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-2xs"
+                              >
+                                View
+                              </button>
+                              <button
+                                onClick={() => handleDeleteReport(report.id.toString(), report.report_code)}
+                                title="Permanently delete report"
+                                className="p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 rounded-xl transition cursor-pointer border border-transparent hover:border-rose-200"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          </td>
+
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
