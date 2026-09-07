@@ -823,12 +823,25 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
               </div>
 
               {selectedReport.photo_url && (
-                <div className="pt-2 border-t border-slate-100">
-                  <span className="text-slate-400 font-medium">Evidence Photo:</span>
+                <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500 font-bold flex items-center gap-1">
+                      <span className="text-emerald-700">☁️ Cloudinary Evidence Photo</span>
+                    </span>
+                    <a
+                      href={selectedReport.photo_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-[#007A6C] hover:underline font-bold text-[11px]"
+                    >
+                      Open Full Size ↗
+                    </a>
+                  </div>
                   <img
                     src={selectedReport.photo_url}
                     alt="Evidence"
-                    className="w-full max-h-56 object-cover rounded-xl mt-1.5 border border-slate-200"
+                    className="w-full max-h-56 object-cover rounded-xl mt-1 border border-slate-200 cursor-zoom-in"
+                    onClick={() => setPreviewPhoto(selectedReport.photo_url || null)}
                   />
                 </div>
               )}
@@ -1107,13 +1120,28 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Photo Evidence</span>
-              <button
-                onClick={() => setPreviewPhoto(null)}
-                className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black text-slate-800 uppercase tracking-wider">Photo Evidence</span>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Cloudinary CDN
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewPhoto}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-2.5 py-1 text-xs font-bold text-[#007A6C] hover:bg-[#E8F6F4] rounded-lg border border-[#A2D9D2] transition flex items-center gap-1"
+                >
+                  <span>Open Original ↗</span>
+                </a>
+                <button
+                  onClick={() => setPreviewPhoto(null)}
+                  className="h-7 w-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center cursor-pointer"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
             <div className="rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center max-h-[70vh]">
               <img

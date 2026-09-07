@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 for possible_env in [
     os.path.join(os.path.dirname(__file__), ".env"),
     os.path.join(os.path.dirname(__file__), "env"),
+    os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"),
     os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
 ]:
     if os.path.exists(possible_env):

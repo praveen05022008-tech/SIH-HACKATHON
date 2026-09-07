@@ -70,6 +70,94 @@ LSR_DESCRIPTIONS = {
 
 STANDARD_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
+# Word analysis keywords for report categorization: Unsafe Act vs Unsafe Condition vs Near Miss
+UNSAFE_ACT_INDICATORS = [
+    "standing on", "standing over", "unhooked", "unclipped", "no harness", "without harness",
+    "not wearing", "no ppe", "without ppe", "no helmet", "no gloves", "no goggles", "bypassing",
+    "bypassed", "speeding", "smoking", "horseplay", "distracted", "using phone", "riding",
+    "climbing without", "improper lifting", "hurried", "careless", "negligent", "unauthorized",
+    "removed guard", "removed barricade", "tampered", "ignored warning", "refused", "operating without",
+    "failed to isolate", "did not lock", "forgot to tag", "walked under", "reaching into",
+    "jumped down", "unsafe behavior", "risky behavior", "worker was observed", "person was observed",
+    "not clipped", "not anchored", "improper use", "shortcut", "without permit", "no permit"
+]
+
+UNSAFE_CONDITION_INDICATORS = [
+    "leak", "leaking", "leakage", "spill", "slippery", "corroded", "corrosion", "rust", "rusted",
+    "frayed", "frayed wire", "exposed wire", "broken", "cracked", "crack", "damaged", "faulty",
+    "defective", "loose bolt", "loose handrail", "loose screw", "missing guard", "missing cover",
+    "poor lighting", "dark area", "toxic vapor", "gas odor", "pressure buildup", "overpressure",
+    "vibration", "oil puddle", "slippery floor", "uneven surface", "blocked walkway", "blocked exit",
+    "tripping hazard", "unguarded", "worn brake", "stuck valve", "ventilation failure",
+    "flange leaking", "unstable ground", "sharp edge", "pothole", "structural crack", "gauge defective"
+]
+
+NEAR_MISS_INDICATORS = [
+    "near miss", "nearmiss", "almost", "nearly", "close call", "narrowly", "inches away",
+    "feet away", "barely avoided", "avoided injury", "missed by", "swung close",
+    "stopped just in time", "caught before", "almost fell", "almost hit", "nearly struck",
+    "nearly crushed", "dropped object fell near", "no one was injured but", "could have been fatal",
+    "dropped and missed", "skidded and stopped", "narrowly avoided", "narrow escape",
+    "landed next to", "glanced off", "just missed", "potential fatality avoided", "prevented in time"
+]
+
+def classify_safety_words(text: str) -> Dict[str, Any]:
+    """
+    Analyzes the words and semantic intent of the safety problem text to determine
+    whether it is an 'Unsafe Act', 'Unsafe Condition', or 'Near Miss'.
+    Returns the classification, matched keywords, confidence, and engineering rationale.
+    """
+    text_lower = (text or "").lower()
+    
+    matched_near_miss = [kw for kw in NEAR_MISS_INDICATORS if kw in text_lower]
+    matched_act = [kw for kw in UNSAFE_ACT_INDICATORS if kw in text_lower]
+    matched_condition = [kw for kw in UNSAFE_CONDITION_INDICATORS if kw in text_lower]
+    
+    score_near_miss = len(matched_near_miss) * 2.5
+    score_act = len(matched_act) * 1.8
+    score_condition = len(matched_condition) * 1.5
+    
+    # Priority weighting: if near miss signals exist, they often take precedence because they indicate a near accident
+    if matched_near_miss and (score_near_miss >= score_act and score_near_miss >= score_condition):
+        report_type = "Near Miss"
+        confidence = min(98.0, 80.0 + len(matched_near_miss) * 6.0)
+        rationale = f"AI word analysis identified close-call / near-miss indicators ({', '.join(matched_near_miss[:3])}). An unplanned incident occurred with zero injury but high potential severity."
+        matched_words = matched_near_miss
+    elif matched_act and (score_act >= score_condition or ("standing" in text_lower or "unhooked" in text_lower or "without" in text_lower or "not wearing" in text_lower)):
+        report_type = "Unsafe Act"
+        confidence = min(98.0, 78.0 + len(matched_act) * 6.0)
+        rationale = f"AI word analysis identified behavioral deviations / human actions ({', '.join(matched_act[:3])}) violating safety procedures or Life-Saving Rules."
+        matched_words = matched_act
+    elif matched_condition or score_condition > 0:
+        report_type = "Unsafe Condition"
+        confidence = min(98.0, 78.0 + len(matched_condition) * 6.0)
+        rationale = f"AI word analysis identified physical equipment defect or environmental hazard ({', '.join(matched_condition[:3])}) existing independently of immediate human action."
+        matched_words = matched_condition
+    else:
+        # Contextual heuristic fallback
+        if any(w in text_lower for w in ["worker", "person", "operator", "crew", "employee", "he", "she", "they"]):
+            report_type = "Unsafe Act"
+            rationale = "Contextual analysis suggests individual worker action or human deviation."
+            confidence = 72.0
+            matched_words = ["worker context"]
+        else:
+            report_type = "Unsafe Condition"
+            rationale = "Contextual analysis points to environmental or physical equipment condition."
+            confidence = 72.0
+            matched_words = ["equipment context"]
+
+    return {
+        "report_type": report_type,
+        "confidence": round(confidence, 1),
+        "rationale": rationale,
+        "matched_words": matched_words,
+        "scores": {
+            "near_miss": score_near_miss,
+            "unsafe_act": score_act,
+            "unsafe_condition": score_condition
+        }
+    }
+
 def get_ai_status() -> Dict[str, Any]:
     """
     Returns the current configuration and operational status of the AI engine.
@@ -233,6 +321,8 @@ Analyze the safety observation report and output a strictly valid JSON object wi
 
 Schema:
 {
+  "report_type": string (Must be strictly one of: "Unsafe Act", "Unsafe Condition", "Near Miss"),
+  "ai_classification_rationale": string (1-2 sentences explaining why the words indicate an Unsafe Act, Unsafe Condition, or Near Miss),
   "site": string (e.g. "Digboi Refinery D", "Drilling Site A", "Offshore Rig 04"),
   "unit": string (e.g. "CDU", "FCCU", "Mud Pump Area", "Derrick Floor", "BOP Stack"),
   "location": string,
@@ -300,6 +390,14 @@ Schema:
                 
             parsed = json.loads(content.strip())
             
+            # Ensure word classification is populated
+            word_clf = classify_safety_words(text)
+            if parsed.get("report_type") not in ["Unsafe Act", "Unsafe Condition", "Near Miss"]:
+                parsed["report_type"] = word_clf["report_type"]
+            if not parsed.get("ai_classification_rationale"):
+                parsed["ai_classification_rationale"] = word_clf["rationale"]
+            parsed["classification_matched_words"] = word_clf.get("matched_words", [])
+
             # Add simulated alerts
             risk_lvl = parsed.get("risk_level", "MEDIUM")
             simulated_alerts = []
@@ -333,10 +431,24 @@ def analyzeSafetyReport(text: str, db: Session = None, report_meta: Optional[Dic
     # 1. Attempt LLM invocation
     llm_result = _call_llm_analysis(text, report_meta)
     if llm_result:
+        # Guarantee report_type and classification rationale are present
+        if "report_type" not in llm_result or not llm_result["report_type"]:
+            clf = classify_safety_words(text)
+            llm_result["report_type"] = clf["report_type"]
+            llm_result["ai_classification_rationale"] = clf["rationale"]
+            llm_result["classification_matched_words"] = clf["matched_words"]
         return llm_result
 
     # 2. Deterministic GATI Rule & Heuristic Engine (Fallback / Offline)
     text_lower = (text or "").lower()
+    word_clf = classify_safety_words(text)
+    user_type = (report_meta and report_meta.get("report_type"))
+    if not user_type or user_type in ["Auto-detect", "Auto", "None", ""]:
+        classified_report_type = word_clf["report_type"]
+    elif user_type == "Unsafe Condition" and word_clf["report_type"] in ["Unsafe Act", "Near Miss"] and len(word_clf["matched_words"]) > 0:
+        classified_report_type = word_clf["report_type"]
+    else:
+        classified_report_type = user_type or word_clf["report_type"]
     
     sif_keywords = BASE_SIF_KEYWORDS.copy()
     lsr_keywords = {k: list(v) for k, v in BASE_LSR_KEYWORDS.items()}
@@ -541,6 +653,10 @@ def analyzeSafetyReport(text: str, db: Session = None, report_meta: Optional[Dic
     l6_job = f"Conduct {activity.lower()} at {location}"
 
     return {
+        "report_type": classified_report_type,
+        "ai_classification_rationale": word_clf["rationale"],
+        "classification_matched_words": word_clf["matched_words"],
+        "classification_scores": word_clf["scores"],
         "sif_risk_score": sif_risk_score,
         "risk_level": risk_level,
         "is_sif_precursor": is_sif_precursor,

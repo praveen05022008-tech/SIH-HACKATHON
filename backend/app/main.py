@@ -144,6 +144,19 @@ def get_cloudinary_config():
     api_key = os.getenv("CLOUDINARY_API_KEY") or getattr(config, "CLOUDINARY_API_KEY", "")
     api_secret = os.getenv("CLOUDINARY_API_SECRET") or getattr(config, "CLOUDINARY_API_SECRET", "")
     
+    if not (cloud_name and api_key and api_secret):
+        cloudinary_url = os.getenv("CLOUDINARY_URL") or getattr(config, "CLOUDINARY_URL", "")
+        if cloudinary_url and "cloudinary://" in cloudinary_url:
+            try:
+                import re
+                match = re.match(r"cloudinary://([^:]+):([^@]+)@(.+)", cloudinary_url.strip())
+                if match:
+                    api_key = match.group(1)
+                    api_secret = match.group(2)
+                    cloud_name = match.group(3)
+            except Exception:
+                pass
+
     if cloud_name and api_key and api_secret:
         cloudinary.config(
             cloud_name=cloud_name,
@@ -1177,6 +1190,23 @@ def get_events(
     events = query.order_by(models.SafetyEvent.timestamp.desc()).all()
     return events
 
+# GET & POST /api/events/classify-words & /api/ai/classify-words
+@app.get("/api/events/classify-words")
+@app.post("/api/events/classify-words")
+@app.get("/api/ai/classify-words")
+@app.post("/api/ai/classify-words")
+def classify_words_endpoint(text: Optional[str] = Query(None), payload: Optional[Dict[str, Any]] = Body(None)):
+    """
+    Real-time AI word analysis & classification engine.
+    Analyzes observation text words to classify as 'Unsafe Act', 'Unsafe Condition', or 'Near Miss'.
+    """
+    query_text = text or (payload and payload.get("text")) or ""
+    result = ai_service.classify_safety_words(query_text)
+    return {
+        "success": True,
+        **result
+    }
+
 # GET /api/events/:id
 @app.get("/api/events/{event_id}")
 def get_event_detail(event_id: str, db: Session = Depends(get_db)):
@@ -1513,6 +1543,7 @@ def analyze_report(payload: schemas.SafetyReportCreate, db: Session = Depends(ge
     # 2. Process (M1-M6) using AI service
     try:
         report_meta = {
+            "report_type": payload.report_type,
             "site": payload.site,
             "unit": payload.unit,
             "location": payload.location,
@@ -1522,6 +1553,10 @@ def analyze_report(payload: schemas.SafetyReportCreate, db: Session = Depends(ge
         }
         analysis = ai_service.analyzeSafetyReport(payload.raw_text, db, report_meta)
         
+        # Determine final AI-classified report_type
+        final_report_type = analysis.get("report_type") or payload.report_type or "Unsafe Condition"
+        report.report_type = final_report_type
+        
         event_count = db.query(models.SafetyEvent).count() + 1
         evt_id = f"EVT-{10000 + event_count}"
         
@@ -1530,7 +1565,7 @@ def analyze_report(payload: schemas.SafetyReportCreate, db: Session = Depends(ge
             id=evt_id,
             report_id=report.id,
             report_code=report_code,
-            report_type=payload.report_type or "Unsafe Condition",
+            report_type=final_report_type,
             reporter_email=payload.reporter_email or "worker@refinery.safe",
             timestamp=datetime.datetime.utcnow(),
             site=analysis["site"],
@@ -1634,6 +1669,9 @@ def analyze_report(payload: schemas.SafetyReportCreate, db: Session = Depends(ge
             "id": evt_id,
             "event_id": evt_id,
             "report_code": report_code,
+            "report_type": final_report_type,
+            "ai_classification_rationale": analysis.get("ai_classification_rationale", ""),
+            "classification_matched_words": analysis.get("classification_matched_words", []),
             "risk_level": analysis["risk_level"],
             "sif_risk_score": analysis["sif_risk_score"],
             "is_sif_precursor": analysis["is_sif_precursor"],
