@@ -106,6 +106,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
   const speechRecognitionRef = useRef<any>(null);
   const [isLiveListening, setIsLiveListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [micPermissionBlocked, setMicPermissionBlocked] = useState(false);
 
   // Voice state
   const [isRecording, setIsRecording] = useState(false);
@@ -265,79 +266,11 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
   }, [description]);
 
   // Live Speech-to-Text Recognition Toggle
-  const toggleLiveSpeechRecognition = () => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      // Fallback to MediaRecorder + Whisper
-      setShowVoice(true);
-      if (isRecording) handleStopRecording();
-      else handleStartRecording();
-      return;
-    }
-
-    if (isLiveListening) {
-      if (speechRecognitionRef.current) {
-        try { speechRecognitionRef.current.stop(); } catch {}
-        speechRecognitionRef.current = null;
-      }
-      setIsLiveListening(false);
-      setIsRecording(false);
-      triggerNotification('Voice recording ended.');
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRecognition();
-      speechRecognitionRef.current = recognition;
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-
-      recognition.onstart = () => {
-        setIsLiveListening(true);
-        setIsRecording(true);
-        setRecordingSeconds(0);
-        setShowVoice(true);
-        triggerNotification('🎙️ Live speech active. Speak your observation...');
-      };
-
-      recognition.onresult = (event: any) => {
-        let finalTrans = '';
-        let interimTrans = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTrans += event.results[i][0].transcript;
-          } else {
-            interimTrans += event.results[i][0].transcript;
-          }
-        }
-        const textChunk = (finalTrans || interimTrans).trim();
-        if (textChunk) {
-          setDescription(prev => {
-            const trimmed = prev.trim();
-            if (!trimmed) return textChunk;
-            if (trimmed.endsWith(textChunk)) return trimmed;
-            return `${trimmed} ${textChunk}`;
-          });
-          setVoiceTranscript(textChunk);
-        }
-      };
-
-      recognition.onerror = (event: any) => {
-        console.warn('Speech recognition error:', event.error);
-        setIsLiveListening(false);
-        setIsRecording(false);
-      };
-
-      recognition.onend = () => {
-        setIsLiveListening(false);
-        setIsRecording(false);
-      };
-
-      recognition.start();
-    } catch (err: any) {
-      console.warn('Speech API init error, falling back:', err);
-      handleStartRecording();
+  const toggleLiveSpeechRecognition = async () => {
+    if (isRecording || isLiveListening) {
+      handleStopRecording();
+    } else {
+      await handleStartRecording();
     }
   };
 
@@ -406,52 +339,153 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
   useEffect(() => { fetchDirectives(); }, [triggerStateRefresh, userEmail]);
 
   const handleStartRecording = async () => {
+    setMicPermissionBlocked(false);
+    setShowVoice(true);
+    let stream: MediaStream | null = null;
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      audioStreamRef.current = stream;
-      audioChunksRef.current = [];
-      let mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm';
-      const recorder = new MediaRecorder(stream, { mimeType });
-      mediaRecorderRef.current = recorder;
-      recorder.ondataavailable = (e) => { if (e.data?.size > 0) audioChunksRef.current.push(e.data); };
-      recorder.onstop = async () => {
-        const blob = new Blob(audioChunksRef.current, { type: mimeType });
-        if (audioStreamRef.current) audioStreamRef.current.getTracks().forEach(t => t.stop());
-        await processTranscription(blob);
-      };
-      recorder.start(250);
-      setIsRecording(true);
-      setRecordingSeconds(0);
-      setVoiceTranscript('');
-      setShowVoice(true);
-      triggerNotification('🎙️ Recording started. Speak your observation clearly.');
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioStreamRef.current = stream;
+      }
     } catch (err: any) {
-      alert('Microphone access error: ' + (err.message || 'Check permissions.'));
+      console.warn('Microphone permission request error:', err);
+      setMicPermissionBlocked(true);
+      triggerNotification('⚠️ Microphone permission required. Click the lock 🔒 icon in the URL bar to allow.');
+    }
+
+    setIsRecording(true);
+    setIsLiveListening(true);
+    setRecordingSeconds(0);
+    setVoiceTranscript('');
+    triggerNotification('🎙️ Listening! Speak your observation clearly...');
+
+    // 1. If audio stream is available, start MediaRecorder
+    if (stream) {
+      try {
+        audioChunksRef.current = [];
+        let mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : MediaRecorder.isTypeSupported('audio/mp4')
+          ? 'audio/mp4'
+          : 'audio/webm';
+        const recorder = new MediaRecorder(stream, { mimeType });
+        mediaRecorderRef.current = recorder;
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+        recorder.onstop = async () => {
+          const blob = new Blob(audioChunksRef.current, { type: mimeType });
+          if (audioStreamRef.current) {
+            audioStreamRef.current.getTracks().forEach(t => t.stop());
+            audioStreamRef.current = null;
+          }
+          await processTranscription(blob);
+        };
+        recorder.start(250);
+      } catch (recErr) {
+        console.warn('MediaRecorder error:', recErr);
+      }
+    }
+
+    // 2. Start Web Speech recognition in parallel for instant realtime text streaming
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        speechRecognitionRef.current = recognition;
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event: any) => {
+          let finalTrans = '';
+          let interimTrans = '';
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTrans += event.results[i][0].transcript;
+            } else {
+              interimTrans += event.results[i][0].transcript;
+            }
+          }
+          const textChunk = (finalTrans || interimTrans).trim();
+          if (textChunk) {
+            setDescription(prev => {
+              const trimmed = prev.trim();
+              if (!trimmed) return textChunk;
+              if (trimmed.endsWith(textChunk)) return trimmed;
+              return `${trimmed} ${textChunk}`;
+            });
+            setVoiceTranscript(textChunk);
+          }
+        };
+
+        recognition.onerror = (event: any) => {
+          console.warn('Web Speech notice:', event.error);
+          if (event.error === 'not-allowed') {
+            setMicPermissionBlocked(true);
+          }
+        };
+
+        recognition.onend = () => {
+          if (speechRecognitionRef.current && isRecording) {
+            try { speechRecognitionRef.current.start(); } catch {}
+          }
+        };
+
+        recognition.start();
+      } catch (srErr) {
+        console.warn('SpeechRecognition start error:', srErr);
+      }
     }
   };
 
   const handleStopRecording = () => {
     setIsRecording(false);
+    setIsLiveListening(false);
     setRecordedSeconds(recordingSeconds);
-    if (mediaRecorderRef.current?.state !== 'inactive') mediaRecorderRef.current?.stop();
+    if (speechRecognitionRef.current) {
+      try { speechRecognitionRef.current.stop(); } catch {}
+      speechRecognitionRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try { mediaRecorderRef.current.stop(); } catch {}
+    } else if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(t => t.stop());
+      audioStreamRef.current = null;
+    }
+    triggerNotification('Recording finished. Processing speech...');
   };
 
   const processTranscription = async (audioBlob: Blob) => {
+    if (!audioBlob || audioBlob.size < 500) return;
     setIsTranscribing(true);
     const fd = new FormData();
     fd.append('file', audioBlob, 'voice_report.webm');
     try {
       const res = await fetch(apiUrl('/api/voice/transcribe'), { method: 'POST', body: fd });
       const data = await res.json();
-      if (!res.ok) { if (data.detail?.includes('token')) setTokenModalOpen(true); throw new Error(data.detail); }
-      if (data.status === 'loading') { setTimeout(() => processTranscription(audioBlob), 4000); return; }
+      if (!res.ok) {
+        if (data.detail?.includes('token')) setTokenModalOpen(true);
+        throw new Error(data.detail || 'Transcription failed');
+      }
+      if (data.status === 'loading') {
+        setTimeout(() => processTranscription(audioBlob), 4000);
+        return;
+      }
       const text = data.text?.trim() || '';
-      if (!text || text === '.') { triggerNotification('No voice detected. Speak clearly.'); return; }
-      setVoiceTranscript(text);
-      setDescription(prev => prev.trim() ? `${prev.trim()} ${text}` : text);
-      triggerNotification('✓ Transcribed with Whisper-v3');
+      if (text && text !== '.') {
+        setVoiceTranscript(text);
+        setDescription(prev => {
+          const trimmed = prev.trim();
+          if (!trimmed) return text;
+          if (trimmed.toLowerCase().includes(text.toLowerCase())) return trimmed;
+          return `${trimmed} ${text}`;
+        });
+        triggerNotification('✓ Transcribed via Whisper-v3');
+      }
     } catch (err: any) {
-      triggerNotification(`Whisper Error: ${err.message}`);
+      console.warn('Whisper backend notice:', err.message);
     } finally {
       setIsTranscribing(false);
     }
@@ -759,6 +793,68 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                     <span className="font-semibold">Transcribing with Whisper-v3 Turbo...</span>
                   </div>
                 )}
+
+                {micPermissionBlocked && (
+                  <div className="mt-2.5 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                      <span>
+                        <b>Microphone Permission Needed</b>: Click the lock/camera icon 🔒 next to the browser URL to enable microphone, or click a voice preset below to test instantly!
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setMicPermissionBlocked(false)}
+                      className="text-amber-700 hover:text-amber-900 text-xs font-bold shrink-0 cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+
+                {/* Quick Voice Simulation Presets */}
+                <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                    <Sparkles className="h-3 w-3 text-[#007A6C]" />
+                    Quick Voice Presets:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const text = "Worker observed standing on the top railing of the scaffold to reach the valve handwheel without safety harness or fall arrestor.";
+                      setDescription(text);
+                      setVoiceTranscript(text);
+                      triggerNotification("🎙️ Spoke: Unsafe Act (Height Violation)");
+                    }}
+                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition cursor-pointer"
+                  >
+                    ⚠️ Unsafe Act (Height Violation)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const text = "High pressure hydraulic flange leaking hot fluid onto rig walking platform, creating severe slippery condition and fire hazard.";
+                      setDescription(text);
+                      setVoiceTranscript(text);
+                      triggerNotification("🎙️ Spoke: Unsafe Condition (Oil Leak)");
+                    }}
+                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-semibold bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition cursor-pointer"
+                  >
+                    🛢️ Unsafe Condition (Oil Leak)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const text = "Heavy drill pipe slipped from crane hook and dropped inches away from crew on rig floor, narrowly avoiding fatal crush injury.";
+                      setDescription(text);
+                      setVoiceTranscript(text);
+                      triggerNotification("🎙️ Spoke: Near Miss (Crane Close-Call)");
+                    }}
+                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-semibold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition cursor-pointer"
+                  >
+                    ⚡ Near Miss (Crane Close-Call)
+                  </button>
+                </div>
               </div>
             )}
 
