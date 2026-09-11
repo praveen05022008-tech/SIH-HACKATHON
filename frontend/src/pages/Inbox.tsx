@@ -127,7 +127,7 @@ export const Inbox: React.FC<InboxProps> = ({ onViewEvent, triggerStateRefresh }
         
         <div className="bg-white border border-slate-200 rounded-xl p-4.5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🚨 Total Alerts</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Alerts</span>
             <div className="text-xl font-extrabold mt-1 text-slate-800">{totalAlerts}</div>
             <p className="text-[9px] text-slate-400 mt-0.5">Ingested logs</p>
           </div>
@@ -138,7 +138,7 @@ export const Inbox: React.FC<InboxProps> = ({ onViewEvent, triggerStateRefresh }
 
         <div className="bg-white border border-slate-200 rounded-xl p-4.5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🔴 High Risk</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">High Risk</span>
             <div className="text-xl font-extrabold mt-1 text-red-600">{highRiskAlerts}</div>
             <p className="text-[9px] text-slate-400 mt-0.5">Score ≥ 6.5</p>
           </div>
@@ -149,7 +149,7 @@ export const Inbox: React.FC<InboxProps> = ({ onViewEvent, triggerStateRefresh }
 
         <div className="bg-white border border-slate-200 rounded-xl p-4.5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🟡 Pending Review</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pending Review</span>
             <div className="text-xl font-extrabold mt-1 text-amber-500">{pendingReview}</div>
             <p className="text-[9px] text-slate-400 mt-0.5">Triage queue</p>
           </div>
@@ -160,7 +160,7 @@ export const Inbox: React.FC<InboxProps> = ({ onViewEvent, triggerStateRefresh }
 
         <div className="bg-white border border-slate-200 rounded-xl p-4.5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">✅ Reviewed</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Reviewed</span>
             <div className="text-xl font-extrabold mt-1 text-emerald-600">{reviewedAlerts}</div>
             <p className="text-[9px] text-slate-400 mt-0.5">Audits verified</p>
           </div>
@@ -205,10 +205,10 @@ export const Inbox: React.FC<InboxProps> = ({ onViewEvent, triggerStateRefresh }
               className="block w-full py-1 px-2.5 border border-slate-300 rounded-lg text-xs bg-slate-50 text-slate-800"
             >
               <option value="All">All Risks</option>
-              <option value="Critical">🔴 Critical</option>
-              <option value="High">🟠 High</option>
-              <option value="Medium">🟡 Medium</option>
-              <option value="Low">🟢 Low</option>
+              <option value="Critical">Critical</option>
+              <option value="High">High</option>
+              <option value="Medium">Medium</option>
+              <option value="Low">Low</option>
             </select>
           </div>
           <div>
@@ -262,7 +262,7 @@ export const Inbox: React.FC<InboxProps> = ({ onViewEvent, triggerStateRefresh }
           </div>
         ) : filteredEvents.length === 0 ? (
           <div className="text-center py-16 px-4">
-            <div className="text-slate-300 text-4xl mb-3">📭</div>
+            <InboxIcon className="h-12 w-12 text-slate-300 mx-auto mb-3" />
             <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">No Safety Alerts Found</h4>
             <p className="text-[10px] text-slate-400 mt-1 font-medium">Try adjusting your filters or search keywords.</p>
           </div>
@@ -290,11 +290,11 @@ export const Inbox: React.FC<InboxProps> = ({ onViewEvent, triggerStateRefresh }
                   const isMedium = score >= 4.0 && score < 6.5;
 
                   let riskBadgeStyle = 'bg-slate-50 text-slate-600 border-slate-200';
-                  let riskCircle = '🔴';
-                  if (isCritical) { riskBadgeStyle = 'bg-red-50 text-red-700 border-red-200 font-bold'; riskCircle = '🔴'; }
-                  else if (isHigh) { riskBadgeStyle = 'bg-orange-50 text-orange-700 border-orange-200 font-bold'; riskCircle = '🟠'; }
-                  else if (isMedium) { riskBadgeStyle = 'bg-amber-50 text-amber-700 border-amber-200'; riskCircle = '🟡'; }
-                  else { riskBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200'; riskCircle = '🟢'; }
+                  let riskDotColor = 'bg-slate-400';
+                  if (isCritical) { riskBadgeStyle = 'bg-red-50 text-red-700 border-red-200 font-bold'; riskDotColor = 'bg-red-500'; }
+                  else if (isHigh) { riskBadgeStyle = 'bg-orange-50 text-orange-700 border-orange-200 font-bold'; riskDotColor = 'bg-orange-500'; }
+                  else if (isMedium) { riskBadgeStyle = 'bg-amber-50 text-amber-700 border-amber-200'; riskDotColor = 'bg-amber-500'; }
+                  else { riskBadgeStyle = 'bg-emerald-50 text-emerald-700 border-emerald-200'; riskDotColor = 'bg-emerald-500'; }
 
                   const promptStatus = getPromptStatus(evt.status);
                   let statusBadgeStyle = 'bg-slate-50 text-slate-500 border-slate-200';
@@ -312,8 +312,8 @@ export const Inbox: React.FC<InboxProps> = ({ onViewEvent, triggerStateRefresh }
                       <td className="px-5 py-3 text-slate-500 font-medium">{getPromptType(evt)}</td>
                       <td className="px-5 py-3 text-slate-600 font-medium">{evt.site}</td>
                       <td className="px-5 py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 border rounded-full text-[9px] ${riskBadgeStyle}`}>
-                          <span>{riskCircle}</span>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 border rounded-full text-[9px] ${riskBadgeStyle}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${riskDotColor}`} />
                           <span>{isCritical ? 'Critical' : isHigh ? 'High' : isMedium ? 'Medium' : 'Low'}</span>
                         </span>
                       </td>

@@ -11,7 +11,10 @@ import {
   Clock,
   Send,
   Sliders,
-  ChevronDown
+  ChevronDown,
+  OctagonAlert,
+  Wrench,
+  Search
 } from 'lucide-react';
 
 interface TakeActionProps {
@@ -265,7 +268,10 @@ export const TakeAction: React.FC<TakeActionProps> = ({ triggerNotification, tri
                         className="h-4 w-4 rounded border-slate-350 text-red-600 focus:ring-red-500 mt-0.5"
                       />
                       <div>
-                        <div className="font-bold text-xs text-red-800">🛑 Stop Work Order</div>
+                        <div className="font-bold text-xs text-red-800 flex items-center gap-1.5">
+                          <OctagonAlert className="h-3.5 w-3.5 text-red-600 inline shrink-0" />
+                          <span>Stop Work Order</span>
+                        </div>
                         <span className="text-[9px] text-slate-500 mt-0.5 block">Immediately stop activity.</span>
                       </div>
                     </label>
@@ -280,7 +286,10 @@ export const TakeAction: React.FC<TakeActionProps> = ({ triggerNotification, tri
                         className="h-4 w-4 rounded border-slate-355 text-industrial-blue focus:ring-industrial-blue mt-0.5"
                       />
                       <div>
-                        <div className="font-bold text-xs text-industrial-blue">🔧 Corrective Action</div>
+                        <div className="font-bold text-xs text-industrial-blue flex items-center gap-1.5">
+                          <Wrench className="h-3.5 w-3.5 text-industrial-blue inline shrink-0" />
+                          <span>Corrective Action</span>
+                        </div>
                         <span className="text-[9px] text-slate-500 mt-0.5 block">Take measures to control.</span>
                       </div>
                     </label>
@@ -295,7 +304,10 @@ export const TakeAction: React.FC<TakeActionProps> = ({ triggerNotification, tri
                         className="h-4 w-4 rounded border-slate-355 text-industrial-orange focus:ring-industrial-orange mt-0.5"
                       />
                       <div>
-                        <div className="font-bold text-xs text-industrial-orange">🔍 Investigation</div>
+                        <div className="font-bold text-xs text-industrial-orange flex items-center gap-1.5">
+                          <Search className="h-3.5 w-3.5 text-industrial-orange inline shrink-0" />
+                          <span>Investigation</span>
+                        </div>
                         <span className="text-[9px] text-slate-500 mt-0.5 block">Conduct root-cause check.</span>
                       </div>
                     </label>

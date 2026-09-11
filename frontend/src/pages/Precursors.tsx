@@ -1,7 +1,7 @@
 import { apiUrl } from '../config/api';
 import React, { useEffect, useState } from 'react';
 import { PrecursorPattern } from '../types';
-import { Network, RefreshCcw, ShieldAlert, Filter, X } from 'lucide-react';
+import { Network, RefreshCcw, ShieldAlert, Filter, X, ShieldCheck } from 'lucide-react';
 import { TrendIndicator } from '../components/UIElements';
 
 interface PrecursorsProps {
@@ -109,7 +109,7 @@ export const Precursors: React.FC<PrecursorsProps> = ({ triggerStateRefresh }) =
         </div>
       ) : filteredPatterns.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-xl p-12 text-center shadow-xs">
-          <div className="text-3xl mb-2">🛡️</div>
+          <ShieldCheck className="h-10 w-10 text-slate-300 mx-auto mb-2" />
           <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">No Recurring Precursor Pattern Detected</h3>
           <p className="text-[10px] text-slate-400 mt-1">Adjust filters. No matched threshold events exist.</p>
         </div>

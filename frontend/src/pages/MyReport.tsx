@@ -21,7 +21,8 @@ import {
   Trash2,
   Pencil,
   Check,
-  AlertCircle
+  AlertCircle,
+  Cloud
 } from 'lucide-react';
 import { apiUrl } from '../config/api';
 import { User, SafetyEvent } from '../types';
@@ -29,9 +30,10 @@ import { User, SafetyEvent } from '../types';
 interface MyReportProps {
   user: User;
   onNavigateTo?: (page: string) => void;
+  triggerStateRefresh?: boolean;
 }
 
-export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
+export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerStateRefresh }) => {
   const [reports, setReports] = useState<SafetyEvent[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -160,9 +162,16 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
   };
 
   const fetchMyReports = () => {
-    if (!user?.email) return;
+    const targetEmail = user?.email || (() => {
+      try {
+        const stored = localStorage.getItem('raksha_auth_user');
+        if (stored) return JSON.parse(stored).email;
+      } catch {}
+      return 'srinith@gmail.com';
+    })();
+    if (!targetEmail) return;
     setLoading(true);
-    fetch(apiUrl(`/api/events?reporter_email=${encodeURIComponent(user.email)}`))
+    fetch(apiUrl(`/api/events?reporter_email=${encodeURIComponent(targetEmail)}`))
       .then(res => (res.ok ? res.json() : []))
       .then(data => setReports(Array.isArray(data) ? data : []))
       .catch(err => {
@@ -174,7 +183,7 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
 
   useEffect(() => {
     fetchMyReports();
-  }, [user?.email]);
+  }, [user?.email, triggerStateRefresh]);
 
   // Counts for the 4 status cards
   const needsReviewCount = useMemo(() => {
@@ -826,13 +835,16 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
                 <div className="pt-2 border-t border-slate-100 space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-slate-500 font-bold flex items-center gap-1">
-                      <span className="text-emerald-700">☁️ Cloudinary Evidence Photo</span>
+                      <span className="text-emerald-700 inline-flex items-center gap-1">
+                        <Cloud className="h-3.5 w-3.5" />
+                        <span>Cloudinary Evidence Photo</span>
+                      </span>
                     </span>
                     <a
                       href={selectedReport.photo_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[#007A6C] hover:underline font-bold text-[11px]"
+                      className="text-[#00694c] hover:underline font-bold text-[11px]"
                     >
                       Open Full Size ↗
                     </a>
@@ -1131,7 +1143,7 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo }) => {
                   href={previewPhoto}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-2.5 py-1 text-xs font-bold text-[#007A6C] hover:bg-[#E8F6F4] rounded-lg border border-[#A2D9D2] transition flex items-center gap-1"
+                  className="px-2.5 py-1 text-xs font-bold text-[#00694c] hover:bg-[#e6f4ee] rounded-lg border border-[#A2D9D2] transition flex items-center gap-1"
                 >
                   <span>Open Original ↗</span>
                 </a>

@@ -14,7 +14,7 @@ for possible_env in [
 # Primary Enterprise Database (TiDB Cloud MySQL protocol)
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "mysql+pymysql://3jfTYcg9qFzDk43.root:<PASSWORD>@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/sys"
+    "mysql+pymysql://3jfTYcg9qFzDk43.root:<PASSWORD>@gateway01.ap-southeast-1.prod.aws.tidbcloud.com:4000/test"
 )
 
 SECRET_KEY = os.getenv("SECRET_KEY", "gati_secret_key_sih_2026_mayan_safe")

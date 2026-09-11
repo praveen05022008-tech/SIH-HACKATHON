@@ -197,7 +197,7 @@ export const TrackActions: React.FC<TrackActionsProps> = ({ triggerNotification,
         
         <div className="bg-white border border-slate-200 rounded-xl p-4.5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">🟡 Pending</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pending</span>
             <div className="text-xl font-extrabold mt-1 text-slate-800">{pendingCount}</div>
             <p className="text-[9px] text-slate-400 mt-0.5">Waiting to start</p>
           </div>
@@ -208,7 +208,7 @@ export const TrackActions: React.FC<TrackActionsProps> = ({ triggerNotification,
 
         <div className="bg-white border border-slate-200 rounded-xl p-4.5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">🔵 In Progress</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">In Progress</span>
             <div className="text-xl font-extrabold mt-1 text-slate-800">{inProgressCount}</div>
             <p className="text-[9px] text-slate-400 mt-0.5">Active field tasks</p>
           </div>
@@ -219,7 +219,7 @@ export const TrackActions: React.FC<TrackActionsProps> = ({ triggerNotification,
 
         <div className="bg-white border border-slate-200 rounded-xl p-4.5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">🟢 Completed</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Completed</span>
             <div className="text-xl font-extrabold mt-1 text-slate-800">{completedCount}</div>
             <p className="text-[9px] text-slate-400 mt-0.5">Awaiting verification</p>
           </div>
@@ -230,7 +230,7 @@ export const TrackActions: React.FC<TrackActionsProps> = ({ triggerNotification,
 
         <div className="bg-white border border-slate-200 rounded-xl p-4.5 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">🔴 Overdue</span>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Overdue</span>
             <div className="text-xl font-extrabold mt-1 text-red-650">{overdueCount}</div>
             <p className="text-[9px] text-slate-400 mt-0.5">Missed deadlines</p>
           </div>
@@ -275,10 +275,10 @@ export const TrackActions: React.FC<TrackActionsProps> = ({ triggerNotification,
               className="block w-full py-1 px-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-800"
             >
               <option value="All">All Statuses</option>
-              <option value="Pending">🟡 Pending</option>
-              <option value="In Progress">🔵 In Progress</option>
-              <option value="Completed">🟢 Completed</option>
-              <option value="Overdue">🔴 Overdue</option>
+              <option value="Pending">Pending</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="Overdue">Overdue</option>
               <option value="Resolved">Resolved</option>
             </select>
           </div>
@@ -290,10 +290,10 @@ export const TrackActions: React.FC<TrackActionsProps> = ({ triggerNotification,
               className="block w-full py-1 px-2.5 border border-slate-300 rounded-lg bg-slate-50 text-slate-800"
             >
               <option value="All">All Priorities</option>
-              <option value="CRITICAL">🔴 Critical</option>
-              <option value="HIGH">🟠 High</option>
-              <option value="MEDIUM">🟡 Medium</option>
-              <option value="LOW">🟢 Low</option>
+              <option value="CRITICAL">Critical</option>
+              <option value="HIGH">High</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="LOW">Low</option>
             </select>
           </div>
           <div>

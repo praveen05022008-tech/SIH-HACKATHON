@@ -307,7 +307,7 @@ export const Investigate: React.FC<InvestigateProps> = ({
   const handleSubmitInvestigation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!findings.trim()) {
-      triggerNotification('⚠️ Please record your field findings and observations.');
+      triggerNotification('Please record your field findings and observations.');
       return;
     }
 
@@ -536,12 +536,12 @@ export const Investigate: React.FC<InvestigateProps> = ({
                         onClick={() => toggleFactor(factor)}
                         className={`px-3 py-2 rounded-xl text-xs text-left font-medium transition cursor-pointer flex items-center gap-2 border ${
                           isSelected 
-                            ? 'bg-[#E8F6F4] text-[#007A6C] border-[#008779]/40 font-bold' 
+                            ? 'bg-[#e6f4ee] text-[#00694c] border-[#00694c]/40 font-bold' 
                             : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                         }`}
                       >
                         <div className={`h-4 w-4 rounded flex items-center justify-center text-[10px] ${
-                          isSelected ? 'bg-[#008779] text-white' : 'border border-slate-300'
+                          isSelected ? 'bg-[#00694c] text-white' : 'border border-slate-300'
                         }`}>
                           {isSelected && '✓'}
                         </div>

@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   BarChart3, TrendingUp, AlertTriangle, ShieldCheck, MapPin,
   Activity, Layers, Filter, RefreshCw, ChevronRight, ArrowUpRight,
-  ArrowDownRight, CheckCircle2, Flame, ShieldAlert, Zap, Radio
+  ArrowDownRight, CheckCircle2, Flame, ShieldAlert, Zap, Radio, Shield
 } from 'lucide-react';
 import { SafetyEvent, User as UserType } from '../types';
 
@@ -402,8 +402,9 @@ export const ManagerAnalytics: React.FC<ManagerAnalyticsProps> = ({
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] mt-2 text-slate-500">
-                    <span className="truncate max-w-[240px] text-slate-400 font-mono">
-                      ⚡ {item.energySource}
+                    <span className="truncate max-w-[240px] text-slate-400 font-mono flex items-center gap-1">
+                      <Zap className="h-3 w-3 text-amber-500 shrink-0" />
+                      <span>{item.energySource}</span>
                     </span>
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-red-600 font-bold">
@@ -483,11 +484,13 @@ export const ManagerAnalytics: React.FC<ManagerAnalyticsProps> = ({
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] mt-2 text-slate-500 font-medium">
-                    <span className="text-slate-600">
-                      ⚠️ <strong>{rule.violationsCount}</strong> total violations detected
+                    <span className="text-slate-600 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3 text-amber-600 shrink-0" />
+                      <span><strong>{rule.violationsCount}</strong> total violations detected</span>
                     </span>
-                    <span className="text-red-600 font-semibold">
-                      🛡️ {rule.highSifCount} critical barrier bypasses
+                    <span className="text-red-600 font-semibold flex items-center gap-1">
+                      <Shield className="h-3 w-3 text-red-600 shrink-0" />
+                      <span>{rule.highSifCount} critical barrier bypasses</span>
                     </span>
                     <span className={`font-semibold capitalize ${
                       rule.trend === 'improving' ? 'text-emerald-600' : rule.trend === 'deteriorating' ? 'text-red-600' : 'text-slate-500'
@@ -635,7 +638,10 @@ export const ManagerAnalytics: React.FC<ManagerAnalyticsProps> = ({
               </div>
 
               <div className="mt-3 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-500">
-                <span>🔥 <strong>{act.precursorCount}</strong> recorded near-misses</span>
+                <span className="flex items-center gap-1">
+                  <Flame className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                  <span><strong>{act.precursorCount}</strong> recorded near-misses</span>
+                </span>
                 <span className="text-emerald-700 font-semibold cursor-pointer hover:underline">
                   Assign Officer Audit →
                 </span>

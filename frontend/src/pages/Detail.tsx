@@ -23,7 +23,10 @@ import {
   BrainCircuit,
   Sparkles,
   Zap,
-  CheckCircle2
+  CheckCircle2,
+  Users,
+  Shield,
+  Search
 } from 'lucide-react';
 
 interface DetailProps {
@@ -106,10 +109,10 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
       await fetchEventDetail();
       const analysis = result.analysis || {};
       setAiSuccessMsg(
-        `✅ AI re-analyzed: Risk ${analysis.sif_risk_score ?? '?'}/10 (${analysis.risk_level ?? '?'}) · SIF: ${analysis.is_sif_precursor ?? '?'} (${analysis.sif_probability ?? '?'}%) · LSR: ${analysis.life_saving_rule ?? 'None'}`
+        `AI re-analyzed: Risk ${analysis.sif_risk_score ?? '?'}/10 (${analysis.risk_level ?? '?'}) · SIF: ${analysis.is_sif_precursor ?? '?'} (${analysis.sif_probability ?? '?'}%) · LSR: ${analysis.life_saving_rule ?? 'None'}`
       );
     } catch (err) {
-      setAiSuccessMsg('⚠️ AI analysis encountered an error. Using cached scores.');
+      setAiSuccessMsg('AI analysis encountered an error. Using cached scores.');
     } finally {
       setAnalyzingAi(false);
     }
@@ -129,7 +132,7 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
       const result = await res.json();
       setCopilotAnswer(result.response || 'No response from AI Copilot.');
     } catch (err) {
-      setCopilotAnswer('⚠️ Copilot unavailable. Apply IOGP Life-Saving Rules and Stop Work Authority (SWA) immediately for any high-risk condition.');
+      setCopilotAnswer('Copilot unavailable. Apply IOGP Life-Saving Rules and Stop Work Authority (SWA) immediately for any high-risk condition.');
     } finally {
       setCopilotLoading(false);
     }
@@ -382,7 +385,7 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
                   className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#008779] hover:bg-[#007064] text-white rounded-xl text-xs font-extrabold shadow-sm shadow-[#008779]/20 transition cursor-pointer disabled:opacity-50"
                 >
                   <Sparkles className={`h-3.5 w-3.5 ${analyzingAi ? 'animate-spin' : ''}`} />
-                  <span>{analyzingAi ? 'Analyzing...' : '⚡ Run AI Deep Analysis'}</span>
+                  <span className="flex items-center gap-1">{analyzingAi ? 'Analyzing...' : (<><Zap className="h-3.5 w-3.5" /> Run AI Deep Analysis</>)}</span>
                 </button>
               </div>
             </div>
@@ -437,6 +440,28 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
               </div>
             </div>
 
+            {/* Standard AI Output Breakdown Card */}
+            <div className="p-4 rounded-xl bg-slate-900 text-slate-100 font-mono text-xs leading-relaxed shadow-inner border border-slate-800 space-y-1.5">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-emerald-400" />
+                  <span className="text-xs font-black text-emerald-400 uppercase tracking-wide">
+                    AI output:
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 font-sans font-bold">
+                  {currentEvent.confidence ?? 88}% Confidence
+                </span>
+              </div>
+              <div className="space-y-1 pt-1 text-[11.5px]">
+                <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">Condition:</span> <span className="text-amber-300 font-bold">{currentEvent.condition || promptType}</span></div>
+                <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">Event:</span> <span className="text-white font-bold">{currentEvent.event || currentEvent.hazard || 'Fall from height'}</span></div>
+                <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">Actual injury:</span> <span className="text-emerald-300 font-bold">{currentEvent.actual_injury || 'None'}</span></div>
+                <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">SIF potential:</span> <span className="text-rose-400 font-bold">{currentEvent.sif_potential || ((currentEvent.sif_risk_score ?? score) >= 6.5 ? 'High' : 'Medium')}</span></div>
+                <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">Classification:</span> <span className="text-purple-300 font-bold">{currentEvent.classification || (currentEvent.is_sif_precursor === 'YES' || currentEvent.sif_probability >= 50 ? 'SIF Precursor / High-Potential Near Miss' : 'Low-Potential Observation / Non-SIF')}</span></div>
+              </div>
+            </div>
+
             {/* PROBLEM & ISSUE ANALYSIS BREAKDOWN */}
             <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-2xl space-y-3 text-xs">
               <div className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-1.5 pb-2 border-b border-slate-200/60">
@@ -462,23 +487,26 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
 
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Failed Critical Barrier</span>
-                  <div className="font-semibold text-rose-700 bg-rose-50/80 p-2 rounded-xl border border-rose-200/60 text-[11px] leading-snug">
-                    ⚠️ {currentEvent.barrier_failure || 'Protocol bypass or verification failure before line break'}
+                  <div className="font-semibold text-rose-700 bg-rose-50/80 p-2 rounded-xl border border-rose-200/60 text-[11px] leading-snug flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 text-rose-600 shrink-0" />
+                    <span>{currentEvent.barrier_failure || 'Protocol bypass or verification failure before line break'}</span>
                   </div>
                 </div>
 
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Crew Line of Fire / Exposure</span>
-                  <div className="font-semibold text-slate-700 bg-white p-2 rounded-xl border border-slate-200 text-[11px] leading-snug">
-                    👥 {currentEvent.exposure || 'Work crew stationed within immediate release zone'}
+                  <div className="font-semibold text-slate-700 bg-white p-2 rounded-xl border border-slate-200 text-[11px] leading-snug flex items-center gap-1.5">
+                    <Users className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                    <span>{currentEvent.exposure || 'Work crew stationed within immediate release zone'}</span>
                   </div>
                 </div>
 
                 <div className="sm:col-span-2">
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Life-Saving Rule (LSR) Classification</span>
                   <div className="flex items-center gap-2">
-                    <span className="px-3 py-1 bg-[#008779] text-white rounded-lg text-xs font-black shadow-xs">
-                      🛡️ {currentEvent.life_saving_rule || 'Energy Isolation'}
+                    <span className="px-3 py-1 bg-[#008779] text-white rounded-lg text-xs font-black shadow-xs inline-flex items-center gap-1.5">
+                      <Shield className="h-3.5 w-3.5" />
+                      <span>{currentEvent.life_saving_rule || 'Energy Isolation'}</span>
                     </span>
                     <span className="text-[11px] text-slate-500 font-medium">
                       Consequence: <span className="font-bold text-slate-800">{currentEvent.consequence || 'Catastrophic bodily trauma / fatal SIF incident'}</span>
@@ -674,7 +702,10 @@ export const Detail: React.FC<DetailProps> = ({ event, onBack, reviewerName, onR
                   >
                     <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                     <div>
-                      <div className="font-bold text-xs uppercase text-amber-800">🔍 Mark for Investigation</div>
+                      <div className="font-bold text-xs uppercase text-amber-800 flex items-center gap-1.5">
+                        <Search className="h-3.5 w-3.5" />
+                        <span>Mark for Investigation</span>
+                      </div>
                       <span className="text-[10px] text-slate-500 font-medium block mt-0.5">The case requires further investigation.</span>
                     </div>
                   </button>

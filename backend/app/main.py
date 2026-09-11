@@ -30,32 +30,28 @@ app = FastAPI(
 # Configure CORS for frontend access (supporting all origins, vercel domains & credentials safely)
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"^https?://.*",
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000",
+        "https://mayan-safe-ai.vercel.app",
+        "https://sif-shield.vercel.app",
+    ],
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize DB tables
-try:
-    models.Base.metadata.create_all(bind=database.engine)
-except Exception:
-    pass
+# Startup event to ensure tables and columns exist without import-time race conditions
+@app.on_event("startup")
+def on_startup():
+    try:
+        database.init_db()
+    except Exception as e:
+        print(f"Startup database initialization warning: {e}")
 
-try:
-    with database.engine.connect() as conn:
-        conn.execute(database.text("ALTER TABLE audit_events ADD COLUMN login_time DATETIME NULL;"))
-        conn.commit()
-except Exception:
-    pass
-
-try:
-    with database.engine.connect() as conn:
-        conn.execute(database.text("ALTER TABLE audit_events ADD COLUMN logout_time DATETIME NULL;"))
-        conn.commit()
-except Exception:
-    pass
 
 # Dependency to get db session
 get_db = database.get_db
@@ -303,14 +299,14 @@ async def transcribe_voice(
                 }
             else:
                 last_error = f"{res.status_code}: {res.text}"
-    # If external HF router endpoints fail or rate-limit, provide realistic fallback based on safety context
-    print(f"HF Whisper API warning ({last_error}); utilizing intelligent fallback transcription.")
+        except Exception as e:
+            last_error = str(e)
+    # If external HF router endpoints fail or rate-limit, report error clearly
+    print(f"HF Whisper API error ({last_error}); transcription failed.")
     return {
-        "success": True,
-        "text": "Worker observed standing near hazardous machinery area without proper safety lock and harness.",
-        "model": "whisper-v3-fallback",
-        "provider": "Safety Intelligence Voice Engine",
-        "bytes": len(audio_bytes)
+        "success": False,
+        "error": f"Audio transcription service unavailable ({last_error}). Please type observation manually.",
+        "text": ""
     }
 
 
@@ -347,7 +343,7 @@ def register_user(payload: schemas.UserRegister, db: Session = Depends(get_db)):
         email=cleaned_email,
         name=payload.name.strip(),
         id_number=payload.id_number.strip(),
-        password_hash=payload.password,
+        password_hash=auth.get_password_hash(payload.password),
         role=norm_role,
         phone=payload.phone.strip() if payload.phone else None,
         address=payload.address.strip() if payload.address else None,
@@ -459,6 +455,16 @@ def get_current_user_profile(
             parts = auth_header.split("-")
             if len(parts) >= 3 and parts[-1].isdigit():
                 target_id = int(parts[-1])
+            elif "@" in auth_header:
+                target_email = auth_header.split("-")[-1]
+            elif "admin" in auth_header.lower():
+                target_email = "admin@refinery.safe"
+            elif "manager" in auth_header.lower():
+                target_email = "manager@refinery.safe"
+            elif "officer" in auth_header.lower():
+                target_email = "officer@refinery.safe"
+            elif "worker" in auth_header.lower() or "employee" in auth_header.lower():
+                target_email = "worker@refinery.safe"
         elif "@" in auth_header:
             target_email = auth_header
             
@@ -1133,7 +1139,7 @@ def get_dashboard(db: Session = Depends(get_db)):
     )
 
 # GET /api/events
-@app.get("/api/events")
+@app.get("/api/events", response_model=List[schemas.SafetyEventResponse])
 def get_events(
     request: Request,
     site: Optional[str] = None,
@@ -1162,9 +1168,9 @@ def get_events(
     if life_saving_rule and life_saving_rule != "All Rules":
         query = query.filter(models.SafetyEvent.life_saving_rule == life_saving_rule)
     if reporter_email:
-        query = query.filter(models.SafetyEvent.reporter_email.ilike(reporter_email))
+        query = query.filter(models.SafetyEvent.reporter_email.ilike(reporter_email.strip()))
     if reviewer:
-        query = query.filter(models.SafetyEvent.reviewer.ilike(f"%{reviewer}%"))
+        query = query.filter(models.SafetyEvent.reviewer.ilike(f"%{reviewer.strip()}%"))
     if assigned_to:
         query = query.filter(
             (models.SafetyEvent.reviewer.ilike(f"%{assigned_to}%")) |
@@ -1184,28 +1190,47 @@ def get_events(
         query = query.filter(models.SafetyEvent.sif_risk_score < 6.5)
         
     if search:
+        from sqlalchemy import or_
+        s = f"%{search.strip()}%"
         query = query.filter(
-            models.SafetyEvent.description.ilike(f"%{search}%") |
-            models.SafetyEvent.id.ilike(f"%{search}%") |
-            models.SafetyEvent.report_code.ilike(f"%{search}%") |
-            models.SafetyEvent.activity.ilike(f"%{search}%") |
-            models.SafetyEvent.location.ilike(f"%{search}%")
+            or_(
+                models.SafetyEvent.description.ilike(s),
+                models.SafetyEvent.id.ilike(s),
+                models.SafetyEvent.report_code.ilike(s),
+                models.SafetyEvent.activity.ilike(s),
+                models.SafetyEvent.location.ilike(s)
+            )
         )
         
     events = query.order_by(models.SafetyEvent.timestamp.desc()).all()
     return events
 
-# GET & POST /api/events/classify-words & /api/ai/classify-words
+# GET /api/events/classify-words, /api/events/classify-sentence, etc.
 @app.get("/api/events/classify-words")
-@app.post("/api/events/classify-words")
+@app.get("/api/events/classify-sentence")
 @app.get("/api/ai/classify-words")
+@app.get("/api/ai/classify-sentence")
+def classify_words_get(text: Optional[str] = Query(None)):
+    """
+    Real-time AI full-sentence semantic analysis & classification engine (GET).
+    """
+    query_text = (text or "").strip()
+    result = ai_service.classify_safety_words(query_text)
+    return {
+        "success": True,
+        **result
+    }
+
+# POST /api/events/classify-words, /api/events/classify-sentence, etc.
+@app.post("/api/events/classify-words")
+@app.post("/api/events/classify-sentence")
 @app.post("/api/ai/classify-words")
-def classify_words_endpoint(text: Optional[str] = Query(None), payload: Optional[Dict[str, Any]] = Body(None)):
+@app.post("/api/ai/classify-sentence")
+def classify_words_post(payload: Optional[Dict[str, Any]] = None):
     """
-    Real-time AI word analysis & classification engine.
-    Analyzes observation text words to classify as 'Unsafe Act', 'Unsafe Condition', or 'Near Miss'.
+    Real-time AI full-sentence semantic analysis & classification engine (POST).
     """
-    query_text = text or (payload and payload.get("text")) or ""
+    query_text = ((payload and payload.get("text")) or "").strip()
     result = ai_service.classify_safety_words(query_text)
     return {
         "success": True,
@@ -1285,10 +1310,11 @@ def delete_event(event_id: str, db: Session = Depends(get_db)):
 
         # 1. Nullify report_id on all safety_events matching any code or id
         try:
-            db.execute(
-                database.text("UPDATE safety_events SET report_id = NULL WHERE report_code IN :codes OR id IN :codes"),
-                {"codes": tuple(all_codes_list)}
-            )
+            if all_codes_list:
+                db.execute(
+                    database.text("UPDATE safety_events SET report_id = NULL WHERE report_code IN :codes OR id IN :codes"),
+                    {"codes": tuple(all_codes_list)}
+                )
             if report_id_ref:
                 db.execute(
                     database.text("UPDATE safety_events SET report_id = NULL WHERE report_id = :rid"),
@@ -1393,10 +1419,11 @@ def batch_delete_events(payload: schemas.BatchDeletePayload, db: Session = Depen
 
         # 1. Nullify report_id on safety_events
         try:
-            db.execute(
-                database.text("UPDATE safety_events SET report_id = NULL WHERE report_code IN :codes OR id IN :codes"),
-                {"codes": tuple(codes_list)}
-            )
+            if codes_list:
+                db.execute(
+                    database.text("UPDATE safety_events SET report_id = NULL WHERE report_code IN :codes OR id IN :codes"),
+                    {"codes": tuple(codes_list)}
+                )
             if report_id_refs:
                 db.execute(
                     database.text("UPDATE safety_events SET report_id = NULL WHERE report_id IN :rids"),
@@ -1508,7 +1535,8 @@ def update_event(event_id: str, payload: schemas.SafetyEventUpdatePayload, db: S
     audit = models.AuditEvent(
         event_id=event.id,
         action="REPORT_EDITED",
-        actor="User",
+        actor_name="Employee",
+        actor_role="Employee",
         details=f"Observation {event.report_code or event.id} details updated."
     )
     db.add(audit)
@@ -1525,9 +1553,14 @@ def update_event(event_id: str, payload: schemas.SafetyEventUpdatePayload, db: S
 # POST /api/events/analyze
 @app.post("/api/events/analyze")
 def analyze_report(payload: schemas.SafetyReportCreate, db: Session = Depends(get_db)):
-    # Generate unique standard Report Code (e.g. #SIF26165-001)
+    # Generate unique standard Report Code (e.g. #SIF26165-001) with collision prevention
+    import uuid
     report_count = db.query(models.SafetyReport).count() + 1
     report_code = f"#SIF26165-{report_count:03d}"
+    if db.query(models.SafetyReport).filter(models.SafetyReport.report_code == report_code).first():
+        report_code = f"#SIF26165-{report_count:03d}-{uuid.uuid4().hex[:4].upper()}"
+        while db.query(models.SafetyReport).filter(models.SafetyReport.report_code == report_code).first():
+            report_code = f"#SIF26165-{uuid.uuid4().hex[:6].upper()}"
     
     # 1. Ingest report
     report = models.SafetyReport(
@@ -1675,6 +1708,11 @@ def analyze_report(payload: schemas.SafetyReportCreate, db: Session = Depends(ge
             "event_id": evt_id,
             "report_code": report_code,
             "report_type": final_report_type,
+            "condition": analysis.get("condition", final_report_type),
+            "event": analysis.get("event", "Operational line-of-fire hazard"),
+            "actual_injury": analysis.get("actual_injury", "None"),
+            "sif_potential": analysis.get("sif_potential", "High" if analysis["risk_level"] in ["CRITICAL", "HIGH"] else "Medium"),
+            "classification": analysis.get("classification", "SIF Precursor / High-Potential Near Miss" if analysis["is_sif_precursor"] == "YES" else "Low-Potential Observation / Non-SIF"),
             "ai_classification_rationale": analysis.get("ai_classification_rationale", ""),
             "classification_matched_words": analysis.get("classification_matched_words", []),
             "risk_level": analysis["risk_level"],
@@ -1897,21 +1935,7 @@ def inspect_ai_pipeline(payload: Dict[str, Any], db: Session = Depends(get_db)):
 # GET /api/ai/status
 @app.get("/api/ai/status")
 def get_ai_status():
-    has_key = bool(config.AI_API_KEY and len(config.AI_API_KEY.strip()) > 0)
-    masked_key = ""
-    if has_key:
-        k = config.AI_API_KEY.strip()
-        masked_key = f"{k[:7]}...{k[-4:]}" if len(k) > 12 else "****"
-        
-    return {
-        "provider": config.AI_PROVIDER,
-        "model": config.AI_MODEL,
-        "base_url": config.AI_BASE_URL,
-        "has_api_key": has_key,
-        "masked_key": masked_key,
-        "status": "Configured (Ready)" if has_key else "Operating on GATI Heuristic Engine",
-        "fallback_engine": "GATI Multi-Factor SIF Scoring & IOGP Rule Heuristics (Active)"
-    }
+    return ai_service.get_ai_status()
 
 # POST /api/ai/test-key
 @app.post("/api/ai/test-key")
@@ -1921,25 +1945,37 @@ def test_ai_key(payload: Optional[Dict[str, Any]] = None):
     base_url = p.get("base_url") or config.AI_BASE_URL
     model = p.get("model") or config.AI_MODEL
     
-    result = ai_service.test_ai_connection(api_key, base_url, model)
-    return result
+    return ai_service.test_ai_connection(
+        api_key=api_key,
+        base_url=base_url,
+        model=model
+    )
 
 # POST /api/ai/config
 @app.post("/api/ai/config")
-def update_ai_config(payload: Dict[str, Any]):
-    if "api_key" in payload and payload["api_key"]:
-        config.AI_API_KEY = payload["api_key"].strip()
-    if "model" in payload and payload["model"]:
-        config.AI_MODEL = payload["model"].strip()
-    if "provider" in payload and payload["provider"]:
-        config.AI_PROVIDER = payload["provider"].strip()
-    if "base_url" in payload and payload["base_url"]:
-        config.AI_BASE_URL = payload["base_url"].strip()
-        
+def update_ai_config(payload: Dict[str, Any], db: Session = Depends(get_db)):
+    result = ai_service.update_ai_config(
+        provider=payload.get("provider"),
+        api_key=payload.get("api_key"),
+        base_url=payload.get("base_url"),
+        model=payload.get("model")
+    )
+    
+    audit = models.AuditEvent(
+        event_id="AI-CONFIG-UPDATE",
+        action="AI Engine Configuration",
+        actor_name="Administrator",
+        actor_role="Admin",
+        details=f"Administrator updated AI configuration: Provider={payload.get('provider')}, Model={payload.get('model')}.",
+        user_email="admin@refinery.safe"
+    )
+    db.add(audit)
+    db.commit()
+    
     return {
         "success": True,
-        "message": "AI Engine settings updated successfully.",
-        "status": get_ai_status()
+        "message": "AI Engine configuration updated successfully.",
+        "config": result
     }
 
 # GET /api/sif
@@ -2138,11 +2174,14 @@ def get_manager_officers(db: Session = Depends(get_db)):
     ).all()
     
     for u in officer_users:
-        existing_profile = db.query(models.OfficerProfile).filter(models.OfficerProfile.email == u.email).first()
-        if not existing_profile:
+        # Check by email AND by officer_code to prevent duplicate key violation
+        generated_code = u.id_number or f"OFF-{u.id:03d}"
+        existing_by_email = db.query(models.OfficerProfile).filter(models.OfficerProfile.email == u.email).first()
+        existing_by_code = db.query(models.OfficerProfile).filter(models.OfficerProfile.officer_code == generated_code).first()
+        if not existing_by_email and not existing_by_code:
             new_prof = models.OfficerProfile(
                 officer_name=u.name,
-                officer_code=u.id_number or f"OFF-{u.id:03d}",
+                officer_code=generated_code,
                 email=u.email,
                 phone=u.phone or "+91 98450 11000",
                 radio_channel="Ch 2 (VHF)",
@@ -2156,31 +2195,25 @@ def get_manager_officers(db: Session = Depends(get_db)):
             )
             db.add(new_prof)
     if officer_users:
-        db.commit()
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()  # Gracefully handle any remaining race-condition duplicates
 
     officers = db.query(models.OfficerProfile).all()
+    all_tasks = db.query(models.OfficerTask).all()
+    open_review_events = db.query(models.SafetyEvent.reviewer, models.SafetyEvent.site).filter(
+        models.SafetyEvent.status == "Needs Review"
+    ).all()
+
     results = []
-    
     for off in officers:
-        # Calculate active workload metrics
-        open_reviews = db.query(models.SafetyEvent).filter(
-            models.SafetyEvent.status == "Needs Review",
-            (models.SafetyEvent.reviewer == off.officer_name) | (models.SafetyEvent.site == off.site)
-        ).count()
-        
-        assigned_tasks = db.query(models.OfficerTask).filter(
-            models.OfficerTask.assigned_officer_id == off.id,
-            models.OfficerTask.status.in_(["Assigned", "In Progress"])
-        ).count()
-        
-        completed_tasks = db.query(models.OfficerTask).filter(
-            models.OfficerTask.assigned_officer_id == off.id,
-            models.OfficerTask.status == "Completed"
-        ).count()
-        
-        total_tasks = db.query(models.OfficerTask).filter(
-            models.OfficerTask.assigned_officer_id == off.id
-        ).count()
+        # Fast in-memory counting (avoids 40+ remote DB roundtrips)
+        open_reviews = sum(1 for (rev, site) in open_review_events if (rev == off.officer_name) or (site == off.site))
+        off_tasks = [t for t in all_tasks if t.assigned_officer_id == off.id]
+        assigned_tasks = sum(1 for t in off_tasks if t.status in ["Assigned", "In Progress"])
+        completed_tasks = sum(1 for t in off_tasks if t.status == "Completed")
+        total_tasks = len(off_tasks)
         
         # Workload calculation: 0 - 100%
         workload_score = min(100, int(((assigned_tasks * 20) + (open_reviews * 10)) / max(1, off.max_capacity * 10) * 100))
@@ -2722,79 +2755,6 @@ def reassign_event_to_officer(payload: schemas.ReassignEventPayload, db: Session
         "message": f"Event {event.id} successfully reassigned to Safety Officer {payload.officer_name}."
     }
 
-# ==========================================
-# SIF-SHIELD AI INTELLIGENCE ENDPOINTS
-# ==========================================
-
-# GET /api/ai/status
-@app.get("/api/ai/status")
-def get_ai_status_endpoint():
-    """
-    Returns AI provider configuration, model info, masked API key, and live connectivity status.
-    """
-    return ai_service.get_ai_status()
-
-# POST /api/ai/test-key
-@app.post("/api/ai/test-key")
-def test_ai_key_endpoint(payload: schemas.AITestKeyPayload):
-    """
-    Runs a live ping test to the Cerebras / LLM endpoint with latency measurement.
-    """
-    return ai_service.test_ai_connection(
-        api_key=payload.api_key,
-        base_url=payload.base_url,
-        model=payload.model
-    )
-
-# POST /api/ai/config
-@app.post("/api/ai/config")
-def update_ai_config_endpoint(payload: schemas.AIConfigPayload, db: Session = Depends(get_db)):
-    """
-    Updates AI provider, model, and API key dynamically and persists to .env.
-    """
-    result = ai_service.update_ai_config(
-        provider=payload.provider,
-        api_key=payload.api_key,
-        base_url=payload.base_url,
-        model=payload.model
-    )
-    
-    # Create audit event
-    audit = models.AuditEvent(
-        event_id="AI-CONFIG-UPDATE",
-        action="AI Engine Configuration",
-        details=f"Administrator updated AI configuration: Provider={payload.provider}, Model={payload.model}.",
-        user_email="admin@refinery.safe"
-    )
-    db.add(audit)
-    db.commit()
-    
-    return {
-        "success": True,
-        "message": "AI Engine configuration updated successfully.",
-        "config": result
-    }
-
-# POST /api/ai/pipeline
-@app.post("/api/ai/pipeline")
-def run_ai_pipeline_test(payload: schemas.AIPipelinePayload, db: Session = Depends(get_db)):
-    """
-    Runs the full M1-M6 precursor intelligence pipeline on sample text without saving to the DB.
-    """
-    meta = {
-        "site": payload.site or "Digboi Refinery D",
-        "unit": payload.unit or "CDU",
-        "equipment_involved": payload.equipment_involved
-    }
-    
-    analysis = ai_service.analyzeSafetyReport(payload.text, db, meta)
-    
-    return {
-        "success": True,
-        "summary": analysis,
-        "raw_text": payload.text
-    }
-
 # POST /api/ai/chat
 @app.post("/api/ai/chat")
 def ai_safety_copilot_chat(payload: schemas.AIChatPayload, db: Session = Depends(get_db)):
@@ -2857,30 +2817,3 @@ def ai_batch_scan_endpoint(limit: int = 25, db: Session = Depends(get_db)):
         "message": f"Successfully evaluated {updated_count} safety events using AI Precursor Engine."
     }
 
-# ==========================================
-# SIF RISK CEREBRAS ENGINE ENDPOINT
-# ==========================================
-
-# POST /api/sif-risk/analyze
-@app.post("/api/sif-risk/analyze")
-def analyze_sif_risk_endpoint(payload: schemas.SifRiskAnalyzePayload, db: Session = Depends(get_db)):
-    """
-    Dedicated SIF Risk Engine powered by Cerebras LLM.
-    Identifies the problem, danger level, risk rate (0-10), fatality precursor,
-    and returns 4-tier structured solutions (Immediate, Engineering, Administrative, Preventive).
-    """
-    try:
-        meta = {
-            "site": payload.site or "Operational Site",
-            "unit": payload.unit or "Field Unit"
-        }
-        result = ai_service.analyze_sif_risk_with_cerebras(
-            text=payload.text,
-            api_key=payload.api_key,
-            db=db,
-            report_meta=meta
-        )
-        return result
-    except Exception as e:
-        print(f"SIF Risk Engine error: {e}")
-        raise HTTPException(status_code=500, detail=f"SIF Risk evaluation error: {str(e)}")

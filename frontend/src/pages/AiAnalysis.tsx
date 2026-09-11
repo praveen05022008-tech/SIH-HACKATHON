@@ -15,7 +15,8 @@ import {
   ChevronRight, 
   RefreshCw,
   Send,
-  FileCheck2
+  FileCheck2,
+  Users
 } from 'lucide-react';
 import { SafetyEvent, User } from '../types';
 import { RiskBadge } from '../components/UIElements';
@@ -324,6 +325,29 @@ export const AiAnalysis: React.FC<AiAnalysisProps> = ({
             {/* LEFT (2 Cols): Extracted Entities & AI Reasoning */}
             <div className="lg:col-span-2 space-y-6">
 
+              {/* AI Output Standard Breakdown Card */}
+              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-sm text-slate-100 font-mono text-xs space-y-2">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-emerald-400" />
+                    <span className="text-xs font-black text-emerald-400 uppercase tracking-wide">
+                      AI output:
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-sans font-bold bg-slate-800 px-2.5 py-0.5 rounded-full">
+                    {confidenceScore}% Model Certitude
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 pt-1 text-[12px] leading-relaxed">
+                  <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">Condition:</span> <span className="text-amber-300 font-bold">{activeEvent.condition || activeEvent.report_type || 'Unsafe Act'}</span></div>
+                  <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">Event:</span> <span className="text-white font-bold">{activeEvent.event || activeEvent.hazard || 'Fall from height'}</span></div>
+                  <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">Actual injury:</span> <span className="text-emerald-300 font-bold">{activeEvent.actual_injury || 'None'}</span></div>
+                  <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">SIF potential:</span> <span className="text-rose-400 font-bold">{activeEvent.sif_potential || (isSifPrecursor ? 'High' : 'Medium')}</span></div>
+                  <div><span className="text-slate-400 min-w-[120px] inline-block font-sans">Classification:</span> <span className="text-purple-300 font-bold">{activeEvent.classification || (isSifPrecursor ? 'SIF Precursor / High-Potential Near Miss' : 'Low-Potential Observation / Non-SIF')}</span></div>
+                </div>
+              </div>
+
               {/* Extracted Entities Card */}
               <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-2xs space-y-5">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -381,8 +405,9 @@ export const AiAnalysis: React.FC<AiAnalysisProps> = ({
                     <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block mb-1">
                       Failed Critical Safety Barrier
                     </span>
-                    <div className="font-extrabold text-rose-900 leading-snug">
-                      ⚠️ {activeEvent.barrier_failure || 'Zero energy state verification omitted prior to line disconnect'}
+                    <div className="font-extrabold text-rose-900 leading-snug flex items-center gap-1.5">
+                      <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+                      <span>{activeEvent.barrier_failure || 'Zero energy state verification omitted prior to line disconnect'}</span>
                     </div>
                   </div>
 
@@ -390,8 +415,9 @@ export const AiAnalysis: React.FC<AiAnalysisProps> = ({
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                       Line of Fire / Personnel Exposure
                     </span>
-                    <div className="font-extrabold text-slate-900 leading-snug">
-                      👥 {activeEvent.exposure || 'Direct crew proximity within spray radius'}
+                    <div className="font-extrabold text-slate-900 leading-snug flex items-center gap-1.5">
+                      <Users className="h-4 w-4 text-slate-600 shrink-0" />
+                      <span>{activeEvent.exposure || 'Direct crew proximity within spray radius'}</span>
                     </div>
                   </div>
                 </div>

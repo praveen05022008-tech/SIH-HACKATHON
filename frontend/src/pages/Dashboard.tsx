@@ -2,10 +2,10 @@ import { apiUrl } from '../config/api';
 import React, { useEffect, useState, useMemo } from 'react';
 import { SafetyEvent, SafetyDirective } from '../types';
 
-import { 
-  ShieldAlert, 
-  Clock, 
-  Eye, 
+import {
+  ShieldAlert,
+  Clock,
+  Eye,
   RefreshCcw,
   ChevronRight,
   Zap,
@@ -38,7 +38,9 @@ import {
   Check,
   ClipboardCheck,
   BrainCircuit,
-  Camera
+  Camera,
+  Globe,
+  Users
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -50,9 +52,9 @@ interface DashboardProps {
   userName?: string;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ 
-  onViewEvent, 
-  triggerNotification, 
+export const Dashboard: React.FC<DashboardProps> = ({
+  onViewEvent,
+  triggerNotification,
   triggerStateRefresh,
   onNavigateTo,
   userRole = 'Safety Officer',
@@ -67,7 +69,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
   const [selectedSiteFilter, setSelectedSiteFilter] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
-  
+
   // Selected issue for the View Popup Modal
   const [popupEvent, setPopupEvent] = useState<SafetyEvent | null>(null);
 
@@ -128,10 +130,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Helper to determine status category for an issue
   const isCompleted = (evt: SafetyEvent) => {
-    return evt.status === 'Resolved' || 
-           evt.status === 'Confirmed' || 
-           evt.action_status === 'Completed' || 
-           evt.action_status === 'Verified';
+    return evt.status === 'Resolved' ||
+      evt.status === 'Confirmed' ||
+      evt.action_status === 'Completed' ||
+      evt.action_status === 'Verified';
   };
 
   const isOverdue = (evt: SafetyEvent) => {
@@ -216,7 +218,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
     try {
       const d = new Date(dateStr);
       if (isNaN(d.getTime())) return { formattedDate: dateStr || 'N/A', formattedTime: '', relative: '' };
-      
+
       const day = d.getDate().toString().padStart(2, '0');
       const month = d.toLocaleString('en-US', { month: 'short' });
       const year = d.getFullYear();
@@ -321,16 +323,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12">
-      
+
       {/* 2-Column Main Layout: Left Main Area + Right Progress & Tasks Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         {/* Left Column (2/3 width) - Contains Welcome Box -> 4 Boxes -> Date-wise Issue Table */}
         <div className="lg:col-span-2 space-y-6">
-          
+
           {/* 1. HERO WELCOME BOX */}
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#007A78] via-[#008779] to-[#00A389] text-white p-7 shadow-lg shadow-[#008779]/20">
-            
+
             {/* Watermark Trophy / Shield Icon in Background */}
             <div className="absolute right-6 -bottom-6 opacity-15 pointer-events-none">
               <Award className="h-48 w-48 text-white stroke-1" />
@@ -340,29 +342,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-[11px] font-bold text-emerald-100 mb-2 border border-white/20">
                 <ShieldCheck className="h-3.5 w-3.5 text-emerald-200" />
                 <span>
-                  {userRole === 'Admin' 
+                  {userRole === 'Admin'
                     ? 'System Administrator & Governance Hub'
                     : userRole === 'Safety Manager'
-                      ? '👔 HSE Executive Fleet Command Hub'
-                      : '🦺 Safety Officer Active Console • IN FIELD'}
+                      ? 'HSE Executive Fleet Command Hub'
+                      : 'Safety Officer Active Console • IN FIELD'}
                 </span>
               </div>
 
               <h1 className="text-2xl font-black tracking-tight text-white">
-                {userRole === 'Admin' 
-                  ? `Welcome Back, ${userName || 'System Administrator'}` 
+                {userRole === 'Admin'
+                  ? `Welcome Back, ${userName || 'System Administrator'}`
                   : userRole === 'Safety Manager'
                     ? `Welcome Back, ${userName || 'Safety Manager'}`
                     : `Welcome Back, ${userName || 'Safety Officer'}!`}
               </h1>
               <p className="text-sm text-emerald-50/90 italic mt-1 font-medium leading-relaxed">
-                {userRole === 'Admin' 
+                {userRole === 'Admin'
                   ? 'Enterprise Portal Operations, System Health, and AI Precursor Governance'
                   : userRole === 'Safety Manager'
                     ? `Macro Safety Governance: ${events.length} Total Field Observations Logged • Real-time AI SIF Analysis`
                     : 'Active Shift: Precursor Hazard Review Queue & Barrier Audit Operations.'}
               </p>
-              
+
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 {userRole === 'Admin' ? (
                   <>
@@ -656,11 +658,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 return (
                   <div
                     key={dir.id}
-                    className={`border rounded-2xl p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3 transition ${
-                      isUrgent 
-                        ? 'bg-red-50 border-red-200 ring-1 ring-red-500/20' 
+                    className={`border rounded-2xl p-4 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-3 transition ${isUrgent
+                        ? 'bg-red-50 border-red-200 ring-1 ring-red-500/20'
                         : 'bg-amber-50/80 border-amber-200'
-                    }`}
+                      }`}
                   >
                     <div className="space-y-1.5 max-w-3xl">
                       <div className="flex flex-wrap items-center gap-2">
@@ -671,8 +672,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <span className="font-mono text-xs font-black text-slate-800 bg-white/90 px-2 py-0.5 rounded border border-slate-300">
                           {dir.directive_id}
                         </span>
-                        <span className="text-[10.5px] font-bold text-slate-700">
-                          Target: <b className="text-slate-900">{targetScope === 'ALL' ? '🌐 All Operational Teams' : `👥 ${targetName}`}</b>
+                        <span className="text-[10.5px] font-bold text-slate-700 flex items-center gap-1">
+                          Target: <b className="text-slate-900 inline-flex items-center gap-1">{targetScope === 'ALL' ? (<><Globe className="h-3 w-3 text-slate-600 inline" /> All Operational Teams</>) : (<><Users className="h-3 w-3 text-slate-600 inline" /> {targetName}</>)}</b>
                         </span>
                       </div>
 
@@ -710,13 +711,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
           {/* 2. FOUR STAT BOXES DIRECTLY UNDER THE WELCOME BOX */}
           {/* Total Issues | Completed Issues | Incompleted Issues | Overdue Issues */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-            
+
             {/* Box 1: Total Issues */}
-            <div 
+            <div
               onClick={() => setFilterStatus('ALL')}
-              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${
-                filterStatus === 'ALL' ? 'border-[#008779] ring-2 ring-[#008779]/20' : 'border-[#E6ECEB] hover:border-[#008779]/40'
-              }`}
+              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${filterStatus === 'ALL' ? 'border-[#008779] ring-2 ring-[#008779]/20' : 'border-[#E6ECEB] hover:border-[#008779]/40'
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
@@ -741,11 +741,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* Box 2: Completed Issues */}
-            <div 
+            <div
               onClick={() => setFilterStatus('COMPLETED')}
-              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${
-                filterStatus === 'COMPLETED' ? 'border-emerald-600 ring-2 ring-emerald-500/20' : 'border-[#E6ECEB] hover:border-emerald-500/40'
-              }`}
+              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${filterStatus === 'COMPLETED' ? 'border-emerald-600 ring-2 ring-emerald-500/20' : 'border-[#E6ECEB] hover:border-emerald-500/40'
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
@@ -771,11 +770,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* Box 3: Incompleted Issues */}
-            <div 
+            <div
               onClick={() => setFilterStatus('INCOMPLETED')}
-              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${
-                filterStatus === 'INCOMPLETED' ? 'border-[#FF7A1A] ring-2 ring-[#FF7A1A]/20' : 'border-[#E6ECEB] hover:border-[#FF7A1A]/40'
-              }`}
+              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${filterStatus === 'INCOMPLETED' ? 'border-[#FF7A1A] ring-2 ring-[#FF7A1A]/20' : 'border-[#E6ECEB] hover:border-[#FF7A1A]/40'
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
@@ -801,11 +799,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             {/* Box 4: Overdue Issues */}
-            <div 
+            <div
               onClick={() => setFilterStatus('OVERDUE')}
-              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${
-                filterStatus === 'OVERDUE' ? 'border-rose-600 ring-2 ring-rose-500/20' : 'border-[#E6ECEB] hover:border-rose-500/40'
-              }`}
+              className={`bg-white border rounded-2xl p-4 flex flex-col justify-between shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer group ${filterStatus === 'OVERDUE' ? 'border-rose-600 ring-2 ring-rose-500/20' : 'border-[#E6ECEB] hover:border-rose-500/40'
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
@@ -834,7 +831,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           {/* 3. DATE-WISE ISSUE REGISTER / TABLE WITH ACTION COLUMN & VIEW POPUP */}
           <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-5">
-            
+
             {/* Header & Controls */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-100">
               <div>
@@ -856,18 +853,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <div className="flex items-center bg-slate-100 p-0.5 rounded-lg mr-1 border border-slate-200">
                   <button
                     onClick={() => setViewMode('table')}
-                    className={`p-1.5 rounded-md text-xs font-bold transition cursor-pointer ${
-                      viewMode === 'table' ? 'bg-white text-[#008779] shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-                    }`}
+                    className={`p-1.5 rounded-md text-xs font-bold transition cursor-pointer ${viewMode === 'table' ? 'bg-white text-[#008779] shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                      }`}
                     title="Table View"
                   >
                     <TableIcon className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => setViewMode('cards')}
-                    className={`p-1.5 rounded-md text-xs font-bold transition cursor-pointer ${
-                      viewMode === 'cards' ? 'bg-white text-[#008779] shadow-2xs' : 'text-slate-500 hover:text-slate-800'
-                    }`}
+                    className={`p-1.5 rounded-md text-xs font-bold transition cursor-pointer ${viewMode === 'cards' ? 'bg-white text-[#008779] shadow-2xs' : 'text-slate-500 hover:text-slate-800'
+                      }`}
                     title="Card View"
                   >
                     <LayoutGrid className="h-3.5 w-3.5" />
@@ -876,41 +871,37 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                 <button
                   onClick={() => setFilterStatus('ALL')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${
-                    filterStatus === 'ALL'
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${filterStatus === 'ALL'
                       ? 'bg-[#008779] text-white shadow-2xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                    }`}
                 >
                   All ({metrics.total})
                 </button>
                 <button
                   onClick={() => setFilterStatus('INCOMPLETED')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${
-                    filterStatus === 'INCOMPLETED'
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${filterStatus === 'INCOMPLETED'
                       ? 'bg-[#FF7A1A] text-white shadow-2xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                    }`}
                 >
                   Incompleted ({metrics.incompleted})
                 </button>
                 <button
                   onClick={() => setFilterStatus('COMPLETED')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${
-                    filterStatus === 'COMPLETED'
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${filterStatus === 'COMPLETED'
                       ? 'bg-emerald-600 text-white shadow-2xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                    }`}
                 >
                   Completed ({metrics.completed})
                 </button>
                 <button
                   onClick={() => setFilterStatus('OVERDUE')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${
-                    filterStatus === 'OVERDUE'
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-extrabold transition cursor-pointer ${filterStatus === 'OVERDUE'
                       ? 'bg-rose-600 text-white shadow-2xs'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                    }`}
                 >
                   Overdue ({metrics.overdue})
                 </button>
@@ -982,8 +973,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       filteredEvents.map((evt) => {
                         const dateInfo = formatDate(evt.timestamp);
                         return (
-                          <tr 
-                            key={evt.id} 
+                          <tr
+                            key={evt.id}
                             className="hover:bg-[#E8F6F4]/30 transition-colors duration-150 group"
                           >
                             {/* 1. Date & Time */}
@@ -1179,7 +1170,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         {/* Right Column (1/3 width) - Safety Progress & Precursor Tasks Panel */}
         <div className="space-y-6">
-          
+
           {/* Card 1: Safety & Telemetry Progress Circular Donut */}
           <div className="bg-white border border-[#E6ECEB] rounded-3xl p-6 shadow-sm space-y-5">
             <div className="flex items-center justify-between">
@@ -1236,7 +1227,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     fill="transparent"
                   />
                 </svg>
-                
+
                 {/* Center Number */}
                 <div className="absolute flex flex-col items-center justify-center text-center">
                   <span className="text-2xl font-black text-slate-900 font-mono-numbers">
@@ -1289,7 +1280,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             <div className="space-y-3">
-              <div 
+              <div
                 onClick={() => onNavigateTo?.('track-actions')}
                 className="p-3 bg-white border border-[#E6ECEB] rounded-2xl flex items-center justify-between hover:border-[#008779]/40 hover:shadow-xs transition cursor-pointer group"
               >
@@ -1320,10 +1311,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
       {/* ========================================================================= */}
       {popupEvent && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
-          
+
           {/* Modal Card */}
           <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden my-8 transform transition-all">
-            
+
             {/* Modal Header Banner */}
             <div className="bg-gradient-to-r from-[#007A78] via-[#008779] to-[#00A389] text-white p-6 relative">
               <div className="flex items-start justify-between">
@@ -1365,7 +1356,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
             {/* Modal Body */}
             <div className="p-6 space-y-6 max-h-[calc(85vh-200px)] overflow-y-auto">
-              
+
               {/* Status & SIF Risk Metric Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
@@ -1394,9 +1385,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
                     <span>Uploaded Photo Evidence (Cloudinary)</span>
                   </h4>
                   <a href={popupEvent.photo_url} target="_blank" rel="noreferrer" className="inline-block group">
-                    <img 
-                      src={popupEvent.photo_url} 
-                      alt="Hazard snapshot" 
+                    <img
+                      src={popupEvent.photo_url}
+                      alt="Hazard snapshot"
                       className="h-36 max-w-full rounded-xl object-cover border border-slate-300 shadow-2xs group-hover:opacity-90 transition"
                     />
                     <span className="text-[10px] text-[#008779] font-bold mt-1 block group-hover:underline">View Full Resolution ↗</span>

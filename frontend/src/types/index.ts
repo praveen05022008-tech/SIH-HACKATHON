@@ -43,11 +43,29 @@ export interface SafetyReport {
   status: 'Pending' | 'Analyzed' | 'Error';
 }
 
+export interface AiSentenceClassification {
+  condition: 'Unsafe Act' | 'Unsafe Condition' | 'Near Miss';
+  event: string;
+  actual_injury: string;
+  sif_potential: 'High' | 'Critical' | 'Medium' | 'Low';
+  classification: string;
+  report_type?: 'Unsafe Act' | 'Unsafe Condition' | 'Near Miss';
+  confidence: number;
+  rationale: string;
+  matched_words?: string[];
+  sentence_clauses?: string[];
+}
+
 export interface SafetyEvent {
   id: string;
   report_id?: number;
   report_code?: string;
   report_type?: string;
+  condition?: string;
+  event?: string;
+  actual_injury?: string;
+  sif_potential?: string;
+  classification?: string;
   reporter_name?: string;
   reported_by?: string;
   reporter_email?: string;

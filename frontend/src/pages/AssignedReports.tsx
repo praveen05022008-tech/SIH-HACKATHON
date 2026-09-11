@@ -12,7 +12,10 @@ import {
   Sparkles,
   Check,
   Eye,
-  ArrowRight
+  ArrowRight,
+  ShieldAlert,
+  AlertTriangle,
+  ClipboardList
 } from 'lucide-react';
 import { OfficerTask, SafetyEvent, User as UserType } from '../types';
 import { RiskBadge } from '../components/UIElements';
@@ -246,7 +249,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
   const handleSubmitRecheck = async () => {
     if (!recheckTask) return;
     if (!recheckFindings.trim()) {
-      triggerNotification('⚠️ Please enter investigation findings and actions taken before submitting.');
+      triggerNotification('Please enter investigation findings and actions taken before submitting.');
       return;
     }
 
@@ -262,7 +265,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
       });
 
       if (res.ok) {
-        triggerNotification(`✅ Report for ${recheckTask.task_id} submitted for Manager Re-Check!`);
+        triggerNotification(`Report for ${recheckTask.task_id} submitted for Manager Re-Check!`);
         setTasks(prev => prev.map(t => t.task_id === recheckTask.task_id ? {
           ...t,
           status: 'Submitted',
@@ -275,7 +278,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
         throw new Error();
       }
     } catch {
-      triggerNotification(`✅ Report for ${recheckTask.task_id} submitted for Manager Re-Check (saved locally)`);
+      triggerNotification(`Report for ${recheckTask.task_id} submitted for Manager Re-Check (saved locally)`);
       setTasks(prev => prev.map(t => t.task_id === recheckTask.task_id ? {
         ...t,
         status: 'Submitted',
@@ -499,12 +502,18 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
                   <div className="flex items-start gap-3">
-                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 font-mono font-bold text-xs ${
-                      isPending ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                      isInProg ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                      'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      isPending ? 'bg-amber-50 border border-amber-200' :
+                      isInProg ? 'bg-blue-50 border border-blue-200' :
+                      'bg-emerald-50 border border-emerald-200'
                     }`}>
-                      {task.priority === 'Critical' ? '🚨' : task.priority === 'High' ? '⚠️' : '📋'}
+                      {task.priority === 'Critical' ? (
+                        <ShieldAlert className="h-5 w-5 text-red-600" />
+                      ) : task.priority === 'High' ? (
+                        <AlertTriangle className="h-5 w-5 text-amber-600" />
+                      ) : (
+                        <ClipboardList className="h-5 w-5 text-blue-600" />
+                      )}
                     </div>
 
                     <div>
@@ -600,7 +609,7 @@ export const AssignedReports: React.FC<AssignedReportsProps> = ({
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <span className="font-extrabold uppercase text-[10px] text-amber-800">
-                          ⏳ Report Submitted — Awaiting Manager Re-Check
+                          Report Submitted — Awaiting Manager Re-Check
                         </span>
                         <span className="text-[10px] text-amber-600 font-mono">
                           {task.completed_at || 'Pending Final Approval'}

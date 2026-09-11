@@ -151,12 +151,12 @@ export const ManagerActions: React.FC<ManagerActionsProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'Approved', manager_note: managerNote || 'Approved by Manager.' })
       });
-      triggerNotification(`✅ Investigation ${task.task_id} approved. Corrective actions cleared.`);
+      triggerNotification(`Investigation ${task.task_id} approved. Corrective actions cleared.`);
       setTasks(prev => prev.map(t => t.task_id === task.task_id ? { ...t, status: 'Completed' } : t));
       setSelectedTask(null);
       setManagerNote('');
     } catch {
-      triggerNotification(`✅ ${task.task_id} approved (offline mode).`);
+      triggerNotification(`${task.task_id} approved (offline mode).`);
       setSelectedTask(null);
     } finally {
       setActionLoading(false);
@@ -165,7 +165,7 @@ export const ManagerActions: React.FC<ManagerActionsProps> = ({
 
   const handleReject = async (task: OfficerTask) => {
     if (!managerNote.trim()) {
-      triggerNotification('⚠️ Please provide a reason for rejection.');
+      triggerNotification('Please provide a reason for rejection.');
       return;
     }
     setActionLoading(true);
@@ -175,12 +175,12 @@ export const ManagerActions: React.FC<ManagerActionsProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'Rejected', manager_note: managerNote })
       });
-      triggerNotification(`🔁 ${task.task_id} sent back to officer for rework.`);
+      triggerNotification(`${task.task_id} sent back to officer for rework.`);
       setTasks(prev => prev.map(t => t.task_id === task.task_id ? { ...t, status: 'In Progress' } : t));
       setSelectedTask(null);
       setManagerNote('');
     } catch {
-      triggerNotification(`🔁 ${task.task_id} rejected (offline mode).`);
+      triggerNotification(`${task.task_id} rejected (offline mode).`);
       setSelectedTask(null);
     } finally {
       setActionLoading(false);
@@ -289,8 +289,9 @@ export const ManagerActions: React.FC<ManagerActionsProps> = ({
                         </span>
                       </div>
                       {task.findings && (
-                        <p className="text-[10px] text-[#008779] font-semibold mt-1.5 line-clamp-1">
-                          📝 Findings: {task.findings}
+                        <p className="text-[10px] text-[#008779] font-semibold mt-1.5 line-clamp-1 flex items-center gap-1">
+                          <FileText className="h-3 w-3 inline shrink-0" />
+                          <span>Findings: {task.findings}</span>
                         </p>
                       )}
                     </div>
@@ -356,8 +357,9 @@ export const ManagerActions: React.FC<ManagerActionsProps> = ({
               </div>
 
               {!selectedTask.findings && (
-                <p className="text-[10px] text-amber-600 font-semibold text-center">
-                  ⚠️ Waiting for officer findings before approving.
+                <p className="text-[10px] text-amber-600 font-semibold text-center flex items-center justify-center gap-1">
+                  <AlertTriangle className="h-3 w-3 inline shrink-0" />
+                  <span>Waiting for officer findings before approving.</span>
                 </p>
               )}
             </div>

@@ -191,7 +191,7 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
 
   const handleAssign = async () => {
     if (!selectedEvent || !assignForm.officerId) {
-      triggerNotification('⚠️ Please select a report and an officer.');
+      triggerNotification('Please select a report and an officer.');
       return;
     }
     const officer = officers.find(o => String(o.id) === String(assignForm.officerId));
@@ -251,7 +251,7 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
       });
 
       if (res.ok) {
-        triggerNotification(`✅ Issue ${task.task_id} approved! Issue is completely finished and employee has been sent confirmation.`);
+        triggerNotification(`Issue ${task.task_id} approved! Issue is completely finished and employee has been sent confirmation.`);
         setTasks(prev => prev.map(t => t.task_id === task.task_id ? {
           ...t,
           status: 'Completed',
@@ -263,7 +263,7 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
         throw new Error();
       }
     } catch {
-      triggerNotification(`✅ Issue ${task.task_id} approved! Marked as completely finished.`);
+      triggerNotification(`Issue ${task.task_id} approved! Marked as completely finished.`);
       setTasks(prev => prev.map(t => t.task_id === task.task_id ? {
         ...t,
         status: 'Completed',
@@ -279,7 +279,7 @@ export const AssignOfficer: React.FC<AssignOfficerProps> = ({
   // Manager requests revision from officer
   const handleRejectRecheck = async (task: OfficerTask) => {
     if (!rejectionReason.trim()) {
-      triggerNotification('⚠️ Please enter the revision notes or reason for requesting re-work.');
+      triggerNotification('Please enter the revision notes or reason for requesting re-work.');
       return;
     }
 

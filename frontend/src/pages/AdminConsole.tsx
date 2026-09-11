@@ -42,18 +42,18 @@ import {
   LogOut,
   CheckSquare
 } from 'lucide-react';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer, 
-  PieChart, 
-  Pie, 
-  Cell, 
-  CartesianGrid, 
-  Legend 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  CartesianGrid,
+  Legend
 } from 'recharts';
 import { AdminUser, AdminDashboardData, AdminReport, AuditLogEntry } from '../types';
 
@@ -279,12 +279,12 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
   // ── Delete Report ────────────────────────────────────────────────────────
   const handleDeleteReport = async (reportId: string, reportCode: string) => {
     // Optimistically remove from web state immediately
-    setReports(prev => prev.filter(r => 
-      r.id !== reportId && 
-      r.id.toString() !== reportId && 
-      r.report_code !== reportCode && 
-      r.report_code !== `#${reportCode}` && 
-      r.report_code !== reportCode.replace('#', '') && 
+    setReports(prev => prev.filter(r =>
+      r.id !== reportId &&
+      r.id.toString() !== reportId &&
+      r.report_code !== reportCode &&
+      r.report_code !== `#${reportCode}` &&
+      r.report_code !== reportCode.replace('#', '') &&
       r.id !== reportCode
     ));
     setUserActionMessage(`Report "${reportCode}" has been permanently deleted.`);
@@ -466,9 +466,9 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
     // Optimistically remove from web state immediately
     const toDeleteSet = new Set(codesToDelete);
-    setReports(prev => prev.filter(r => 
-      !toDeleteSet.has(r.report_code) && 
-      !toDeleteSet.has(r.id.toString()) && 
+    setReports(prev => prev.filter(r =>
+      !toDeleteSet.has(r.report_code) &&
+      !toDeleteSet.has(r.id.toString()) &&
       !toDeleteSet.has(r.report_code?.replace('#', '')) &&
       !toDeleteSet.has(`#${r.report_code}`)
     ));
@@ -492,8 +492,8 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
       } else {
         // Fallback: delete one by one
         await Promise.all(
-          codesToDelete.map(code => 
-            fetch(apiUrl(`/api/admin/reports/${encodeURIComponent(code)}`), { method: 'DELETE' }).catch(() => {})
+          codesToDelete.map(code =>
+            fetch(apiUrl(`/api/admin/reports/${encodeURIComponent(code)}`), { method: 'DELETE' }).catch(() => { })
           )
         );
         fetchReports();
@@ -542,7 +542,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
             <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
             <span>{userActionMessage}</span>
           </div>
-          <button 
+          <button
             onClick={() => setUserActionMessage(null)}
             className="text-emerald-700 hover:text-emerald-900 cursor-pointer text-xs"
           >
@@ -572,7 +572,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
               <p className="text-xs sm:text-sm text-emerald-50 leading-relaxed font-normal">
                 You have master authority over the SIF-SHIELD AI platform. Oversee registered users, verify onboarding applications, govern the four operational roles, examine fleet-wide reports, and track real-time audit event logs.
               </p>
-              
+
               <div className="flex flex-wrap gap-2.5 pt-2">
                 <button
                   onClick={() => setActiveTab('users')}
@@ -594,7 +594,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
           {/* 2. STATS BOXES (TOTAL EMPLOYEE, TOTAL OFFICER, TOTAL MANAGER, PENDING) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            
+
             {/* Box 1: Total Employee */}
             <div className="bg-white border border-[#E6ECEB] rounded-3xl p-5 shadow-sm hover:shadow-md transition">
               <div className="flex items-center justify-between">
@@ -686,16 +686,14 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
           </div>
 
           {/* Quick Review: Pending Access Requests Queue */}
-          <div className={`border rounded-3xl p-5 shadow-sm transition ${
-            pendingUsers.length > 0 
-              ? 'bg-amber-50/70 border-amber-300' 
+          <div className={`border rounded-3xl p-5 shadow-sm transition ${pendingUsers.length > 0
+              ? 'bg-amber-50/70 border-amber-300'
               : 'bg-white border-[#E6ECEB]'
-          }`}>
+            }`}>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-2.5">
-                <div className={`h-9 w-9 rounded-2xl flex items-center justify-center font-bold ${
-                  pendingUsers.length > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
-                }`}>
+                <div className={`h-9 w-9 rounded-2xl flex items-center justify-center font-bold ${pendingUsers.length > 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                  }`}>
                   <Clock className="h-4.5 w-4.5" />
                 </div>
                 <div>
@@ -703,9 +701,8 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                     <h3 className="text-sm font-black text-slate-900">
                       User Registration & Access Requests
                     </h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                      pendingUsers.length > 0 ? 'bg-amber-200 text-amber-900' : 'bg-emerald-100 text-emerald-800'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${pendingUsers.length > 0 ? 'bg-amber-200 text-amber-900' : 'bg-emerald-100 text-emerald-800'
+                      }`}>
                       {pendingUsers.length} Pending
                     </span>
                   </div>
@@ -748,7 +745,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
             ) : (
               <div className="space-y-2.5">
                 {pendingUsers.map(u => (
-                  <div 
+                  <div
                     key={u.id}
                     className="bg-white border border-amber-200 rounded-2xl p-3.5 shadow-2xs flex flex-col md:flex-row md:items-center justify-between gap-3"
                   >
@@ -825,7 +822,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis dataKey="role" stroke="#64748b" fontSize={11} />
                     <YAxis stroke="#64748b" fontSize={11} />
-                    <Tooltip 
+                    <Tooltip
                       contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
                     />
                     <Bar dataKey="count" fill="#008779" radius={[8, 8, 0, 0]}>
@@ -856,7 +853,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                     <XAxis type="number" stroke="#64748b" fontSize={11} />
                     <YAxis dataKey="severity" type="category" stroke="#64748b" fontSize={11} width={70} />
-                    <Tooltip 
+                    <Tooltip
                       contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', borderRadius: '12px', color: '#fff', fontSize: '11px' }}
                     />
                     <Bar dataKey="count" radius={[0, 8, 8, 0]}>
@@ -990,15 +987,14 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
                         {/* Role */}
                         <td className="py-4 px-4">
-                          <span className={`px-2.5 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider ${
-                            user.role === 'Employee'
+                          <span className={`px-2.5 py-1 rounded-full text-[10.5px] font-black uppercase tracking-wider ${user.role === 'Employee'
                               ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                               : user.role === 'Officer'
-                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                              : user.role === 'Manager'
-                              ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                              : 'bg-purple-100 text-purple-800 border border-purple-200'
-                          }`}>
+                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                : user.role === 'Manager'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                  : 'bg-purple-100 text-purple-800 border border-purple-200'
+                            }`}>
                             {user.role}
                           </span>
                         </td>
@@ -1077,7 +1073,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
             {/* Filter Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
-              
+
               {/* Search */}
               <div className="relative">
                 <Search className="h-4 w-4 absolute left-3 top-2.5 text-slate-400" />
@@ -1113,9 +1109,9 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                   className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white text-slate-800 font-medium cursor-pointer"
                 >
                   <option value="All">All Statuses (Pending, Approved, Rejected)</option>
-                  <option value="Pending">⏳ Pending Approval</option>
-                  <option value="Approved">✓ Approved</option>
-                  <option value="Rejected">✕ Rejected</option>
+                  <option value="Pending">Pending Approval</option>
+                  <option value="Approved">Approved</option>
+                  <option value="Rejected">Rejected</option>
                   <option value="Active">● Active Accounts</option>
                   <option value="Deactivated">○ Deactivated Accounts</option>
                 </select>
@@ -1182,15 +1178,14 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
                           {/* Role Badge */}
                           <td className="py-3.5 px-4">
-                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                              user.role === 'Employee'
+                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${user.role === 'Employee'
                                 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                 : user.role === 'Officer'
-                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                : user.role === 'Manager'
-                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                                : 'bg-purple-100 text-purple-800 border border-purple-200'
-                            }`}>
+                                  ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                  : user.role === 'Manager'
+                                    ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                    : 'bg-purple-100 text-purple-800 border border-purple-200'
+                              }`}>
                               {user.role}
                             </span>
                           </td>
@@ -1219,11 +1214,10 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
                           {/* Active Toggle State */}
                           <td className="py-3.5 px-4">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                              user.is_active
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${user.is_active
                                 ? 'bg-emerald-50 text-emerald-700'
                                 : 'bg-slate-100 text-slate-500'
-                            }`}>
+                              }`}>
                               <span className={`h-1.5 w-1.5 rounded-full ${user.is_active ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
                               <span>{user.is_active ? 'Active' : 'Deactivated'}</span>
                             </span>
@@ -1232,7 +1226,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                           {/* Actions */}
                           <td className="py-3.5 px-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
-                              
+
                               {/* If Pending: Approve & Reject buttons */}
                               {isPending && (
                                 <>
@@ -1259,11 +1253,10 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                               {user.role !== 'Admin' && isApproved && (
                                 <button
                                   onClick={() => handleToggleActiveUser(user.id, user.name)}
-                                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                                    user.is_active
+                                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer ${user.is_active
                                       ? 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                                       : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                  }`}
+                                    }`}
                                 >
                                   {user.is_active ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
                                   <span>{user.is_active ? 'Deactivate' : 'Activate'}</span>
@@ -1323,7 +1316,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              
+
               {/* Role 1: Employee */}
               <div className="bg-white border-2 border-emerald-200/80 rounded-3xl p-5 shadow-sm space-y-3">
                 <div className="flex items-center justify-between">
@@ -1452,12 +1445,11 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                       <td className="py-3 px-4 font-mono text-slate-600">{u.email}</td>
                       <td className="py-3 px-4 font-mono font-bold text-slate-700">{u.id_number}</td>
                       <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
-                          u.role === 'Employee' ? 'bg-emerald-100 text-emerald-800'
-                          : u.role === 'Officer' ? 'bg-blue-100 text-blue-800'
-                          : u.role === 'Manager' ? 'bg-amber-100 text-amber-800'
-                          : 'bg-purple-100 text-purple-800'
-                        }`}>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${u.role === 'Employee' ? 'bg-emerald-100 text-emerald-800'
+                            : u.role === 'Officer' ? 'bg-blue-100 text-blue-800'
+                              : u.role === 'Manager' ? 'bg-amber-100 text-amber-800'
+                                : 'bg-purple-100 text-purple-800'
+                          }`}>
                           {u.role}
                         </span>
                       </td>
@@ -1522,7 +1514,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
             {/* 6 Filter Dropdowns + Search */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2.5 pt-2 border-t border-slate-100 text-xs">
-              
+
               {/* Search */}
               <div className="lg:col-span-2 relative">
                 <Search className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-400" />
@@ -1688,7 +1680,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                       const isSelected = selectedReportCodes.has(repKey);
                       return (
                         <tr key={report.id} className={`transition ${isSelected ? 'bg-rose-50/50 hover:bg-rose-50/70' : 'hover:bg-slate-50/70'}`}>
-                          
+
                           {/* Row Selection Checkbox */}
                           <td className="py-3 pl-4 pr-1 w-12 text-center">
                             <input
@@ -1741,11 +1733,10 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
                           {/* SIF Score */}
                           <td className="py-3 px-4">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                              report.sif_risk_score >= 8.0 ? 'bg-rose-100 text-rose-800'
-                              : report.sif_risk_score >= 6.5 ? 'bg-amber-100 text-amber-800'
-                              : 'bg-emerald-100 text-emerald-800'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${report.sif_risk_score >= 8.0 ? 'bg-rose-100 text-rose-800'
+                                : report.sif_risk_score >= 6.5 ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}>
                               {report.sif_risk_score}/10 ({report.risk_level})
                             </span>
                           </td>
@@ -1819,7 +1810,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
             {/* Filter and Issue Search Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 text-xs">
-              
+
               {/* Search by Issue / Event ID for complete issue history */}
               <div className="relative">
                 <Filter className="h-3.5 w-3.5 absolute left-3 top-2.5 text-slate-400" />
@@ -1926,13 +1917,13 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                         day: 'numeric'
                       });
 
-                      const loginDisplay = audit.login_time 
+                      const loginDisplay = audit.login_time
                         ? new Date(audit.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                         : new Date(audit.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
                       return (
                         <tr key={audit.id} className="hover:bg-slate-50/70 transition border-b border-slate-100">
-                          
+
                           {/* 1. Date */}
                           <td className="py-3.5 px-4 font-mono whitespace-nowrap text-slate-900 font-bold text-xs">
                             {formattedDate}
@@ -1953,15 +1944,14 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
                           {/* 3. Role */}
                           <td className="py-3.5 px-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                              audit.actor_role.includes('Admin')
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${audit.actor_role.includes('Admin')
                                 ? 'bg-purple-100 text-purple-800 border border-purple-200'
                                 : audit.actor_role.includes('Manager')
-                                ? 'bg-teal-100 text-teal-800 border border-teal-200'
-                                : audit.actor_role.includes('Officer')
-                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                : 'bg-amber-100 text-amber-800 border border-amber-200'
-                            }`}>
+                                  ? 'bg-teal-100 text-teal-800 border border-teal-200'
+                                  : audit.actor_role.includes('Officer')
+                                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                    : 'bg-amber-100 text-amber-800 border border-amber-200'
+                              }`}>
                               {audit.actor_role}
                             </span>
                           </td>
@@ -1978,16 +1968,15 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                           <td className="py-3.5 px-4">
                             <div className="flex items-center justify-between gap-4">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                  isCreation ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                  : isAssignment ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                  : isAcceptance ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                                  : isProgress ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                                  : isCompletion ? 'bg-teal-100 text-teal-800 border border-teal-200'
-                                  : isRejection ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                                  : isUserApproval ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
-                                }`}>
+                                <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${isCreation ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                    : isAssignment ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                      : isAcceptance ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                                        : isProgress ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                          : isCompletion ? 'bg-teal-100 text-teal-800 border border-teal-200'
+                                            : isRejection ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                              : isUserApproval ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                                : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                  }`}>
                                   {audit.action}
                                 </span>
 
@@ -2156,9 +2145,9 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                   <span>Uploaded Photo Evidence (Cloudinary)</span>
                 </div>
                 <a href={selectedReportDetail.photo_url} target="_blank" rel="noreferrer" className="inline-block group">
-                  <img 
-                    src={selectedReportDetail.photo_url} 
-                    alt="Report snapshot" 
+                  <img
+                    src={selectedReportDetail.photo_url}
+                    alt="Report snapshot"
                     className="h-32 max-w-full rounded-xl object-cover border border-slate-200 shadow-2xs group-hover:opacity-90 transition"
                   />
                   <span className="text-[10px] text-[#008779] font-bold mt-1 block group-hover:underline">Open Original Photo ↗</span>
@@ -2271,7 +2260,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
 
             {/* Content Details */}
             <div className="space-y-4 text-xs">
-              
+
               {/* Action Banner */}
               <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between">
                 <div>
@@ -2327,7 +2316,7 @@ export const AdminConsole: React.FC<AdminConsoleProps> = ({
                   </span>
                   <span className="font-mono font-bold text-emerald-700 text-xs flex items-center gap-1">
                     <LogIn className="h-3 w-3" />
-                    {selectedAuditDetail.login_time 
+                    {selectedAuditDetail.login_time
                       ? new Date(selectedAuditDetail.login_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
                       : new Date(selectedAuditDetail.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                   </span>

@@ -2,6 +2,7 @@ import datetime
 import sys
 import os
 from sqlalchemy import Column, Integer, String, Text, Float, DateTime, ForeignKey, Boolean
+from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.orm import relationship
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -60,7 +61,7 @@ class SafetyReport(Base):
     report_type = Column(String(50), default="Unsafe Condition")  # Unsafe Act, Unsafe Condition, Near Miss
     raw_text = Column(Text, nullable=False)
     audio_transcript = Column(Text, nullable=True)
-    photo_url = Column(Text, nullable=True)
+    photo_url = Column(Text().with_variant(LONGTEXT, "mysql"), nullable=True)
     site = Column(String(100), nullable=True)
     unit = Column(String(100), nullable=True)
     location = Column(String(255), nullable=True)
@@ -131,7 +132,7 @@ class SafetyEvent(Base):
     action_status = Column(String(50), default="Pending")  # Pending, In Progress, Completed, Verified
     resolution_notes = Column(Text, nullable=True)
     audio_transcript = Column(Text, nullable=True)
-    photo_url = Column(Text, nullable=True)
+    photo_url = Column(Text().with_variant(LONGTEXT, "mysql"), nullable=True)
     
     # Operational hierarchy (L1-L6)
     l1_milestone = Column(String(200))

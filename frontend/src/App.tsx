@@ -222,7 +222,7 @@ function App() {
       email,
       name,
       role,
-      token: `token-${role.toLowerCase().replace(' ', '-')}-session`
+      token: `token-${role.toLowerCase().replace(/\s+/g, '-')}-${email}`
     };
     
     setUser(updatedUser);
@@ -321,8 +321,12 @@ function App() {
     const isOfficer = user.role === 'Officer' || user.role === 'Safety Officer';
     const isManager = user.role === 'Manager' || user.role === 'Safety Manager';
     const employeeAllowed = ['dashboard', 'report-issue', 'worker-portal', 'my-report', 'learning'];
+    const managerOnlyPages = ['assign-officer', 'manager-analytics', 'manager-alerts', 'manager-actions'];
 
     if (isEmployee && !employeeAllowed.includes(currentPage)) {
+      setCurrentPage('dashboard');
+      setSelectedEvent(null);
+    } else if (isOfficer && managerOnlyPages.includes(currentPage)) {
       setCurrentPage('dashboard');
       setSelectedEvent(null);
     } else if ((isOfficer || isManager) && (currentPage === 'settings' || currentPage === 'worker-portal' || currentPage === 'report-issue')) {
@@ -599,6 +603,7 @@ function App() {
             <MyReport 
               user={user} 
               onNavigateTo={setCurrentPage}
+              triggerStateRefresh={triggerStateRefresh}
             />
           )}
 

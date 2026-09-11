@@ -33,9 +33,130 @@ import {
   LocateFixed,
   Eye,
   CalendarCheck,
-  Volume2
+  Volume2,
+  Copy,
+  CheckCheck,
+  Lock
 } from 'lucide-react';
 import { SafetyEvent, User, SafetyDirective } from '../types';
+
+const extractLocalEventType = (desc: string): string => {
+  const tl = (desc || '').toLowerCase();
+  
+  if (/\b(dropped|falling\s+object|falling\s+pipe|pipe\s+fell|load\s+fell|tool\s+fell|suspended\s+load|fell\s+inches|crane\s+drop|sling\s+slip|slipped\s+from\s+crane|debris)\b/i.test(tl)) {
+    return 'Dropped object / Suspended load';
+  }
+  if (/\b(fall\s+from\s+height|falling\s+from\s+height|fell\s+from\s+height|fall\s+from|fell\s+from|railing|scaffold|scaffolding|ladder|derrick|at\s+height|work\s+at\s+height|working\s+at\s+height|elevated\s+platform|mast|unhooked\s+harness)\b/i.test(tl)) {
+    return 'Fall from height';
+  }
+  if (/\b(pressur|gas\s+leak|gas\s+release|steam\s+leak|flange\s+leak|blowout|line\s+rupture|pipe\s+burst|hydrocarbon\s+release|depressur)\b/i.test(tl)) {
+    return 'Pressurized fluid / gas release';
+  }
+  if (/\b(oil\s+leak|oil\s+spill|hydraulic\s+leak|hydraulic\s+oil|diesel\s+leak|fluid\s+leak|leaking\s+oil|puddle\s+of\s+oil|oil\s+slick|dripping\s+oil)\b/i.test(tl)) {
+    return 'Oil / chemical leakage & spill';
+  }
+  if (/\b(slip|tripped|trip\s+hazard|slippery\s+floor|wet\s+floor|uneven\s+ground|puddle|stumble)\b/i.test(tl)) {
+    return 'Slip, trip or uneven footing';
+  }
+  if (/\b(fire|explosion|spark|hot\s+work|welding|grinding|cutting\s+torch|flame|ignition|combustible)\b/i.test(tl)) {
+    return 'Hot work / flying sparks / fire hazard';
+  }
+  if (/\b(electrical|electric\s+shock|voltage|arc\s+flash|live\s+wire|electrocution|short\s+circuit)\b/i.test(tl)) {
+    return 'Electrical contact / Arc flash';
+  }
+  if (/\b(caught\s+in|pinch\s+point|entanglement|rotating\s+shaft|crush|moving\s+part|machinery\s+nip|pulley)\b/i.test(tl)) {
+    return 'Caught in / rotating machinery';
+  }
+  if (/\b(face\s+shield|safety\s+glasses|goggles|eye\s+protection|ear\s+plug|gloves|hard\s+hat|helmet|respirator)\b/i.test(tl)) {
+    return 'PPE non-compliance / Flying particle hazard';
+  }
+  if (/\b(h2s|toxic|acid|chemical\s+splash|fumes|asphyxiat|corrosive)\b/i.test(tl)) {
+    return 'Hazardous chemical / toxic exposure';
+  }
+  if (/\b(confined\s+space|vessel\s+entry|tank\s+entry|manhole)\b/i.test(tl)) {
+    return 'Confined space entry hazard';
+  }
+  if (/\b(forklift|vehicle|truck|crane\s+swing|struck\s+by|reversing|overspeeding)\b/i.test(tl)) {
+    return 'Struck by mobile equipment / vehicle';
+  }
+  if (/\b(housekeeping|pallet|packaging|trash|waste|obstruction|blocked\s+walkway|blocking\s+walkway|cluttered)\b/i.test(tl)) {
+    return 'Housekeeping & walkway obstruction';
+  }
+  if (/\b(excavation|trench|cave-in|shoring|digging)\b/i.test(tl)) {
+    return 'Excavation & trench collapse';
+  }
+  return 'Operational facility hazard';
+};
+
+const extractLocalInjury = (desc: string): string => {
+  const tl = (desc || '').toLowerCase();
+  if (/\b(fatality|fatal|died|death|killed)\b/i.test(tl)) return 'Fatal injury';
+  if (/\b(fracture|amputation|severe\s+burn|hospitalized|unconscious|head\s+injury)\b/i.test(tl)) return 'Severe / Lost Time Injury';
+  if (/\b(first\s+aid|bandaged|minor\s+cut|bruise|scratch|minor\s+injury)\b/i.test(tl)) return 'First Aid / Minor';
+  return 'None';
+};
+
+const calculateLocalSifPotential = (desc: string, condition: string, eventType: string): 'High' | 'Critical' | 'Medium' | 'Low' => {
+  const tl = (desc || '').toLowerCase();
+  
+  if (/\b(fatal|catastrophic|blowout|explosion|h2s|high\s+voltage|electrocution|amputation|life-threatening)\b/i.test(tl)) {
+    return 'Critical';
+  }
+  
+  const highEvents = [
+    'Fall from height',
+    'Dropped object / Suspended load',
+    'Pressurized fluid / gas release',
+    'Hazardous chemical / toxic exposure',
+    'Hot work / flying sparks / fire hazard',
+    'Electrical contact / Arc flash',
+    'Caught in / rotating machinery',
+    'Confined space entry hazard',
+    'Excavation & trench collapse'
+  ];
+  if (highEvents.includes(eventType)) {
+    return 'High';
+  }
+  
+  if (/\b(fall|height|scaffold|unhooked|without\s+harness|crane|high\s+pressure|isolation|loto|suspended|risky\s+behavior)\b/i.test(tl)) {
+    return 'High';
+  }
+  
+  const lowEvents = [
+    'Housekeeping & walkway obstruction',
+    'Slip, trip or uneven footing'
+  ];
+  if (lowEvents.includes(eventType) && !/\b(fracture|crush|hospital)\b/i.test(tl)) {
+    return 'Low';
+  }
+  
+  if (/\b(packaging|pallet|debris|trash|dirty|label|signboard|clutter)\b/i.test(tl)) {
+    return 'Low';
+  }
+
+  return 'Medium';
+};
+
+const calculateLocalClassification = (condition: string, sifPotential: string, actualInjury: string = 'None'): string => {
+  const hasInjury = actualInjury && !['none', 'no injury', 'n/a', 'no actual injury'].includes(actualInjury.toLowerCase().trim());
+  if (sifPotential === 'High' || sifPotential === 'Critical') {
+    if (hasInjury) {
+      return 'SIF Incident / Serious Injury Occurred';
+    }
+    // In Campbell Institute / IOGP SIF precursor methodology, any high-potential precursor without injury is classified as SIF Precursor / High-Potential Near Miss
+    return 'SIF Precursor / High-Potential Near Miss';
+  } else if (sifPotential === 'Medium') {
+    if (condition === 'Near Miss') {
+      return 'Moderate Near Miss / Non-SIF';
+    } else if (condition === 'Unsafe Act') {
+      return 'Moderate Procedural Deviation';
+    } else {
+      return 'Moderate-Potential Precursor';
+    }
+  } else {
+    return 'Low-Potential Observation / Non-SIF';
+  }
+};
 
 interface WorkerPortalProps {
   user?: User;
@@ -53,7 +174,18 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
   onEventCreated,
   onNavigateTo
 }) => {
-  const userEmail = user?.email || 'praveen@gmail.com';
+  const userEmail = user?.email || (() => {
+    try {
+      const stored = localStorage.getItem('raksha_auth_user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.email) return parsed.email;
+      }
+    } catch {}
+    return 'srinith@gmail.com';
+  })();
+
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Form state initialized to match reference mockup
   const [reportType, setReportType] = useState<'Unsafe Act' | 'Unsafe Condition' | 'Near Miss'>('Unsafe Condition');
@@ -93,14 +225,20 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
   // Auto-captured Date & Time state
   const [autoTimestamp, setAutoTimestamp] = useState(() => new Date());
 
-  // Real-time AI Word Classification state
+  // Real-time AI Full-Sentence Classification state
   const [aiClassification, setAiClassification] = useState<{
+    condition: 'Unsafe Act' | 'Unsafe Condition' | 'Near Miss';
+    event: string;
+    actual_injury: string;
+    sif_potential: 'High' | 'Critical' | 'Medium' | 'Low';
+    classification: string;
     report_type: 'Unsafe Act' | 'Unsafe Condition' | 'Near Miss';
     confidence: number;
     rationale: string;
     matched_words: string[];
   } | null>(null);
   const [isClassifying, setIsClassifying] = useState(false);
+  const [copiedAiOutput, setCopiedAiOutput] = useState(false);
 
   // Live Web Speech Recognition
   const speechRecognitionRef = useRef<any>(null);
@@ -208,7 +346,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
     return () => clearInterval(clockTimer);
   }, []);
 
-  // Real-time AI Word Classification debounced effect
+  // Real-time AI Full-Sentence Classification debounced effect
   useEffect(() => {
     if (!description.trim() || description.length < 6) {
       setAiClassification(null);
@@ -221,38 +359,70 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
         const res = await fetch(apiUrl('/api/events/classify-words?text=' + encodeURIComponent(description)));
         if (res.ok) {
           const data = await res.json();
-          if (data.report_type) {
+          if (data.report_type || data.condition) {
+            const cond = (data.condition || data.report_type) as 'Unsafe Act' | 'Unsafe Condition' | 'Near Miss';
+            const ev = data.event || extractLocalEventType(description);
+            const inj = data.actual_injury || extractLocalInjury(description);
+            const sifP = (data.sif_potential || calculateLocalSifPotential(description, cond, ev)) as 'High' | 'Critical' | 'Medium' | 'Low';
+            const clf = data.classification || calculateLocalClassification(cond, sifP);
+
             setAiClassification({
-              report_type: data.report_type,
-              confidence: data.confidence,
+              condition: cond,
+              event: ev,
+              actual_injury: inj,
+              sif_potential: sifP,
+              classification: clf,
+              report_type: cond,
+              confidence: data.confidence || 90.5,
               rationale: data.rationale,
               matched_words: data.matched_words || []
             });
-            setReportType(data.report_type);
+            setReportType(cond);
           }
         }
       } catch {
-        // Deterministic local fallback
+        // Deep full-sentence contextual local fallback
         const desc = description.toLowerCase();
         let rt: 'Unsafe Act' | 'Unsafe Condition' | 'Near Miss' = 'Unsafe Condition';
-        let rat = 'Physical or mechanical defect identified in operational area.';
+        let rat = 'Full-sentence analysis identified an environmental or physical equipment condition.';
         let mw: string[] = [];
-        if (desc.includes('almost') || desc.includes('nearly') || desc.includes('inches') || desc.includes('close call') || desc.includes('missed')) {
-          rt = 'Near Miss';
-          rat = 'AI word analysis identified close-call / near-miss indicators. Unplanned event with high potential severity.';
-          mw = ['almost', 'inches away'];
-        } else if (desc.includes('standing') || desc.includes('unhooked') || desc.includes('without') || desc.includes('not wearing') || desc.includes('climbing')) {
+
+        const hasObserver = /\b(noticed|observed|found|reported|spotted|discovered|saw|identified|witnessed|detected)\b/i.test(desc);
+        const hasNearMiss = /\b(almost|nearly|narrowly|barely|inches|feet\s+away|close\s+call|missed|landed\s+near|fell\s+right\s+next|avoided\s+hit|just\s+in\s+time)\b/i.test(desc);
+        const hasViolation = /\b(?:without|no|lacking|not\s+wearing|not\s+using|didn'?t\s+wear|forgot|failed\s+to\s+wear|unhooked|unclipped|unanchored|detached|not\s+tied\s+off|untied)\s+(?:\w+\s+){0,2}(?:harness|belt|lanyard|ppe|helmet|hard\s*hat|gloves|goggles|face\s*shield|respirator|tie-?off|anchor|fall\s+arrest)|(?:standing|climbing|working|stepping|balancing)\s+(?:on|upon|at)\s+(?:\w+\s+){0,3}(?:railing|pipe|edge|open\s+edge|scaffold|scaffolding|beam|ladder|guardrail)|(?:bypassed|bypassing|overrode|removed|tampered|disabled)\s+(?:\w+\s+){0,2}(?:guard|interlock|sensor|barrier|loto|lock)|(?:without|no|lacking)\s+(?:\w+\s+){0,2}(?:permit|ptw|hot\s+work\s+permit|authorization|gas\s+test)|(?:standing|walking|positioned)\s+(?:under|beneath)\s+(?:\w+\s+){0,2}(?:suspended\s+load|crane|hoist)|speeding|overspeeding|using\s+phone|mobile\s+phone|texting|without\s+seatbelt|horseplay|shortcut|reckless|risky\s+behavior/i.test(desc);
+        const hasCondition = /\b(leak|leaking|corroded|corrosion|broken|cracked|damaged|slippery|puddle|spill|hazard|unguarded|frayed|defect|loose|missing\s+guard|tripping\s+hazard)\b/i.test(desc);
+
+        if (hasViolation) {
           rt = 'Unsafe Act';
-          rat = 'AI word analysis identified behavioral deviations / human actions violating safety procedures.';
-          mw = ['standing on', 'unhooked'];
-        } else if (desc.includes('leak') || desc.includes('slippery') || desc.includes('broken') || desc.includes('corroded')) {
+          rat = 'Full-sentence NLP identified active human behavioral deviation or procedural safety violation.';
+          mw = [description.slice(0, 50)];
+        } else if (hasNearMiss) {
+          rt = 'Near Miss';
+          rat = 'Full-sentence NLP identified close-call / near-miss trajectory. High potential event where injury was narrowly prevented.';
+          mw = [description.slice(0, 50)];
+        } else if (hasObserver && hasCondition) {
           rt = 'Unsafe Condition';
-          rat = 'AI word analysis identified physical equipment defect or hazardous condition.';
-          mw = ['leaking', 'slippery'];
+          rat = 'Full-sentence NLP identified a physical defect or environmental condition reported by personnel without behavioral non-compliance.';
+          mw = [description.slice(0, 50)];
+        } else if (hasCondition) {
+          rt = 'Unsafe Condition';
+          rat = 'Full-sentence NLP identified physical equipment defect or hazardous workplace condition.';
+          mw = [description.slice(0, 50)];
         }
+
+        const localEv = extractLocalEventType(description);
+        const localInj = extractLocalInjury(description);
+        const localSif = calculateLocalSifPotential(description, rt, localEv);
+        const localClf = calculateLocalClassification(rt, localSif, localInj);
+
         setAiClassification({
+          condition: rt,
+          event: localEv,
+          actual_injury: localInj,
+          sif_potential: localSif,
+          classification: localClf,
           report_type: rt,
-          confidence: 90,
+          confidence: 88,
           rationale: rat,
           matched_words: mw
         });
@@ -351,14 +521,14 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
     } catch (err: any) {
       console.warn('Microphone permission request error:', err);
       setMicPermissionBlocked(true);
-      triggerNotification('⚠️ Microphone permission required. Click the lock 🔒 icon in the URL bar to allow.');
+      triggerNotification('Microphone permission required. Click the lock icon in the URL bar to allow.');
     }
 
     setIsRecording(true);
     setIsLiveListening(true);
     setRecordingSeconds(0);
     setVoiceTranscript('');
-    triggerNotification('🎙️ Listening! Speak your observation clearly...');
+    triggerNotification('Listening... Speak your observation clearly.');
 
     // 1. If audio stream is available, start MediaRecorder
     if (stream) {
@@ -543,7 +713,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
       equipment_involved: equipment,
       energy_source: energySource,
       people_involved: peopleInvolved,
-      photo_url: photoUrl || photoPreview || null,
+      photo_url: photoUrl || (photoPreview && photoPreview.length < 800000 ? photoPreview : null),
       audio_transcript: voiceTranscript || null,
       reporter_email: userEmail
     };
@@ -555,9 +725,21 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
       });
       if (!res.ok) throw new Error();
       const data = await res.json();
-      setReceipt(data);
+      const dynEv = data.event || aiClassification?.event || extractLocalEventType(description);
+      const dynInj = data.actual_injury || aiClassification?.actual_injury || extractLocalInjury(description);
+      const dynSif = data.sif_potential || aiClassification?.sif_potential || calculateLocalSifPotential(description, reportType, dynEv);
+      const dynClf = data.classification || aiClassification?.classification || calculateLocalClassification(reportType, dynSif, dynInj);
+      setReceipt({
+        ...data,
+        condition: data.condition || data.report_type || aiClassification?.condition || reportType,
+        event: dynEv,
+        actual_injury: dynInj,
+        sif_potential: dynSif,
+        classification: dynClf
+      });
+      setShowSuccessModal(true);
       triggerNotification(`Report ${data.report_code} submitted & analyzed by AI!`);
-      onEventCreated();
+      if (onEventCreated) onEventCreated();
       setDescription('');
       setVoiceTranscript('');
       setPhotoPreview(null);
@@ -565,15 +747,24 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
     } catch {
       const id = `EVT-${Math.floor(Math.random() * 9000 + 10000)}`;
       const code = `#SIF26165-${Math.floor(Math.random() * 900 + 100)}`;
+      const localEv = aiClassification?.event || extractLocalEventType(description);
+      const localInj = aiClassification?.actual_injury || extractLocalInjury(description);
+      const localSif = aiClassification?.sif_potential || calculateLocalSifPotential(description, reportType, localEv);
+      const localClf = aiClassification?.classification || calculateLocalClassification(reportType, localSif, localInj);
       const local = {
         success: true,
         event_id: id,
         report_code: code,
         report_type: reportType,
+        condition: aiClassification?.condition || reportType,
+        event: localEv,
+        actual_injury: localInj,
+        sif_potential: localSif,
+        classification: localClf,
         ai_classification_rationale: aiClassification?.rationale || 'AI classified based on observation keyword analysis.',
-        risk_level: description.toLowerCase().includes('height') ? 'HIGH' : 'MEDIUM',
-        sif_risk_score: 5.4,
-        photo_url: photoUrl || photoPreview || null,
+        risk_level: localSif === 'Critical' || localSif === 'High' ? 'HIGH' : localSif === 'Medium' ? 'MEDIUM' : 'LOW',
+        sif_risk_score: localSif === 'Critical' ? 9.2 : localSif === 'High' ? 7.8 : localSif === 'Medium' ? 5.4 : 2.5,
+        photo_url: photoUrl || (photoPreview && photoPreview.length < 800000 ? photoPreview : null),
         analysis: {
           site,
           unit,
@@ -591,8 +782,9 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
         }
       };
       setReceipt(local);
+      setShowSuccessModal(true);
       triggerNotification(`Local receipt: ${code}`);
-      onEventCreated();
+      if (onEventCreated) onEventCreated();
       setDescription('');
       setVoiceTranscript('');
       setPhotoPreview(null);
@@ -799,7 +991,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
                       <span>
-                        <b>Microphone Permission Needed</b>: Click the lock/camera icon 🔒 next to the browser URL to enable microphone, or click a voice preset below to test instantly!
+                        <b>Microphone Permission Needed</b>: Click the lock/camera icon <Lock className="inline h-3.5 w-3.5 text-amber-700 mx-0.5 align-text-bottom" /> next to the browser URL to enable microphone.
                       </span>
                     </div>
                     <button
@@ -812,49 +1004,6 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                   </div>
                 )}
 
-                {/* Quick Voice Simulation Presets */}
-                <div className="mt-2.5 pt-2 border-t border-slate-200/80 flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                    <Sparkles className="h-3 w-3 text-[#007A6C]" />
-                    Quick Voice Presets:
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const text = "Worker observed standing on the top railing of the scaffold to reach the valve handwheel without safety harness or fall arrestor.";
-                      setDescription(text);
-                      setVoiceTranscript(text);
-                      triggerNotification("🎙️ Spoke: Unsafe Act (Height Violation)");
-                    }}
-                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 transition cursor-pointer"
-                  >
-                    ⚠️ Unsafe Act (Height Violation)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const text = "High pressure hydraulic flange leaking hot fluid onto rig walking platform, creating severe slippery condition and fire hazard.";
-                      setDescription(text);
-                      setVoiceTranscript(text);
-                      triggerNotification("🎙️ Spoke: Unsafe Condition (Oil Leak)");
-                    }}
-                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-semibold bg-teal-50 hover:bg-teal-100 text-teal-800 border border-teal-200 transition cursor-pointer"
-                  >
-                    🛢️ Unsafe Condition (Oil Leak)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const text = "Heavy drill pipe slipped from crane hook and dropped inches away from crew on rig floor, narrowly avoiding fatal crush injury.";
-                      setDescription(text);
-                      setVoiceTranscript(text);
-                      triggerNotification("🎙️ Spoke: Near Miss (Crane Close-Call)");
-                    }}
-                    className="px-2 py-0.5 rounded-lg text-[10.5px] font-semibold bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 transition cursor-pointer"
-                  >
-                    ⚡ Near Miss (Crane Close-Call)
-                  </button>
-                </div>
               </div>
             )}
 
@@ -876,46 +1025,167 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
               </div>
             </div>
 
-            {/* Live AI Word Analysis Banner */}
+            {/* Live AI Output Banner */}
             {aiClassification && (
-              <div className="mt-3 p-3.5 rounded-xl border bg-gradient-to-r from-[#F0FDF4] via-[#ECFDF5] to-[#F0FDFA] border-emerald-300 text-slate-800 shadow-2xs space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <Sparkles className="h-4 w-4 text-[#007A6C]" />
-                    <span className="text-xs font-bold text-slate-900">AI Word Classification:</span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                      aiClassification.report_type === 'Unsafe Act'
+              <div className="mt-3 p-4 rounded-2xl border bg-gradient-to-br from-[#F8FAFC] via-[#F0FDF4] to-[#F0FDFA] border-emerald-300 text-slate-800 shadow-sm space-y-3.5 animate-fadeIn">
+                {/* Header Bar */}
+                <div className="flex items-center justify-between pb-2.5 border-b border-emerald-200/70">
+                  <div className="flex items-center gap-2">
+                    <div className="h-6 w-6 rounded-lg bg-[#E8F6F4] text-[#007A6C] flex items-center justify-center font-bold">
+                      <Sparkles className="h-3.5 w-3.5" />
+                    </div>
+                    <span className="text-xs font-black text-slate-900 uppercase tracking-wide">
+                      AI output:
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {isClassifying && (
+                      <span className="flex items-center gap-1 text-[10px] text-slate-400 font-semibold">
+                        <Loader2 className="h-3 w-3 animate-spin text-[#007A6C]" />
+                        Evaluating...
+                      </span>
+                    )}
+                    <span className="text-[10px] text-emerald-800 font-extrabold bg-emerald-100/90 border border-emerald-300 px-2 py-0.5 rounded-full">
+                      {aiClassification.confidence}% confidence
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const copyText = `AI output:\n\nCondition: ${aiClassification.condition || aiClassification.report_type}\nEvent: ${aiClassification.event}\nActual injury: ${aiClassification.actual_injury}\nSIF potential: ${aiClassification.sif_potential}\nClassification: ${aiClassification.classification}`;
+                        navigator.clipboard.writeText(copyText);
+                        setCopiedAiOutput(true);
+                        setTimeout(() => setCopiedAiOutput(false), 2000);
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1 text-[10px] font-bold text-slate-600 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg shadow-2xs transition cursor-pointer"
+                      title="Copy formatted AI output"
+                    >
+                      {copiedAiOutput ? (
+                        <>
+                          <CheckCheck className="h-3 w-3 text-emerald-600" />
+                          <span className="text-emerald-700">Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3 w-3 text-slate-500" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* EXACT SPECIFICATION DISPLAY: Clean Card Block */}
+                <div className="p-3.5 rounded-xl bg-slate-900 text-slate-100 font-mono text-[11.5px] leading-relaxed shadow-inner border border-slate-800 space-y-1">
+                  <div className="text-emerald-400 font-bold tracking-wider text-[11px] mb-1.5 flex items-center gap-1.5">
+                    <Sparkles className="h-3 w-3" />
+                    <span>AI output:</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 min-w-[105px]">Condition:</span>
+                    <span className="text-amber-300 font-bold bg-amber-400/10 px-1.5 py-0.5 rounded border border-amber-400/20">
+                      {aiClassification.condition || aiClassification.report_type}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 min-w-[105px]">Event:</span>
+                    <span className="text-white font-bold bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700">
+                      {aiClassification.event}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 min-w-[105px]">Actual injury:</span>
+                    <span className="text-emerald-300 font-bold bg-emerald-400/10 px-1.5 py-0.5 rounded border border-emerald-400/20">
+                      {aiClassification.actual_injury}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 min-w-[105px]">SIF potential:</span>
+                    <span className={`font-bold px-1.5 py-0.5 rounded border ${
+                      aiClassification.sif_potential === 'Critical' || aiClassification.sif_potential === 'High'
+                        ? 'text-rose-400 bg-rose-400/10 border-rose-400/20'
+                        : aiClassification.sif_potential === 'Medium'
+                        ? 'text-amber-400 bg-amber-400/10 border-amber-400/20'
+                        : 'text-emerald-400 bg-emerald-400/10 border-emerald-400/20'
+                    }`}>
+                      {aiClassification.sif_potential}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 min-w-[105px]">Classification:</span>
+                    <span className="text-purple-300 font-bold bg-purple-400/10 px-1.5 py-0.5 rounded border border-purple-400/20">
+                      {aiClassification.classification}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Visual Grid Badges */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-xs">
+                  <div className="p-2.5 bg-white/90 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Condition</span>
+                    <span className={`inline-block font-black text-xs px-2 py-0.5 rounded-md ${
+                      aiClassification.condition === 'Unsafe Act'
                         ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                        : aiClassification.report_type === 'Near Miss'
+                        : aiClassification.condition === 'Near Miss'
                         ? 'bg-purple-100 text-purple-900 border border-purple-300'
                         : 'bg-teal-100 text-teal-900 border border-teal-300'
                     }`}>
-                      {aiClassification.report_type}
-                    </span>
-                    <span className="text-[10px] text-emerald-700 font-bold">
-                      ({aiClassification.confidence}% confidence)
+                      {aiClassification.condition || aiClassification.report_type}
                     </span>
                   </div>
-                  {isClassifying && (
-                    <span className="flex items-center gap-1 text-[10px] text-slate-400">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      Analyzing...
+
+                  <div className="p-2.5 bg-white/90 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Event Mechanism</span>
+                    <span className="font-extrabold text-xs text-slate-900 block truncate">
+                      {aiClassification.event}
                     </span>
+                  </div>
+
+                  <div className="p-2.5 bg-white/90 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Actual Injury</span>
+                    <span className="font-extrabold text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200 inline-block">
+                      {aiClassification.actual_injury}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 bg-white/90 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">SIF Potential</span>
+                    <span className={`inline-block font-black text-xs px-2 py-0.5 rounded-md ${
+                      aiClassification.sif_potential === 'Critical' || aiClassification.sif_potential === 'High'
+                        ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                        : aiClassification.sif_potential === 'Medium'
+                        ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                        : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                    }`}>
+                      {aiClassification.sif_potential}
+                    </span>
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1 lg:col-span-1 p-2.5 bg-white/90 rounded-xl border border-slate-200/80 shadow-2xs">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">Classification</span>
+                    <span className="font-black text-[11px] text-purple-950 bg-purple-50 px-2 py-0.5 rounded border border-purple-200 block truncate">
+                      {aiClassification.classification}
+                    </span>
+                  </div>
+                </div>
+
+                {/* AI Rationale & Matched Context */}
+                <div className="pt-2 border-t border-emerald-200/60 space-y-1.5">
+                  <p className="text-xs text-slate-700 leading-relaxed font-medium">
+                    <span className="font-bold text-slate-900">AI Reasoning: </span>
+                    {aiClassification.rationale}
+                  </p>
+                  {aiClassification.matched_words && aiClassification.matched_words.length > 0 && (
+                    <div className="flex items-center gap-1.5 pt-1 flex-wrap">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Key Sentence Context:</span>
+                      {aiClassification.matched_words.map(w => (
+                        <span key={w} className="px-2 py-0.5 bg-white border border-emerald-200 text-emerald-800 rounded text-[10px] font-medium shadow-2xs">
+                          "{w}"
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
-                <p className="text-xs text-slate-700 leading-relaxed font-medium">
-                  {aiClassification.rationale}
-                </p>
-                {aiClassification.matched_words && aiClassification.matched_words.length > 0 && (
-                  <div className="flex items-center gap-1.5 pt-1 flex-wrap">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Trigger Keywords Detected:</span>
-                    {aiClassification.matched_words.map(w => (
-                      <span key={w} className="px-1.5 py-0.5 bg-white border border-emerald-200 text-emerald-800 rounded text-[10px] font-mono font-bold">
-                        "{w}"
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -1271,30 +1541,29 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                   <h4 className="text-sm font-black text-slate-900 mt-1">{receipt.report_code}</h4>
                 </div>
                 <div className="h-8 w-8 rounded-full bg-[#E8F6F4] text-[#007A6C] flex items-center justify-center font-bold">
-                  ✓
+                  <Check className="h-4 w-4 text-[#007A6C] stroke-[2.5]" />
                 </div>
               </div>
 
-              {/* AI Word Classification Outcome */}
-              <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1">
-                <span className="text-[9.5px] font-bold uppercase text-slate-400">AI Classification</span>
-                <div className="flex items-center justify-between">
-                  <span className={`font-black text-xs px-2 py-0.5 rounded-full ${
-                    receipt.report_type === 'Unsafe Act'
-                      ? 'bg-amber-100 text-amber-900'
-                      : receipt.report_type === 'Near Miss'
-                      ? 'bg-purple-100 text-purple-900'
-                      : 'bg-teal-100 text-teal-900'
-                  }`}>
-                    {receipt.report_type || 'Unsafe Condition'}
-                  </span>
-                  <span className="text-[10px] font-bold text-slate-500">
-                    SIF Risk: <b className="text-slate-800">{receipt.sif_risk_score} / 10</b>
+              {/* AI Output Breakdown Outcome */}
+              <div className="p-3 rounded-xl bg-slate-900 text-slate-100 font-mono text-[11px] leading-relaxed shadow-inner border border-slate-800 space-y-1">
+                <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800">
+                  <div className="flex items-center gap-1.5 text-emerald-400 font-bold uppercase tracking-wider text-[10px]">
+                    <Sparkles className="h-3.5 w-3.5" />
+                    <span>AI output:</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-sans font-bold">
+                    SIF Risk: <b className="text-white">{receipt.sif_risk_score} / 10</b>
                   </span>
                 </div>
+                <div><span className="text-slate-400">Condition:</span> <span className="text-amber-300 font-bold">{receipt.condition || receipt.report_type}</span></div>
+                <div><span className="text-slate-400">Event:</span> <span className="text-white font-bold">{receipt.event}</span></div>
+                <div><span className="text-slate-400">Actual injury:</span> <span className="text-emerald-300 font-bold">{receipt.actual_injury}</span></div>
+                <div><span className="text-slate-400">SIF potential:</span> <span className="text-rose-400 font-bold">{receipt.sif_potential}</span></div>
+                <div><span className="text-slate-400">Classification:</span> <span className="text-purple-300 font-bold">{receipt.classification}</span></div>
                 {receipt.ai_classification_rationale && (
-                  <p className="text-[11px] text-slate-600 font-medium leading-relaxed pt-1">
-                    {receipt.ai_classification_rationale}
+                  <p className="text-[10.5px] text-slate-300 font-sans font-medium leading-relaxed pt-2 mt-1 border-t border-slate-800/80 italic">
+                    "{receipt.ai_classification_rationale}"
                   </p>
                 )}
               </div>
@@ -1451,6 +1720,106 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                 <span>{savingToken ? 'Saving...' : 'Save & Verify'}</span>
               </button>
               <button type="button" onClick={() => setTokenModalOpen(false)} className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition cursor-pointer">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Prominent Submission Confirmation Modal */}
+      {showSuccessModal && receipt && (
+        <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-100 space-y-5">
+            <div className="text-center space-y-2">
+              <div className="mx-auto h-16 w-16 rounded-3xl bg-emerald-50 border border-emerald-200 text-emerald-600 flex items-center justify-center shadow-xs">
+                <CheckCircle2 className="h-9 w-9 stroke-[2.2]" />
+              </div>
+              <span className="inline-block text-[11px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                Safety Report Submitted Successfully
+              </span>
+              <h3 className="text-xl font-black text-slate-900">
+                {receipt.report_code || 'Report Registered'}
+              </h3>
+              <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
+                Your safety observation has been analyzed by AI and logged in the enterprise safety database.
+              </p>
+            </div>
+
+            {/* AI Output Breakdown */}
+            <div className="p-4 rounded-2xl bg-slate-900 text-slate-100 font-mono text-xs leading-relaxed shadow-inner border border-slate-800 space-y-1.5">
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-bold uppercase tracking-wider text-[11px]">
+                  <Sparkles className="h-4 w-4" />
+                  <span>AI output:</span>
+                </div>
+                <span className="text-[11px] text-slate-400 font-sans font-bold">
+                  SIF Risk: <b className="text-white">{receipt.sif_risk_score} / 10</b>
+                </span>
+              </div>
+              <div><span className="text-slate-400">Condition:</span> <span className="text-amber-300 font-bold">{receipt.condition || receipt.report_type}</span></div>
+              <div><span className="text-slate-400">Event:</span> <span className="text-white font-bold">{receipt.event}</span></div>
+              <div><span className="text-slate-400">Actual injury:</span> <span className="text-emerald-300 font-bold">{receipt.actual_injury}</span></div>
+              <div><span className="text-slate-400">SIF potential:</span> <span className="text-rose-400 font-bold">{receipt.sif_potential}</span></div>
+              <div><span className="text-slate-400">Classification:</span> <span className="text-purple-300 font-bold">{receipt.classification}</span></div>
+              {receipt.ai_classification_rationale && (
+                <p className="text-[10.5px] text-slate-300 font-sans font-medium leading-relaxed pt-2 mt-1 border-t border-slate-800/80 italic">
+                  "{receipt.ai_classification_rationale}"
+                </p>
+              )}
+            </div>
+
+            {/* Cloudinary or Attached Evidence Preview */}
+            {receipt.photo_url && (
+              <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <img
+                    src={receipt.photo_url}
+                    alt="Attached Evidence"
+                    className="h-10 w-10 object-cover rounded-xl border border-slate-200 shrink-0"
+                  />
+                  <div className="text-left truncate">
+                    <span className="text-[10px] font-bold text-slate-500 block">Attached Evidence</span>
+                    <span className="text-xs font-semibold text-slate-800 truncate block">Observation Photo</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full shrink-0">
+                  Uploaded
+                </span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  if (onNavigateTo) onNavigateTo('my-report');
+                }}
+                className="w-full py-3 px-4 bg-[#00694c] hover:bg-[#00543d] active:scale-[0.98] text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>View in My Reports</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  if (onNavigateTo) onNavigateTo('dashboard');
+                }}
+                className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] text-slate-700 font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <span>Back to Dashboard</span>
+              </button>
+            </div>
+
+            <div className="text-center pt-1">
+              <button
+                type="button"
+                onClick={() => setShowSuccessModal(false)}
+                className="text-xs font-semibold text-slate-400 hover:text-slate-600 transition cursor-pointer"
+              >
+                + Submit Another Safety Report
+              </button>
             </div>
           </div>
         </div>

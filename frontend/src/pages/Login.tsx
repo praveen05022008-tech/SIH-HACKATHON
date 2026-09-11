@@ -21,7 +21,8 @@ import {
   BadgeAlert,
   HardHat,
   Users,
-  Briefcase
+  Briefcase,
+  Info
 } from 'lucide-react';
 
 interface LoginProps {
@@ -319,8 +320,9 @@ export const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                     <div>{error.message}</div>
                     
                     {error.type === 'pending' && (
-                      <div className="mt-2.5 text-[11px] text-amber-900 bg-amber-100/70 p-2.5 rounded-xl border border-amber-200 leading-relaxed font-medium">
-                        💡 <strong>In Admin Request Queue:</strong> Your registration request is visible to the System Administrator in the <strong>Admin Master Console</strong>. Once approved, you will be able to log in immediately.
+                      <div className="mt-2.5 text-[11px] text-amber-900 bg-amber-100/70 p-2.5 rounded-xl border border-amber-200 leading-relaxed font-medium flex items-start gap-1.5">
+                        <Info className="h-4 w-4 text-amber-700 shrink-0 mt-0.5" />
+                        <span><strong>In Admin Request Queue:</strong> Your registration request is visible to the System Administrator in the <strong>Admin Master Console</strong>. Once approved, you will be able to log in immediately.</span>
                       </div>
                     )}
 

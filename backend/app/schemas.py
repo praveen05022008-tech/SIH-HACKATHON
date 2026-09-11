@@ -82,7 +82,7 @@ class SafetyEventResponse(BaseModel):
     hazard_category: Optional[str] = None
     shift_timing: Optional[str] = None
     location_detail: Optional[str] = None
-    timestamp: datetime.datetime
+    timestamp: Optional[datetime.datetime] = None
     site: Optional[str] = None
     unit: Optional[str] = None
     location: Optional[str] = None
@@ -110,7 +110,7 @@ class SafetyEventResponse(BaseModel):
     sif_probability: Optional[float] = 50.0
     confidence: Optional[float] = 85.0
     life_saving_rule: Optional[str] = None
-    status: str
+    status: Optional[str] = "Pending"
     reviewer: Optional[str] = None
     evidence: Optional[str] = None
     explanation: Optional[str] = None

@@ -98,7 +98,7 @@ export const SifRisk: React.FC<SifRiskProps> = ({ user, triggerNotification }) =
   const handleAnalyze = async (textToAnalyze?: string) => {
     const text = textToAnalyze || issueText;
     if (!text.trim()) {
-      triggerNotification?.('⚠️ Please enter or select a safety issue to analyze.');
+      triggerNotification?.('Please enter or select a safety issue to analyze.');
       return;
     }
 
@@ -118,12 +118,12 @@ export const SifRisk: React.FC<SifRiskProps> = ({ user, triggerNotification }) =
       if (res.ok) {
         const data = await res.json();
         setResult(data);
-        triggerNotification?.(`⚡ SIF Risk analyzed successfully using ${data.engine_used || 'Cerebras AI'}`);
+        triggerNotification?.(`SIF Risk analyzed successfully using ${data.engine_used || 'Cerebras AI'}`);
       } else {
         throw new Error('Analysis request failed');
       }
     } catch {
-      triggerNotification?.('❌ Could not complete SIF analysis. Check connection.');
+      triggerNotification?.('Could not complete SIF analysis. Check connection.');
     } finally {
       setLoading(false);
     }
@@ -213,7 +213,7 @@ export const SifRisk: React.FC<SifRiskProps> = ({ user, triggerNotification }) =
             </div>
             <button
               onClick={() => {
-                triggerNotification?.('✅ Cerebras API key updated for live session.');
+                triggerNotification?.('Cerebras API key updated for live session.');
                 setShowKeyInput(false);
               }}
               className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-xl transition cursor-pointer shrink-0"
@@ -424,8 +424,15 @@ export const SifRisk: React.FC<SifRiskProps> = ({ user, triggerNotification }) =
                     <div className="text-sm font-black text-slate-900 line-clamp-2">
                       {result.life_saving_rule}
                     </div>
-                    <div className="text-[10px] text-slate-400 font-medium mt-1">
-                      {result.fatal_precursor ? '⚠️ Precursor Confirmed' : 'Non-fatal observation'}
+                    <div className="text-[10px] text-slate-400 font-medium mt-1 flex items-center gap-1">
+                      {result.fatal_precursor ? (
+                        <>
+                          <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0 inline" />
+                          <span className="text-amber-700 font-semibold">Precursor Confirmed</span>
+                        </>
+                      ) : (
+                        'Non-fatal observation'
+                      )}
                     </div>
                   </div>
                   <span className="text-[9.5px] font-bold text-[#008779] bg-[#E8F6F4] px-2 py-0.5 rounded-md inline-block mt-2">

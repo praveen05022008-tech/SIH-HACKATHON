@@ -21,7 +21,9 @@ import {
   AlertTriangle,
   FileCheck2,
   Camera,
-  X
+  X,
+  Users,
+  Zap
 } from 'lucide-react';
 import { RiskBadge } from '../components/UIElements';
 
@@ -316,7 +318,7 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, user, onReviewSubm
             </div>
           ) : queue.length === 0 && !gatiCalibrating ? (
             <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-xs">
-              <div className="text-3xl mb-2">✅</div>
+              <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
               <h3 className="text-xs font-bold text-slate-700 uppercase tracking-wider">No Reviews Pending</h3>
               <p className="text-[10px] text-slate-400 mt-1">All ingested safety observations are validated and mapped.</p>
             </div>
@@ -441,15 +443,24 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, user, onReviewSubm
                         </div>
                         <div>
                           <div className="text-[9px] font-extrabold text-slate-400 uppercase mb-0.5">Failed Barrier</div>
-                          <div className="text-rose-700 font-semibold text-[11px] leading-snug">⚠️ {selectedEvent.barrier_failure || '—'}</div>
+                          <div className="text-rose-700 font-semibold text-[11px] leading-snug flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3 text-rose-600 shrink-0" />
+                            <span>{selectedEvent.barrier_failure || '—'}</span>
+                          </div>
                         </div>
                         <div>
                           <div className="text-[9px] font-extrabold text-slate-400 uppercase mb-0.5">Crew Exposure</div>
-                          <div className="font-semibold text-slate-800 text-[11px] leading-snug">👥 {selectedEvent.exposure || '—'}</div>
+                          <div className="font-semibold text-slate-800 text-[11px] leading-snug flex items-center gap-1">
+                            <Users className="h-3 w-3 text-slate-600 shrink-0" />
+                            <span>{selectedEvent.exposure || '—'}</span>
+                          </div>
                         </div>
                         <div>
                           <div className="text-[9px] font-extrabold text-slate-400 uppercase mb-0.5">Energy Source</div>
-                          <div className="font-semibold text-slate-800 text-[11px] leading-snug">⚡ {selectedEvent.energy_source || '—'}</div>
+                          <div className="font-semibold text-slate-800 text-[11px] leading-snug flex items-center gap-1">
+                            <Zap className="h-3 w-3 text-amber-500 shrink-0" />
+                            <span>{selectedEvent.energy_source || '—'}</span>
+                          </div>
                         </div>
                       </div>
 
