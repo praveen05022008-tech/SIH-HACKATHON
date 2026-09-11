@@ -331,7 +331,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         <div className="lg:col-span-2 space-y-6">
 
           {/* 1. HERO WELCOME BOX */}
-          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#007A78] via-[#008779] to-[#00A389] text-white p-7 shadow-lg shadow-[#008779]/20">
+          <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#005B54] via-[#008779] to-[#00A389] text-white p-7 shadow-lg shadow-[#008779]/15">
 
             {/* Watermark Trophy / Shield Icon in Background */}
             <div className="absolute right-6 -bottom-6 opacity-15 pointer-events-none">
@@ -1316,7 +1316,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="bg-white rounded-3xl shadow-2xl max-w-3xl w-full border border-slate-200 overflow-hidden my-8 transform transition-all">
 
             {/* Modal Header Banner */}
-            <div className="bg-gradient-to-r from-[#007A78] via-[#008779] to-[#00A389] text-white p-6 relative">
+            <div className="bg-gradient-to-r from-[#005B54] via-[#008779] to-[#00A389] text-white p-6 relative">
               <div className="flex items-start justify-between">
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-2">

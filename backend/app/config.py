@@ -1,15 +1,18 @@
 import os
 from dotenv import load_dotenv
 
-# Load from .env or env file
+# Load unified .env file from project root
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.abspath(os.path.join(current_file_dir, "..", ".."))
+
 for possible_env in [
-    os.path.join(os.path.dirname(__file__), ".env"),
-    os.path.join(os.path.dirname(__file__), "env"),
-    os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"),
-    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env"),
+    os.path.join(root_dir, ".env"),
+    os.path.join(os.path.dirname(current_file_dir), ".env"),
+    os.path.join(current_file_dir, ".env"),
 ]:
     if os.path.exists(possible_env):
-        load_dotenv(possible_env)
+        load_dotenv(possible_env, override=False)
+        break
 
 # Primary Enterprise Database (TiDB Cloud MySQL protocol)
 DATABASE_URL = os.getenv(

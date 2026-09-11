@@ -68,4 +68,3 @@ logs/
 *.sw?
 Thumbs.db
 .vercel
-.env*

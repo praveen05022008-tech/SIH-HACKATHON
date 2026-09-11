@@ -173,10 +173,10 @@ export const SifRisk: React.FC<SifRiskProps> = ({ user, triggerNotification }) =
     <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans text-slate-800">
       
       {/* Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-[#0B2A56] to-[#008779] text-white p-7 shadow-lg shadow-slate-900/10">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#005B54] via-[#008779] to-[#00A389] text-white p-7 shadow-lg shadow-[#008779]/15">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-xs text-xs font-bold text-emerald-300 border border-white/15">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-xs font-bold text-emerald-100 border border-white/20">
               <Sparkles className="h-3.5 w-3.5 text-emerald-400 animate-pulse" />
               <span>Cerebras AI Ultra-Fast Inference Engine</span>
             </div>

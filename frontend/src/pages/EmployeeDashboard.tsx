@@ -297,15 +297,15 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
     <div className="font-sans text-slate-800 space-y-6 max-w-[1400px] mx-auto pb-16">
 
       {/* Top Welcome Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-[#12271f] px-6 py-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#005B54] via-[#008779] to-[#00A389] px-7 py-7 text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg shadow-[#008779]/15">
         {/* Decorative hatched stripe texture on left */}
-        <div className="absolute inset-y-0 left-0 w-24 bg-[repeating-linear-gradient(45deg,rgba(0,0,0,0.25),rgba(0,0,0,0.25)_8px,transparent_8px,transparent_16px)] opacity-30 pointer-events-none" />
+        <div className="absolute inset-y-0 left-0 w-24 bg-[repeating-linear-gradient(45deg,rgba(0,0,0,0.15),rgba(0,0,0,0.15)_8px,transparent_8px,transparent_16px)] opacity-30 pointer-events-none" />
 
         <div className="relative z-10 pl-2">
           <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
             Welcome back, {user?.name?.split(' ')[0] || 'Srinith'}
           </h1>
-          <p className="text-xs text-slate-300/90 font-medium mt-1">
+          <p className="text-xs text-emerald-50 font-medium mt-1">
             Stay vigilant, stay safe — every report you file makes Duliajan a safer site.
           </p>
         </div>
@@ -313,7 +313,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         <div className="relative z-10 shrink-0">
           <button
             onClick={() => onNavigateTo('report-issue')}
-            className="px-5 py-2.5 rounded-xl bg-[#00694c] hover:bg-[#00543d] text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+            className="px-5 py-2.5 rounded-xl bg-white text-[#008779] hover:bg-emerald-50 font-bold text-xs flex items-center gap-1.5 shadow-sm transition cursor-pointer"
           >
             <Plus className="h-4 w-4 stroke-[2.5]" />
             <span>Submit new report</span>
@@ -325,9 +325,9 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         
         {/* Card 1: Reports Submitted */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition border-l-4 border-l-[#00694c]">
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition border-l-4 border-l-[#008779]">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-[#e6f4ee] text-[#00694c]">
+            <div className="p-1.5 rounded-lg bg-[#E8F6F4] text-[#008779]">
               <FileText className="h-4 w-4" />
             </div>
             <span className="text-xs font-semibold text-slate-600">Reports submitted</span>
@@ -339,9 +339,9 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         </div>
 
         {/* Card 2: Reports Closed */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition border-l-4 border-l-[#00694c]">
+        <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-xs hover:shadow-md transition border-l-4 border-l-[#008779]">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-[#e6f4ee] text-[#00694c]">
+            <div className="p-1.5 rounded-lg bg-[#E8F6F4] text-[#008779]">
               <CheckCircle2 className="h-4 w-4" />
             </div>
             <span className="text-xs font-semibold text-slate-600">Reports closed</span>
@@ -453,7 +453,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
             {/* Wide Primary Submit Button */}
             <button
               onClick={() => onNavigateTo('report-issue')}
-              className="w-full py-3 rounded-xl bg-[#00694c] hover:bg-[#00543d] text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition cursor-pointer"
+              className="w-full py-3 rounded-xl bg-[#008779] hover:bg-[#007064] text-white font-bold text-xs shadow-sm flex items-center justify-center gap-2 transition cursor-pointer"
             >
               <Plus className="h-4 w-4 stroke-[2.5]" />
               <span>Submit new report</span>
@@ -469,7 +469,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
               </div>
               <button
                 onClick={() => onNavigateTo('my-report')}
-                className="text-[#00694c] hover:underline text-xs font-semibold flex items-center gap-0.5 transition cursor-pointer"
+                className="text-[#008779] hover:underline text-xs font-semibold flex items-center gap-0.5 transition cursor-pointer"
               >
                 <span>View all</span>
                 <ChevronRight className="h-3.5 w-3.5" />
@@ -499,7 +499,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                         <td className="py-3.5 px-3">
                           <button
                             onClick={() => onNavigateTo('my-report')}
-                            className="font-bold text-[#00694c] hover:underline cursor-pointer"
+                            className="font-bold text-[#008779] hover:underline cursor-pointer"
                           >
                             {report.id}
                           </button>
@@ -580,7 +580,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
               <button className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-50 text-xs">
                 &lt;
               </button>
-              <button className="h-7 w-7 rounded-lg bg-[#00694c] text-white flex items-center justify-center text-xs font-bold">
+              <button className="h-7 w-7 rounded-lg bg-[#008779] text-white flex items-center justify-center text-xs font-bold">
                 1
               </button>
               <button className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 text-xs font-bold">
@@ -604,26 +604,26 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
             <div className="space-y-2">
               <button
                 onClick={() => onNavigateTo('report-issue')}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-100 hover:border-[#00694c]/30 hover:bg-[#e6f4ee]/20 transition text-left cursor-pointer group"
+                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-100 hover:border-[#008779]/30 hover:bg-[#E8F6F4]/40 transition text-left cursor-pointer group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-[#e6f4ee] text-[#00694c] flex items-center justify-center">
+                  <div className="h-8 w-8 rounded-lg bg-[#E8F6F4] text-[#008779] flex items-center justify-center">
                     <Plus className="h-4 w-4 stroke-[2.5]" />
                   </div>
-                  <span className="text-xs font-semibold text-slate-800 group-hover:text-[#00694c]">Submit new report</span>
+                  <span className="text-xs font-semibold text-slate-800 group-hover:text-[#008779]">Submit new report</span>
                 </div>
                 <ChevronRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition" />
               </button>
 
               <button
                 onClick={() => onNavigateTo('my-report')}
-                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-100 hover:border-[#00694c]/30 hover:bg-[#e6f4ee]/20 transition text-left cursor-pointer group"
+                className="w-full flex items-center justify-between p-3.5 rounded-xl border border-slate-100 hover:border-[#008779]/30 hover:bg-[#E8F6F4]/40 transition text-left cursor-pointer group"
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-lg bg-[#e6f4ee] text-[#00694c] flex items-center justify-center">
+                  <div className="h-8 w-8 rounded-lg bg-[#E8F6F4] text-[#008779] flex items-center justify-center">
                     <Search className="h-4 w-4" />
                   </div>
-                  <span className="text-xs font-semibold text-slate-800 group-hover:text-[#00694c]">Check report status</span>
+                  <span className="text-xs font-semibold text-slate-800 group-hover:text-[#008779]">Check report status</span>
                 </div>
                 <ChevronRight className="h-4 w-4 text-slate-400 group-hover:translate-x-0.5 transition" />
               </button>
@@ -631,14 +631,14 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
           </div>
 
           {/* Card 2: Safety Tip of the Day */}
-          <div className="rounded-2xl bg-[#12271f] p-5 text-white shadow-sm space-y-3">
-            <div className="flex items-center gap-2 text-[#00694c]">
-              <div className="h-4 w-4 rounded-full border-2 border-[#00694c] flex items-center justify-center">
-                <div className="h-1.5 w-1.5 rounded-full bg-[#00694c]" />
+          <div className="rounded-2xl bg-gradient-to-br from-[#005B54] to-[#008779] p-5 text-white shadow-sm space-y-3">
+            <div className="flex items-center gap-2 text-emerald-200">
+              <div className="h-4 w-4 rounded-full border-2 border-emerald-300 flex items-center justify-center">
+                <div className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
               </div>
-              <span className="text-xs font-semibold text-slate-200">Safety tip of the day</span>
+              <span className="text-xs font-semibold text-white">Safety tip of the day</span>
             </div>
-            <p className="text-xs text-slate-300 font-normal leading-relaxed">
+            <p className="text-xs text-emerald-50 font-normal leading-relaxed">
               Always follow lockout/tagout procedure before starting maintenance work — verify zero energy before you touch anything.
             </p>
             <button
@@ -737,7 +737,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-4 animate-in fade-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2 text-[#00694c]">
+              <div className="flex items-center gap-2 text-[#008779]">
                 <Cpu className="h-5 w-5" />
                 <h3 className="text-sm font-black text-slate-900">GATI AI Precursor Hazard Scanner</h3>
               </div>
@@ -758,13 +758,13 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
               value={aiDraftText}
               onChange={e => setAiDraftText(e.target.value)}
               placeholder="e.g. Scaffolding plank not clamped securely on 3rd level of Drilling Rig A..."
-              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-[#00694c] focus:bg-white transition"
+              className="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:ring-2 focus:ring-[#008779] focus:bg-white transition"
             />
 
             <button
               onClick={handleAnalyzeDraft}
               disabled={aiAnalyzing || !aiDraftText.trim()}
-              className="w-full py-2.5 rounded-xl bg-[#00694c] hover:bg-[#00543d] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-[#008779] hover:bg-[#007064] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition disabled:opacity-50 cursor-pointer"
             >
               {aiAnalyzing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               <span>{aiAnalyzing ? 'Analyzing with GATI Engine...' : 'Run Instant AI Scan'}</span>
@@ -852,7 +852,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2 text-[#00694c]">
+              <div className="flex items-center gap-2 text-[#008779]">
                 <Shield className="h-5 w-5" />
                 <h3 className="text-sm font-black text-slate-900">Refinery Safety Tips & SOPs</h3>
               </div>
@@ -884,7 +884,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                 setShowTipsModal(false);
                 onNavigateTo('learning');
               }}
-              className="w-full py-2.5 rounded-xl bg-[#00694c] hover:bg-[#00543d] text-white font-bold text-xs text-center transition cursor-pointer"
+              className="w-full py-2.5 rounded-xl bg-[#008779] hover:bg-[#007064] text-white font-bold text-xs text-center transition cursor-pointer"
             >
               Open Full Learning Center
             </button>

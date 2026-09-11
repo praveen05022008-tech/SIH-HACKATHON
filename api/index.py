@@ -16,14 +16,10 @@ app_dir = os.path.join(backend_dir, "app")
 if app_dir not in sys.path:
     sys.path.insert(0, app_dir)
 
-# Ensure environment variables are loaded
+# Ensure single unified root environment is loaded
 from dotenv import load_dotenv
-env_backend = os.path.join(app_dir, ".env")
-env_backend_plain = os.path.join(app_dir, "env")
 env_root = os.path.join(root_dir, ".env")
-
-for p in [env_backend, env_backend_plain, env_root]:
-    if os.path.exists(p):
-        load_dotenv(p)
+if os.path.exists(env_root):
+    load_dotenv(env_root, override=False)
 
 from backend.app.main import app

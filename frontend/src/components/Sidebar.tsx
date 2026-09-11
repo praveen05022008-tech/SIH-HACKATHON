@@ -22,15 +22,12 @@ import {
   Shield,
   History,
   BarChart3,
-  AlertCircle,
   CheckSquare,
   Bell,
   BookOpen,
   HelpCircle,
   Search,
-  UserCheck,
-  Sun,
-  Moon
+  UserCheck
 } from 'lucide-react';
 import { User } from '../types';
 
@@ -68,7 +65,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onClose
 }) => {
   const isEmployee = userRole === 'Employee' || userRole === 'Field Worker';
-  const [appearanceMode, setAppearanceMode] = React.useState<'light' | 'dark' | 'contrast'>('light');
 
   const getMenuItems = (): MenuItem[] => {
     switch (userRole) {
@@ -78,7 +74,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
           { id: 'my-report', label: 'My reports', icon: FileText },
           { id: 'report-issue', label: 'Submit report', icon: CheckSquare },
-          { id: 'ai-analysis', label: 'AI analysis', icon: Cpu, badge: 'New', badgeColor: 'bg-[#00694c] text-white' }
+          { id: 'ai-analysis', label: 'AI analysis', icon: Cpu, badge: 'New', badgeColor: 'bg-[#008779] text-white' }
         ];
 
       case 'Officer':
@@ -144,7 +140,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Brand Header */}
         <div className="px-6 py-5 flex items-center justify-between border-b border-slate-100">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-[#00694c] text-white shadow-xs flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-[#005B54] via-[#008779] to-[#00A389] text-white shadow-xs flex items-center justify-center">
               <Shield className="h-5 w-5 fill-white/20" />
             </div>
             <div>
@@ -180,18 +176,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onClose?.();
                 }}
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 text-left cursor-pointer ${isActive
-                    ? 'bg-[#e6f4ee] text-[#00694c] font-extrabold shadow-2xs'
+                    ? 'bg-[#E8F6F4] text-[#008779] font-extrabold shadow-2xs'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                   }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-[#00694c]' : 'text-slate-400'
+                  <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-[#008779]' : 'text-slate-400'
                     }`} />
                   <span className="truncate">{item.label}</span>
                 </div>
 
                 {item.badge && (
-                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${item.badgeColor || 'bg-[#00694c] text-white'}`}>
+                  <span className={`text-[9px] font-black px-2 py-0.5 rounded-full ${item.badgeColor || 'bg-[#008779] text-white'}`}>
                     {item.badge}
                   </span>
                 )}
@@ -213,52 +209,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </nav>
 
-        {/* Bottom Section: Appearance Toggle + User Card */}
-        <div className="p-3 border-t border-slate-100 space-y-3">
-
-          {/* Appearance Toggle */}
-          <div>
-            <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 px-1">
-              Appearance
-            </div>
-            <div className="bg-slate-100/90 p-1 rounded-xl flex items-center gap-1">
-              <button
-                onClick={() => setAppearanceMode('light')}
-                className={`flex-1 flex items-center justify-center py-1.5 rounded-lg text-xs transition cursor-pointer ${appearanceMode === 'light'
-                    ? 'bg-[#00694c] text-white shadow-2xs'
-                    : 'text-slate-400 hover:text-slate-700'
-                  }`}
-                title="Light Mode"
-              >
-                <Sun className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={() => setAppearanceMode('dark')}
-                className={`flex-1 flex items-center justify-center py-1.5 rounded-lg text-xs transition cursor-pointer ${appearanceMode === 'dark'
-                    ? 'bg-[#00694c] text-white shadow-2xs'
-                    : 'text-slate-400 hover:text-slate-700'
-                  }`}
-                title="Dark Mode"
-              >
-                <Moon className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={() => setAppearanceMode('contrast')}
-                className={`flex-1 flex items-center justify-center py-1.5 rounded-lg text-xs transition cursor-pointer ${appearanceMode === 'contrast'
-                    ? 'bg-[#00694c] text-white shadow-2xs'
-                    : 'text-slate-400 hover:text-slate-700'
-                  }`}
-                title="High Contrast"
-              >
-                <AlertCircle className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
+        {/* Bottom Section: User Card */}
+        <div className="p-3 border-t border-slate-100">
 
           {/* User Profile Card */}
           <div className="p-2.5 bg-slate-50/90 border border-slate-200/80 rounded-2xl flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
-              <div className="h-9 w-9 rounded-xl bg-[#00694c] text-white font-black flex items-center justify-center text-xs shrink-0 shadow-2xs">
+              <div className="h-9 w-9 rounded-xl bg-[#008779] text-white font-black flex items-center justify-center text-xs shrink-0 shadow-2xs">
                 {user?.name ? user.name.charAt(0) : 'S'}
               </div>
               <div className="min-w-0">

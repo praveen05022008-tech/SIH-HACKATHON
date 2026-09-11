@@ -844,7 +844,7 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
                       href={selectedReport.photo_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[#00694c] hover:underline font-bold text-[11px]"
+                      className="text-[#008779] hover:underline font-bold text-[11px]"
                     >
                       Open Full Size ↗
                     </a>
@@ -1143,7 +1143,7 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
                   href={previewPhoto}
                   target="_blank"
                   rel="noreferrer"
-                  className="px-2.5 py-1 text-xs font-bold text-[#00694c] hover:bg-[#e6f4ee] rounded-lg border border-[#A2D9D2] transition flex items-center gap-1"
+                  className="px-2.5 py-1 text-xs font-bold text-[#008779] hover:bg-[#E8F6F4] rounded-lg border border-[#A2D9D2] transition flex items-center gap-1"
                 >
                   <span>Open Original ↗</span>
                 </a>

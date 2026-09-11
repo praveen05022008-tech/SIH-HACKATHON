@@ -1795,7 +1795,7 @@ export const WorkerPortal: React.FC<WorkerPortalProps> = ({
                   setShowSuccessModal(false);
                   if (onNavigateTo) onNavigateTo('my-report');
                 }}
-                className="w-full py-3 px-4 bg-[#00694c] hover:bg-[#00543d] active:scale-[0.98] text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-3 px-4 bg-[#008779] hover:bg-[#007064] active:scale-[0.98] text-white font-bold text-xs rounded-xl shadow-sm transition flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>View in My Reports</span>
                 <ChevronRight className="h-4 w-4" />

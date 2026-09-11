@@ -246,20 +246,20 @@ export const Review: React.FC<ReviewProps> = ({ reviewerName, user, onReviewSubm
     <div className="space-y-6">
       
       {/* Officer Tactical Header Bar */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl text-white">
+      <div className="bg-gradient-to-r from-[#005B54] via-[#008779] to-[#00A389] border border-white/15 rounded-3xl p-6 shadow-lg shadow-[#008779]/15 text-white">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2.5">
               <h1 className="text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-                <HardHat className="h-6 w-6 text-blue-400" />
+                <HardHat className="h-6 w-6 text-amber-300" />
                 <span>Safety Officer Field Assurance & Triage Console</span>
               </h1>
-              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-blue-500/20 text-blue-300 border border-blue-400/30 flex items-center gap-1.5 shadow-2xs">
-                <Radio className="h-3 w-3 text-blue-400 animate-pulse" />
+              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-white/15 text-emerald-100 border border-white/20 flex items-center gap-1.5 shadow-2xs">
+                <Radio className="h-3 w-3 text-emerald-200 animate-pulse" />
                 <span>IN FIELD • VHF Ch 1 Command</span>
               </span>
             </div>
-            <p className="text-xs text-slate-300 mt-2 font-medium max-w-3xl leading-relaxed">
+            <p className="text-xs text-emerald-50 mt-2 font-medium max-w-3xl leading-relaxed">
               Tactical assurance hub for reviewing field precursor observations, verifying physical barriers, executing manager-assigned SIF audits, and calibrating GATI models.
             </p>
           </div>

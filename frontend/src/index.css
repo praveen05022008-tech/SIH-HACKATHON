@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  --color-green-main: #00694c;
-  --color-green-bar: #12271f;
-  --color-green-light: #e6f4ee;
-  --color-green-hover: #00543d;
+  --color-green-main: #008779;
+  --color-green-bar: #005B54;
+  --color-green-light: #E8F6F4;
+  --color-green-hover: #007064;
 
-  --color-teal-primary: #00694c;
-  --color-teal-dark: #12271f;
-  --color-teal-light: #e6f4ee;
-  --color-teal-accent: #008762;
+  --color-teal-primary: #008779;
+  --color-teal-dark: #005B54;
+  --color-teal-light: #E8F6F4;
+  --color-teal-accent: #00A389;
   --color-orange-accent: #FF7A1A;
   --color-purple-accent: #8B5CF6;
   --color-app-bg: #F4F7F5;
   --color-card-border: #E6ECEB;
 
-  --color-industrial-navy: #12271f;
-  --color-industrial-blue: #00694c;
-  --color-industrial-green: #00694c;
+  --color-industrial-navy: #005B54;
+  --color-industrial-blue: #008779;
+  --color-industrial-green: #008779;
   --color-industrial-orange: #FF7A1A;
   --color-industrial-red: #DC2626;
   --color-industrial-purple: #8B5CF6;
@@ -73,9 +73,9 @@ body {
 }
 
 .mycourse-hero {
-  background: linear-gradient(135deg, #007A78 0%, #009688 60%, #00BFA5 100%);
+  background: linear-gradient(135deg, #005B54 0%, #008779 60%, #00A389 100%);
   border-radius: 1.5rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 122, 120, 0.25);
+  box-shadow: 0 10px 25px -5px rgba(0, 135, 121, 0.25);
 }
 
 .pill-active {
