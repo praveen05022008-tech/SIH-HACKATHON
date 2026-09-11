@@ -148,10 +148,7 @@ function App() {
   };
 
   // Notification system
-  const [notifications, setNotifications] = useState<string[]>([
-    "Review required: EVT-10291 (High SIF Potential isolated breaker bypass)",
-    "3 similar precursor reports detected at CDU Area 4"
-  ]);
+  const [notifications, setNotifications] = useState<string[]>([]);
 
   // System parameters
   const [systemStatus, setSystemStatus] = useState({

@@ -73,8 +73,11 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
       console.error('Error deleting report:', err);
     } finally {
       setDeleting(false);
+      // Re-fetch to ensure UI is in sync with DB
+      fetchMyReports();
     }
   };
+
 
   const [editingReport, setEditingReport] = useState<SafetyEvent | null>(null);
   const [editForm, setEditForm] = useState({
@@ -149,6 +152,8 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
         });
         setTimeout(() => setActionNotice(null), 4500);
         setEditingReport(null);
+        // Re-fetch to confirm server-side saved state
+        fetchMyReports();
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.detail || 'Failed to update report.');
@@ -160,6 +165,7 @@ export const MyReport: React.FC<MyReportProps> = ({ user, onNavigateTo, triggerS
       setSavingEdit(false);
     }
   };
+
 
   const fetchMyReports = () => {
     const targetEmail = user?.email || (() => {

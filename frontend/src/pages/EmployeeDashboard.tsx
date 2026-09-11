@@ -46,59 +46,7 @@ interface EmployeeDashboardProps {
   triggerStateRefresh?: boolean;
 }
 
-// Default realistic sample reports matching the reference screenshot
-const DEMO_REPORTS = [
-  {
-    id: 'RKA-2024-00012',
-    type: 'Unsafe Act',
-    typeIcon: AlertTriangle,
-    typeColor: 'text-amber-500',
-    title: 'Worker not wearing safety helmet',
-    submittedOn: '18 May 2024',
-    status: 'Under Review',
-    sifPotential: 'Medium'
-  },
-  {
-    id: 'RKA-2024-00011',
-    type: 'Unsafe Condition',
-    typeIcon: Construction,
-    typeColor: 'text-orange-500',
-    title: 'Oil leak near flange connection',
-    submittedOn: '16 May 2024',
-    status: 'Investigating',
-    sifPotential: 'High'
-  },
-  {
-    id: 'RKA-2024-00010',
-    type: 'Near Miss',
-    typeIcon: Target,
-    typeColor: 'text-emerald-500',
-    title: 'Caught foot while walking',
-    submittedOn: '14 May 2024',
-    status: 'Closed',
-    sifPotential: 'Low'
-  },
-  {
-    id: 'RKA-2024-00009',
-    type: 'Incident',
-    typeIcon: Siren,
-    typeColor: 'text-red-500',
-    title: 'Valve opened without isolation',
-    submittedOn: '12 May 2024',
-    status: 'Closed',
-    sifPotential: 'High'
-  },
-  {
-    id: 'RKA-2024-00008',
-    type: 'Unsafe Condition',
-    typeIcon: Construction,
-    typeColor: 'text-orange-500',
-    title: 'Loose grating on platform',
-    submittedOn: '10 May 2024',
-    status: 'Under Review',
-    sifPotential: 'Medium'
-  }
-];
+
 
 export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
   user,
@@ -142,7 +90,7 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
     fetchReports();
   }, [user?.email, Boolean(triggerStateRefresh)]);
 
-  // Format display reports strictly from realReports (fallback to realistic demo reports if none yet)
+  // Format display reports strictly from realReports only - no dummy fallback
   const displayReports = useMemo(() => {
     if (realReports.length > 0) {
       return realReports.map((r, i) => {
@@ -191,15 +139,15 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
         };
       });
     }
-    return DEMO_REPORTS;
+    return [];
   }, [realReports]);
 
-  // Exact calculated statistics (matching reference screenshot demo fallback if empty)
-  const totalCount = realReports.length > 0 ? realReports.length : 3;
-  const closedCount = realReports.length > 0 ? displayReports.filter(r => r.status === 'Closed').length : 1;
-  const reviewCount = realReports.length > 0 ? displayReports.filter(r => r.status === 'Under Review').length : 1;
-  const investigatingCount = realReports.length > 0 ? displayReports.filter(r => r.status === 'Investigating').length : 0;
-  const highRiskCount = realReports.length > 0 ? displayReports.filter(r => r.sifPotential === 'High').length : 1;
+  // Exact calculated statistics from real data only
+  const totalCount = realReports.length;
+  const closedCount = displayReports.filter(r => r.status === 'Closed').length;
+  const reviewCount = displayReports.filter(r => r.status === 'Under Review').length;
+  const investigatingCount = displayReports.filter(r => r.status === 'Investigating').length;
+  const highRiskCount = displayReports.filter(r => r.sifPotential === 'High').length;
 
   // Dynamic calculated trends and subtitles
   const trends = useMemo(() => {
@@ -490,7 +438,17 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 font-medium">
-                  {displayReports.slice(0, 5).map(report => {
+                  {displayReports.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-10 text-center text-slate-400 text-xs">
+                        <div className="flex flex-col items-center gap-2">
+                          <FileText className="h-8 w-8 text-slate-200" />
+                          <span className="font-semibold text-slate-500">No reports submitted yet</span>
+                          <span>Submit your first safety observation to get started.</span>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : displayReports.slice(0, 5).map(report => {
                     const TypeIcon = report.typeIcon;
                     return (
                       <tr key={report.id} className="hover:bg-slate-50/60 transition">
@@ -575,22 +533,25 @@ export const EmployeeDashboard: React.FC<EmployeeDashboardProps> = ({
               </table>
             </div>
 
-            {/* Pagination Controls */}
-            <div className="flex items-center justify-center gap-1.5 pt-2">
-              <button className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-50 text-xs">
-                &lt;
-              </button>
-              <button className="h-7 w-7 rounded-lg bg-[#008779] text-white flex items-center justify-center text-xs font-bold">
-                1
-              </button>
-              <button className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 text-xs font-bold">
-                2
-              </button>
-              <button className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-50 text-xs">
-                &gt;
-              </button>
-            </div>
+            {/* Pagination Controls - only show when there are reports */}
+            {displayReports.length > 5 && (
+              <div className="flex items-center justify-center gap-1.5 pt-2">
+                <button className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-50 text-xs">
+                  &lt;
+                </button>
+                <button className="h-7 w-7 rounded-lg bg-[#008779] text-white flex items-center justify-center text-xs font-bold">
+                  1
+                </button>
+                <button className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-600 hover:bg-slate-50 text-xs font-bold">
+                  2
+                </button>
+                <button className="h-7 w-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-400 hover:bg-slate-50 text-xs">
+                  &gt;
+                </button>
+              </div>
+            )}
           </div>
+
 
         </div>
 
